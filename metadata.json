@@ -1,0 +1,6 @@
+{
+  "name": "ONE HOME PRO",
+  "description": "Qatar Business Edition — Property, Room Rental, Accounting, Workforce, Maintenance, Inventory & Customer Portal Management Platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,1514 @@
+ONE HOME PRO — MASTER DEVELOPMENT & COMPLETION PROMPT
+
+Qatar Business Edition — Complete A–Z Property, Rental & Business Management Platform
+
+CRITICAL INSTRUCTIONS — READ BEFORE DEVELOPMENT
+
+You are responsible for developing ONE HOME PRO as a complete, integrated, production-oriented business management application.
+
+Do not build a demo, mockup, prototype, disconnected screens, or incomplete application.
+
+Preserve the exact project name: ONE HOME PRO.
+
+Do not remove, weaken, rename, shorten, or replace any previously supplied project requirement.
+
+Integrate all previous requirements, database phases, security requirements, development requirements, data migration requirements, Play Store requirements, and the latest A–Z Completion Addendum.
+
+If a feature already exists, improve it without creating duplicate systems or duplicate sources of truth.
+
+Never create fake customers, employees, properties, rooms, payments, purchases, or financial records.
+
+Never claim implementation, security, testing, or release completion without evidence.
+
+⸻
+
+1. PROJECT IDENTITY AND PLATFORM SUPPORT
+
+Project: ONE HOME PRO
+
+Business Edition: Qatar Property, Room Rental & Complete Business Management.
+
+The application must support:
+
+* Android phones and tablets.
+* iPhone.
+* iPad.
+* Windows computers and laptops.
+* macOS computers and laptops.
+* Responsive web application.
+* PWA or suitable mobile application architecture.
+* Separate secure customer portal.
+* Complete Owner administration portal.
+
+Primary currency: QAR.
+
+Time zone: Asia/Qatar.
+
+Languages:
+
+* English.
+* Arabic with proper RTL support.
+* Hindi/Hinglish.
+
+Support multiple businesses and branches when enabled by the Owner.
+
+Business settings must remain isolated.
+
+Do not hard-code unverified Qatar tax rates, government procedures, legal rules, or mandatory fees.
+
+Prepare a Qatar legal and regulatory verification checklist.
+
+2. MASTER REQUIREMENTS MANAGEMENT
+
+Create a master requirements register covering all previous prompts and addenda.
+
+Assign every individual requirement a unique reference ID.
+
+Track each requirement using:
+
+* Not Started
+* In Progress
+* Implemented
+* Tested
+* Passed
+* Failed
+* Blocked
+
+Maintain:
+
+* Requirement descriptions.
+* Dependencies.
+* Implementation references.
+* Test cases.
+* Test evidence.
+* Blockers.
+* Change history.
+* Technical decision register.
+* Business decision register.
+* Legal verification register.
+* External service dependency register.
+
+A screen existing does not mean a feature is complete.
+
+Never silently omit a requirement.
+
+3. DATABASE ARCHITECTURE — PRESERVE EXISTING SIX PHASES
+
+Use PostgreSQL or another justified production-grade relational database.
+
+Preserve and improve the existing proposed 63-table architecture.
+
+Phase 1 — Core Database
+
+1. businesses
+2. properties
+3. buildings
+4. floors
+5. rooms
+6. customers
+7. family_members
+8. agreements
+9. agreement_members
+10. tenancy_history
+
+Requirements:
+
+* Permanent UUID identifiers.
+* Business-level data isolation.
+* Permanent customer and room IDs.
+* Historical tenancy and agreement preservation.
+* One active agreement per room.
+* Room status: vacant, occupied, maintenance, reserved, inactive.
+* Agreement status: draft, active, expired, terminated, cancelled, renewed.
+* Composite foreign keys where required.
+* Prevent overlapping agreements unless an explicitly configured business rule allows them.
+
+Phase 2 — Rent and Payments
+
+1. monthly_rents
+2. payments
+3. payment_allocations
+4. receipts
+5. security_deposits
+6. deposit_transactions
+
+Requirements:
+
+* Monthly, quarterly, annual and configurable rent schedules.
+* Full, partial and advance payments.
+* Multiple-period payment allocations.
+* Unique receipt and payment references.
+* Refunds and reversals.
+* Separate security deposit accounting.
+* Transactional allocation validation.
+* Idempotency protection.
+* No silent deletion of financial records.
+
+Phase 3 — Accounting
+
+1. chart_of_accounts
+2. journal_entries
+3. journal_lines
+4. income_records
+5. expense_records
+6. bank_accounts
+7. cashbook_entries
+8. petty_cash_entries
+9. bank_transactions
+10. bank_reconciliations
+11. approval_requests
+
+Requirements:
+
+* Double-entry accounting.
+* Debit equals credit before posting.
+* One authoritative general ledger.
+* Accrual and cash reporting.
+* Receivables and payables.
+* Assets, liabilities, equity, income and expenses.
+* Bank reconciliation.
+* Petty cash.
+* Financial approvals.
+* Journal reversals.
+* Period closing and controlled reopening.
+* Trial balance, profit and loss, balance sheet and cash flow.
+* Correct accounting for deposits, advance rent and recognized rent.
+* No duplicate accounting entries.
+* Preserve posted transaction history.
+
+Phase 4 — Employees and Security
+
+1. employees
+2. departments
+3. teams
+4. team_members
+5. users
+6. roles
+7. permissions
+8. role_permissions
+9. user_roles
+10. user_business_access
+11. user_property_access
+12. attendance
+13. employee_work_history
+14. login_sessions
+15. login_history
+16. account_closure_requests
+
+Also implement:
+
+* MFA credentials.
+* Recovery codes.
+* Security events.
+* User devices.
+* Password reset requests.
+* Session revocation.
+* Device management.
+* Employee deactivation without deleting history.
+* Owner-only permission administration.
+
+Phase 5 — Maintenance and Complaints
+
+1. complaints
+2. complaint_attachments
+3. job_assignments
+4. work_reports
+5. work_report_photos
+6. material_usage
+7. job_approvals
+8. complaint_status_history
+
+Requirements:
+
+* Complaint creation and assignment.
+* Priority and category.
+* Technician workflow.
+* Before-and-after photographs.
+* Videos, notes and attachments.
+* Labour and material usage.
+* Customer confirmation.
+* Owner approval.
+* Status history.
+* Preventive maintenance.
+* Maintenance cost reporting.
+* Link material usage to inventory movements and accounting exactly once.
+
+Phase 6 — Purchase and Inventory
+
+1. suppliers
+2. item_categories
+3. items
+4. stock_locations
+5. purchases
+6. purchase_items
+7. stock_movements
+8. stock_transfers
+9. stock_adjustments
+10. stock_counts
+11. supplier_payments
+12. purchase_approvals
+
+Also create the necessary detail tables, including:
+
+* Stock transfer lines.
+* Stock count lines.
+* Supplier payment allocations.
+* Goods receipt details.
+
+Requirements:
+
+* Supplier profiles.
+* Purchase requests and approvals.
+* Purchase orders.
+* Verified goods receipt.
+* Stock transfers.
+* Stock adjustments.
+* Physical stock counts.
+* Returns and damaged stock.
+* Low-stock alerts.
+* Weighted-average costing or another explicitly approved costing policy.
+* Prevent duplicate movements.
+* Prevent unauthorized negative stock.
+* Preserve complete stock movement history.
+
+4. PROPERTY AND ROOM MANAGEMENT
+
+Manage:
+
+* Multiple properties.
+* Buildings.
+* Floors.
+* Rooms.
+* Room types.
+* Capacity.
+* Amenities.
+* Furnished and unfurnished status.
+* Photographs.
+* Notes.
+* Inspections.
+* Condition reports.
+* Keys and access cards.
+* Furniture and appliances.
+* Handover and return.
+* Occupancy history.
+* Vacancy periods.
+* Reservations and cancellations.
+* Reservation deposits.
+* Repair requirements.
+* Property-wise and room-wise profitability.
+
+5. RENTAL AGREEMENTS AND TENANCY
+
+Support:
+
+* Agreement creation.
+* Review and approval.
+* Signing and attachments.
+* Renewal.
+* Extension.
+* Amendment.
+* Early termination.
+* Cancellation.
+* Move-in and move-out.
+* Notice periods.
+* Final inspection.
+* Settlement calculations.
+* Rent changes and discounts with authorization.
+* Agreement version history.
+* Expiry reminders.
+* Printable and downloadable agreements.
+
+Legal templates must remain configurable and subject to appropriate Qatar legal review.
+
+6. RENT COLLECTION AND PAYMENT
+
+Support:
+
+* Monthly, quarterly and annual schedules.
+* Partial payments.
+* Advance payments.
+* Multiple outstanding periods.
+* Transparent allocations.
+* Overdue balances.
+* Refunds and reversals.
+* Cash.
+* Bank transfers.
+* Cards.
+* Cheques.
+* Other configured payment methods.
+* Payment evidence.
+* Unique references.
+* Duplicate submission protection.
+* Customer, property, room and date-wise collection reports.
+
+A payment must never be reported as successful until it is confirmed by the applicable payment process.
+
+7. CHEQUE MANAGEMENT
+
+Create an integrated cheque workflow.
+
+Track:
+
+* Cheque number.
+* Bank.
+* Amount.
+* Cheque date.
+* Payer and payee.
+* Customer and agreement.
+* Linked rent obligation.
+* Deposit date.
+* Clearing date.
+* Bank reference.
+* Bounced cheque details.
+* Replacement cheque.
+* Supporting evidence.
+
+Statuses:
+Received, Held, Due Soon, Deposited, Cleared, Bounced, Cancelled, Replaced, Returned.
+
+A received cheque must not automatically be treated as cleared income.
+
+Prevent duplicate cheque registration and allocation.
+
+Integrate cheque events with reviewed accounting posting rules.
+
+8. SECURITY DEPOSITS AND SETTLEMENT
+
+Maintain deposits separately from rental income.
+
+Track:
+
+* Received.
+* Held.
+* Adjusted.
+* Refunded.
+* Outstanding.
+* Damage deductions.
+* Evidence.
+* Approvals.
+* Final settlement statements.
+
+Advance rent must remain correctly classified until earned or allocated according to accounting policy.
+
+9. CUSTOMER MANAGEMENT AND CUSTOMER PORTAL
+
+Provide:
+
+* Permanent customer IDs.
+* Customer history.
+* Restricted customer documents.
+* Agreements.
+* Payment history.
+* Receipts.
+* Rent statements.
+* Complaints.
+* Maintenance requests.
+* Notifications.
+* Password recovery.
+* Optional MFA.
+* Account closure.
+
+Customer portal users must only access their own authorized records.
+
+Never expose another customer’s information.
+
+10. EMPLOYEE AND WORKFORCE MANAGEMENT
+
+Provide:
+
+* Permanent employee IDs.
+* Departments.
+* Teams.
+* Job titles.
+* Supervisors.
+* Work locations.
+* Attendance.
+* Leave.
+* Holidays.
+* Overtime.
+* Shift schedules.
+* Onboarding.
+* Employee documents.
+* Expiry reminders.
+* Offboarding.
+* Assigned work.
+* Performance and approval records.
+
+Payroll may be enabled only with appropriate legal review and approved configuration.
+
+Never erase an employee’s historical actions.
+
+11. MAINTENANCE AND FACILITY MANAGEMENT
+
+Provide:
+
+* Complaints.
+* Maintenance requests.
+* Manual and rule-based assignments.
+* Priorities.
+* Deadlines.
+* Technicians.
+* Work reports.
+* Photos and videos.
+* Materials.
+* Labour.
+* Supplier costs.
+* Customer confirmation.
+* Approval limits.
+* Recurring maintenance.
+* Preventive maintenance.
+* Building and equipment inspections.
+* Overdue-job reports.
+* Maintenance-cost reports.
+
+12. PURCHASE AND INVENTORY
+
+Provide:
+
+* Suppliers.
+* Quotations.
+* Purchase requests.
+* Purchase orders.
+* Approval.
+* Goods receiving.
+* Supplier invoices.
+* Payments.
+* Returns.
+* Inventory locations.
+* Stock transfers.
+* Adjustments.
+* Counts.
+* Damage and expiry.
+* Job-linked material usage.
+* Stock valuation.
+* Reorder reports.
+
+Every stock movement must be traceable and protected against duplicate execution.
+
+13. ACCOUNTING AND FINANCIAL CONTROL
+
+Use one authoritative general ledger.
+
+All financial events must post through controlled accounting transactions.
+
+Ensure:
+
+* Balanced journal entries.
+* Correct rent receivables.
+* Correct collected rent.
+* Correct advance rent.
+* Correct security deposit liabilities.
+* Correct cheque accounting.
+* Correct supplier payables.
+* Correct refunds.
+* Correct expenses.
+* Correct inventory valuation.
+* Correct bank balances.
+* Correct period closing.
+* Historical exchange rates where multiple currencies are enabled.
+
+Reports:
+
+* Trial balance.
+* General ledger.
+* Profit and loss.
+* Balance sheet.
+* Cash flow.
+* Receivables.
+* Payables.
+* Bank reconciliation.
+* Customer balances.
+* Supplier balances.
+
+Never silently modify posted transactions.
+
+14. DOCUMENT STORAGE
+
+Securely store:
+
+* Agreements.
+* Receipts.
+* Invoices.
+* Customer IDs.
+* Passport documents.
+* QID documents.
+* Employee documents.
+* Supplier documents.
+* Property records.
+* Maintenance evidence.
+
+Provide:
+
+* Private storage.
+* File validation.
+* Versioning.
+* Expiry dates.
+* Reminders.
+* Malware scanning where supported.
+* Short-lived authorized access links.
+* File access logs.
+* Permission-controlled downloads.
+* Archival and retention policies.
+
+Never create unrestricted public links to private documents.
+
+15. NOTIFICATIONS
+
+Support configured:
+
+* In-app notifications.
+* Email.
+* SMS.
+* WhatsApp.
+
+Notify authorized recipients about:
+
+* Rent due and overdue.
+* Payments and receipts.
+* Agreement expiry.
+* Cheques.
+* Bounced cheques.
+* Deposits.
+* Maintenance.
+* Approvals.
+* Purchases.
+* Stock.
+* Documents.
+* Backups.
+
+Use provider-confirmed delivery status.
+
+Do not claim a notification was delivered without confirmation.
+
+16. DASHBOARDS AND REPORTS
+
+Provide filters by:
+
+* Business.
+* Branch.
+* Property.
+* Building.
+* Floor.
+* Room.
+* Customer.
+* Employee.
+* Supplier.
+* Date.
+
+Include:
+
+* Total properties and rooms.
+* Occupied and vacant rooms.
+* Occupancy percentage.
+* Vacancy duration.
+* Rent billed.
+* Rent collected.
+* Overdue and outstanding rent.
+* Deposits and advance rent.
+* Cash and bank balances.
+* Income and expenses.
+* Profit and financial position.
+* Cheque reports.
+* Agreement expiry.
+* Maintenance reports.
+* Purchase reports.
+* Inventory valuation.
+* Attendance.
+* Customer balances.
+
+All reports must use verified records and consistent financial definitions.
+
+Sensitive exports must be permission-controlled and audited.
+
+17. OWNER CONTROL CENTER
+
+Owner must control:
+
+* Businesses.
+* Branches.
+* Properties.
+* Users.
+* Employees.
+* Roles.
+* Permissions.
+* Teams.
+* Settings.
+* Approvals.
+* Financial limits.
+* Integrations.
+* Security events.
+* Audit logs.
+* Backups.
+* System health.
+* Emergency recovery.
+
+Separate permissions for:
+
+* View.
+* Create.
+* Edit.
+* Archive.
+* Approve.
+* Post.
+* Reverse.
+* Export.
+* Restore.
+
+Employees must never grant themselves additional permissions.
+
+18. SECURITY AND PRIVACY — CRITICAL
+
+Implement server-side authorization on every protected operation.
+
+Use:
+
+* Secure password hashing.
+* MFA options.
+* Secure password recovery.
+* Session expiry.
+* Device management.
+* Session revocation.
+* Rate limiting.
+* Brute-force protection.
+* Input validation.
+* Output encoding.
+* CSRF protection where applicable.
+* SQL injection prevention.
+* XSS protection.
+* Secure HTTP headers.
+* IDOR prevention.
+* API authorization.
+* Encryption in transit.
+* Encryption at rest.
+* Secure secret management.
+* Security event logging.
+* Suspicious login alerts.
+* Least-privilege access.
+* Business and property data isolation.
+
+Never rely only on frontend permission checks.
+
+Every API must independently verify the user’s identity, business scope, property scope and action permission.
+
+Protect passwords, tokens, recovery codes and sensitive personal information from logs.
+
+Use database row-level security where appropriate, alongside backend authorization.
+
+Require independent security review where practical.
+
+Create incident response and breach recovery procedures.
+
+Review applicable Qatar privacy and data-protection obligations with qualified professionals.
+
+Never claim 100% security.
+
+19. BACKUP AND DISASTER RECOVERY
+
+Provide:
+
+* Automated database backups.
+* Private document backups.
+* Encrypted backup storage.
+* Separate protected backup copy.
+* Configurable retention.
+* Backup monitoring.
+* RPO and RTO targets.
+* Restore procedures.
+* Restore testing.
+* Data integrity checks.
+* Financial reconciliation after restoration.
+* Restoration audit logs.
+
+A backup is not considered verified until an actual restoration test succeeds.
+
+20. OFFLINE MODE AND DEVICE SYNCHRONIZATION
+
+Support responsive operation across Android, iPhone, iPad, Windows and macOS.
+
+Provide safe offline drafts where practical.
+
+Use:
+
+* Unique synchronization IDs.
+* Idempotent operations.
+* Conflict detection.
+* Transparent conflict resolution.
+* Secure local storage.
+* Local-data cleanup on logout.
+
+The server remains authoritative for:
+
+* Payments.
+* Accounting.
+* Stock.
+* Financial transactions.
+
+Never display an unconfirmed offline payment as completed.
+
+Test interrupted connections, duplicate submissions and synchronization conflicts.
+
+21. EXTERNAL INTEGRATIONS
+
+Prepare secure integration architecture for:
+
+* Payment gateways.
+* Bank feeds.
+* Email providers.
+* SMS providers.
+* WhatsApp providers.
+* Document storage.
+* Accounting or tax services.
+* Maps.
+* Crash reporting.
+* Performance monitoring.
+
+Every integration needs:
+
+* Owner-controlled settings.
+* Secure credentials.
+* Connection tests.
+* Error handling.
+* Retry rules.
+* Audit logs.
+* Provider dependency information.
+* Cost information.
+* Manual fallback where practical.
+
+Never invent provider credentials or successful connections.
+
+22. DESIGN AND ACCESSIBILITY
+
+Maintain a professional and consistent ONE HOME PRO interface.
+
+Provide:
+
+* Mobile-first design.
+* Responsive layouts.
+* Global search.
+* Filters.
+* Sorting.
+* Pagination.
+* Accessible labels.
+* Keyboard navigation.
+* Screen-reader support.
+* Sufficient contrast.
+* Arabic RTL layouts.
+* Loading states.
+* Success states.
+* Error states.
+* Offline states.
+* Permission-denied states.
+* Clear financial confirmations.
+
+Every visible button, form, menu and link must work.
+
+No decorative non-functional controls.
+
+23. PERFORMANCE AND RELIABILITY
+
+Implement:
+
+* Database indexing.
+* Efficient queries.
+* Pagination.
+* Background jobs.
+* Safe retries.
+* Timeouts.
+* Queue monitoring.
+* Server monitoring.
+* Database monitoring.
+* Storage monitoring.
+* Concurrent transaction tests.
+* Race-condition protection.
+* Duplicate operation protection.
+* Graceful failure handling.
+* Capacity and scaling plans.
+
+Never sacrifice financial correctness for performance.
+
+24. TESTING AND ACCEPTANCE
+
+Create unit, integration, API, database, end-to-end, security, performance, negative and regression tests.
+
+Test at least:
+
+1. Owner login and MFA.
+2. Password recovery.
+3. Employee creation and deactivation.
+4. Roles and permissions.
+5. Property and room creation.
+6. Customer registration.
+7. Customer portal isolation.
+8. Agreement creation and renewal.
+9. Rent generation.
+10. Partial and advance payments.
+11. Payment allocation.
+12. Receipt generation.
+13. Payment reversal.
+14. Cheque receipt.
+15. Cheque deposit and clearing.
+16. Bounced cheque.
+17. Replacement cheque.
+18. Deposit receipt.
+19. Deposit deductions and refund.
+20. Accounting journals.
+21. General ledger balances.
+22. Bank reconciliation.
+23. Purchase approval.
+24. Goods receipt.
+25. Stock movement.
+26. Maintenance material usage.
+27. Complaint and technician workflow.
+28. Document upload.
+29. Restricted document access.
+30. Expiry reminders.
+31. Notification provider failure.
+32. Offline synchronization.
+33. Duplicate submissions.
+34. Backup restoration.
+35. Financial reconciliation after restoration.
+36. Unauthorized API requests.
+37. Cross-business data access attempts.
+38. Cross-customer data access attempts.
+39. Concurrent transactions.
+40. English and Arabic layouts.
+41. Android compatibility.
+42. iPhone compatibility.
+43. iPad compatibility.
+44. Windows compatibility.
+45. macOS compatibility.
+46. Financial reports compared with database records.
+
+Record every result with:
+
+* Test ID.
+* Test environment.
+* Steps.
+* Expected result.
+* Actual result.
+* Evidence.
+* Status.
+* Defect reference.
+
+Failed and blocked tests must remain visible.
+
+Never create false PASS results.
+
+25. DEPLOYMENT AND GOOGLE PLAY
+
+Maintain separate:
+
+* Development.
+* Testing.
+* Staging.
+* Production.
+
+Provide:
+
+* Domain.
+* HTTPS.
+* Database.
+* Private storage.
+* Secrets.
+* Monitoring.
+* Backups.
+* Deployment procedures.
+* Rollback procedures.
+* Database migration procedures.
+* Health checks.
+
+Prepare Android:
+
+* Package identity.
+* App icon.
+* Splash screen.
+* Versioning.
+* Signed Android App Bundle.
+* Signing key management.
+* Privacy policy.
+* Data safety declarations.
+* Permissions explanations.
+* Store screenshots.
+* Store description.
+* Support contact.
+* Release notes.
+
+Check current Google Play policies before release.
+
+Use internal testing and appropriate release tracks.
+
+Never claim Play Store approval without actual approval.
+
+Prepare iOS distribution separately using the appropriate Apple development and release process. Do not claim iOS availability without a real tested iOS build.
+
+26. DOCUMENTATION AND HANDOVER
+
+Deliver:
+
+* Complete frontend source code.
+* Complete backend source code.
+* Database schema.
+* ER diagram.
+* Database migrations.
+* Seed strategy without fake business data.
+* API documentation.
+* Authentication documentation.
+* Permission documentation.
+* Accounting posting rules.
+* Qatar legal verification checklist.
+* Data migration reports.
+* Reconciliation reports.
+* Automated test suite.
+* Test results.
+* Security assessment.
+* Known limitations.
+* Backup instructions.
+* Restore instructions.
+* Deployment instructions.
+* Rollback instructions.
+* Environment variable example without real secrets.
+* Integration documentation.
+* Android build materials.
+* Authorized signed AAB where possible.
+* Owner guide.
+* Employee guide.
+* Customer portal guide.
+
+The Owner must understand how to operate, configure, maintain and securely manage the application.
+
+27. REQUIRED ENGINEERING CORRECTIONS
+
+Review and resolve known gaps in the existing proposed database design:
+
+* Missing secure document/file storage entities.
+* Missing supplier foreign key relationships.
+* Missing department and team leader foreign keys.
+* Missing stock transfer detail table.
+* Missing stock count detail table.
+* Missing business-scoped foreign keys.
+* Tenant-aware roles and permissions.
+* Correct active agreement date-overlap protection.
+* Transactional payment allocation limits.
+* Consistent accounting journal posting.
+* Correct cheque accounting.
+* Correct security deposit and advance rent accounting.
+* Stock movement idempotency.
+* Supplier payment allocations.
+* Purchase quantity and received quantity validation.
+* Secure user and business isolation.
+* Audit event history.
+* Updated-at trigger strategy.
+* Consistent user foreign keys for created_by, approved_by and assigned_by.
+* Transaction-level journal balancing.
+* Safe financial reversals.
+* No negative stock without authorized policy.
+* No direct alteration of historical financial records.
+
+Use controlled database migrations. Do not destroy existing production data.
+
+28. FINAL COMPLETION RULE
+
+Before declaring completion:
+
+1. Compare every original prompt and addendum.
+2. Verify every requirement is in the requirements register.
+3. Preserve original functionality.
+4. Integrate duplicates without duplicate sources of truth.
+5. Verify all critical workflows.
+6. Reconcile financial records.
+7. Verify business and customer data isolation.
+8. Verify role permissions.
+9. Verify backup restoration.
+10. Verify production deployment.
+11. Verify monitoring.
+12. Build and test Android release where authorized resources are available.
+13. Test iOS and other supported platforms where their build environments are available.
+14. List all external blockers.
+15. Provide a final evidence-based completion report.
+
+Final report must clearly separate:
+
+* Implemented.
+* Tested.
+* Passed.
+* Failed.
+* Blocked.
+* Pending.
+
+Do not hide missing work.
+
+Do not invent test evidence.
+
+Do not claim 100% security.
+
+Do not claim legal approval without professional verification.
+
+Do not claim Play Store approval before Google approves the app.
+
+⸻
+
+FINAL OBJECTIVE
+
+Deliver ONE HOME PRO as a secure, reliable, integrated, scalable, Qatar-ready property and room rental business management platform.
+
+It must include complete Owner control, a secure customer portal, accurate accounting, rent and cheque management, employee management, maintenance, inventory, documents, notifications, reporting, backup and disaster recovery.
+
+It must support Android, iPhone, iPad, Windows and macOS.
+
+It must be tested with evidence before any feature is declared complete.
+
+Start by auditing the existing project materials and creating the complete requirements register. Then prepare the architecture, database migrations, implementation plan, security plan and test plan. Do not skip requirements or claim work that has not actually been completed.
+
+CRITICAL SECURITY REQUIREMENT — AUTHENTICATION AND AUTOMATIC LOGIN
+
+Do not allow automatic login to bypass authentication, device verification, session validation, account status, or server-side authorization.
+
+Incorrect passwords must always fail authentication.
+
+Remember Me may only use securely stored, revocable authentication tokens.
+
+Never store plaintext passwords or expose authentication tokens.
+
+A new or unrecognized device must follow the configured verification policy.
+
+Provide secure logout, logout-all-devices, session expiry, token revocation, password reset and MFA.
+
+Password changes, suspected account compromise and Owner-initiated security actions must revoke affected sessions according to the security policy.
+
+Every protected API request must independently validate identity, session, business access, property access and permissions.
+
+Customers must only access their own records.
+
+Employees must never access Owner-only information without explicit authorization.
+
+Passport, QID, agreements, payment records and private documents must have restricted server-side access.
+
+Test wrong passwords, expired tokens, revoked tokens, unrecognized devices, unauthorized API requests and cross-business data access.
+
+Record actual test results and evidence. Never declare authentication secure without passing these tests.
+
+ONE HOME PRO — MANDATORY FINAL TECHNICAL AUDIT ADDENDUM
+
+Before development is declared complete, perform these additional checks:
+
+1. Complete Database Audit
+    * Inspect every table, column, primary key, foreign key, index, constraint and relationship.
+    * Verify all business-scoped relationships.
+    * Detect missing tables, duplicate data, orphan records and unsafe deletion.
+    * Generate and validate the complete ER diagram.
+2. Authentication and Automatic Login
+    * Reject every incorrect password.
+    * Implement secure Remember Me with revocable tokens.
+    * Validate sessions and permissions on every protected API.
+    * Provide logout from one device and all devices.
+    * Test token expiry, password changes, device verification and account suspension.
+3. Multi-Device and Multi-User Isolation
+    * Test Android, iPhone, tablet and computer sessions.
+    * Prevent unauthorized access between businesses, branches and customers.
+    * Test simultaneous edits and synchronization conflicts.
+4. Financial Integrity
+    * Verify rent, partial payments, advance payments, refunds, cheques and deposits.
+    * Enforce balanced accounting journals.
+    * Prevent duplicate payment posting.
+    * Reconcile subledgers with the general ledger.
+    * Verify trial balance, profit and loss and balance sheet.
+5. Inventory Integrity
+    * Verify receiving, transfers, returns, adjustments and material consumption.
+    * Prevent duplicate stock movements and unauthorized negative stock.
+    * Reconcile stock valuation with accounting.
+6. Data Migration
+    * Preserve existing IDs and historical records.
+    * Back up before migration.
+    * Validate record counts and financial balances before and after migration.
+    * Provide rollback procedures.
+7. User Interface Audit
+    * Test every visible button, form, menu, link and workflow.
+    * Identify broken screens, missing validation and non-functional controls.
+    * Test English, Arabic RTL and Hindi/Hinglish.
+8. Backup and Recovery
+    * Perform an actual database and document restoration test.
+    * Verify relationships, files and financial balances after restoration.
+9. Final Evidence Report
+    * Give every requirement a unique ID.
+    * Record actual implementation and test evidence.
+    * Mark each requirement Passed, Failed, Blocked or Pending.
+    * Never mark an untested feature as Passed.
+    * List every remaining defect and its corrective action.
+
+Do not declare ONE HOME PRO production-ready until all critical tests pass and all unresolved blockers are disclosed.
+
+मेरे ONE HOME PRO Master Prompt के अनुसार पूरा ऐप बनाइए।
+
+सिर्फ कोड या डिजाइन मत दीजिए। वास्तविक काम करने वाला ऐप तैयार कीजिए।
+
+1. Frontend, Backend और Database तैयार करें।
+2. सभी फीचर आपस में जोड़ें।
+3. Login, Automatic Login और Security टेस्ट करें।
+4. सभी बटन और सुविधाएँ काम करने योग्य बनाएँ।
+5. Android APK/AAB और iOS-compatible ऐप तैयार करने की प्रक्रिया दें।
+6. सभी जरूरी Testing करें।
+7. जो फीचर पूरा नहीं हुआ, उसे स्पष्ट बताएँ।
+8. Source Code और Build Instructions भी दें।
+
+बिना वास्तविक Testing के ऐप को Complete घोषित न करें।
+
+ONE HOME PRO — ALL DEVICE COMPATIBILITY REQUIREMENT
+
+The application must work properly across all major devices and screen sizes.
+
+Mobile:
+
+* Android phones and tablets, including different brands and models.
+* iPhone 11 and all supported newer and older iPhone models.
+* All supported iPad models.
+
+Computers:
+
+* Windows desktops and laptops.
+* Apple MacBook and iMac.
+* macOS computers.
+
+Requirements:
+
+1. Responsive design for every screen size.
+2. Same account and securely synchronized data across devices.
+3. Consistent features and permissions across platforms.
+4. Touchscreen, mouse and keyboard support.
+5. Support portrait and landscape layouts.
+6. Test on real devices and different screen sizes.
+7. No broken buttons, screens or functions on any supported device.
+8. Android app must be buildable as an APK/AAB.
+9. iOS app must have a genuine iOS build and distribution process.
+10. Provide a responsive web application accessible through supported browsers.
+
+Do not claim a device or platform is supported until it has been tested. Clearly list any unsupported devices or limitations.
+
+ONE HOME PRO — COMPLETE APP SCREENS, PAGES & NAVIGATION REQUIREMENT
+
+Qatar Business Edition
+
+1. APP OPENING & MAIN EXPERIENCE
+
+* ONE HOME PRO must be a complete, standalone mobile application.
+* Tapping its app icon must open the full application directly, like a professionally developed social or business app.
+* Do not make the user open a browser or manually visit a website.
+* Provide a professional splash screen with the uploaded company logo.
+* Provide secure login, logout, session management and automatic login when securely enabled.
+* The app must support Android, iPhone (including iPhone 11 and supported models), iPad and tablets.
+* Provide a separate responsive web and desktop experience for Windows and macOS.
+* Use genuine native or cross-platform app technology, not merely a website inside a basic WebView wrapper.
+
+2. LOGIN & ACCOUNT SCREENS
+
+1. Splash Screen
+2. Welcome Screen
+3. Login Screen
+4. Forgot Password
+5. Reset Password
+6. OTP / Email Verification
+7. Multi-Factor Authentication
+8. New Device Verification
+9. Remember Me
+10. User Profile Selection, where applicable
+11. Account Security
+12. Active Devices and Sessions
+13. Logout / Logout All Devices
+
+3. OWNER / ADMIN DASHBOARD
+
+1. Main Dashboard
+2. Business Overview
+3. Branch Overview
+4. Property Overview
+5. Total Buildings
+6. Total Floors
+7. Total Rooms
+8. Occupied and Vacant Rooms
+9. Active Tenants
+10. Monthly Rent Summary
+11. Payments Received
+12. Outstanding Payments
+13. Expenses and Income
+14. Profit and Loss
+15. Pending Approvals
+16. Complaints and Maintenance
+17. Inventory Summary
+18. Employee Overview
+19. Notifications and Alerts
+20. Quick Action Menu
+
+4. PROPERTY MANAGEMENT
+
+1. Property List
+2. Add Property
+3. Edit Property
+4. Property Details
+5. Building List
+6. Add Building
+7. Floor List
+8. Add Floor
+9. Room List
+10. Add Room
+11. Room Details
+12. Room Availability
+13. Occupied Rooms
+14. Vacant Rooms
+15. Property Documents
+16. Property Photos
+17. Property History
+
+5. TENANT / CUSTOMER MANAGEMENT
+
+1. Tenant List
+2. Add Tenant
+3. Tenant Details
+4. Edit Tenant
+5. Tenant ID and Contact Details
+6. Family Members
+7. Tenant Documents
+8. Tenant Agreements
+9. Tenant Payment History
+10. Tenant Outstanding Balance
+11. Tenant Complaints
+12. Tenant Notifications
+13. Tenant Move-In
+14. Tenant Move-Out
+15. Tenant History
+16. Customer Portal
+
+6. RENT & AGREEMENT MANAGEMENT
+
+1. Agreement List
+2. Create Agreement
+3. Agreement Details
+4. Edit / Renew Agreement
+5. Agreement Expiry Alerts
+6. Monthly Rent Generation
+7. Rent Collection
+8. Rent Due List
+9. Overdue Rent
+10. Advance Rent
+11. Rent Adjustment
+12. Rent Receipts
+13. Security Deposits
+14. Deposit Refunds
+15. Cheque Management
+16. Cheque Due Dates
+17. Returned / Bounced Cheques
+18. Tenancy History
+
+7. PAYMENT & FINANCIAL MANAGEMENT
+
+1. Payment Dashboard
+2. Receive Payment
+3. Payment List
+4. Payment Details
+5. Payment Allocation
+6. Payment Receipts
+7. Customer Ledger
+8. Outstanding Balances
+9. Refund Management
+10. Bank Accounts
+11. Cashbook
+12. Petty Cash
+13. Bank Transactions
+14. Bank Reconciliation
+15. Income Records
+16. Expense Records
+17. Financial Reports
+
+8. ACCOUNTING
+
+1. Accounting Dashboard
+2. Chart of Accounts
+3. Journal Entries
+4. General Ledger
+5. Trial Balance
+6. Profit and Loss Statement
+7. Balance Sheet
+8. Cash Flow Statement
+9. Accounts Receivable
+10. Accounts Payable
+11. Financial Year
+12. Accounting Reports
+13. Audit History
+
+9. EMPLOYEE & HR MANAGEMENT
+
+1. Employee Dashboard
+2. Employee List
+3. Add Employee
+4. Employee Details
+5. Departments
+6. Teams
+7. Team Members
+8. Assign Responsibilities
+9. Attendance
+10. Employee Work History
+11. Employee Documents
+12. Employee Permissions
+13. Employee Activity
+14. Leave Management, if enabled
+15. Employee Reports
+
+10. MAINTENANCE & COMPLAINT MANAGEMENT
+
+1. Complaint Dashboard
+2. New Complaint
+3. Complaint List
+4. Complaint Details
+5. Assign Technician
+6. Job Assignment
+7. Work Reports
+8. Before / After Photos
+9. Material Usage
+10. Job Approval
+11. Complaint Status History
+12. Maintenance Reports
+
+11. PURCHASE & INVENTORY MANAGEMENT
+
+1. Inventory Dashboard
+2. Item List
+3. Add Item
+4. Item Categories
+5. Stock Locations
+6. Stock Overview
+7. Stock In
+8. Stock Out
+9. Stock Transfer
+10. Stock Adjustment
+11. Stock Count
+12. Purchase Requests
+13. Purchase Orders
+14. Supplier List
+15. Supplier Details
+16. Goods Received
+17. Supplier Payments
+18. Purchase Approvals
+19. Inventory Reports
+
+12. DOCUMENTS & FILE MANAGEMENT
+
+1. Document Dashboard
+2. Upload Documents
+3. Document List
+4. Preview Documents
+5. Download / Print
+6. Agreements and Contracts
+7. Tenant Documents
+8. Property Documents
+9. Employee Documents
+10. Receipts and Invoices
+11. Document Categories
+12. Document Permissions
+13. Document History
+
+13. CUSTOMER PORTAL
+
+1. Customer Login
+2. Customer Dashboard
+3. My Agreement
+4. My Room / Property
+5. My Rent
+6. My Payments
+7. My Receipts
+8. My Outstanding Balance
+9. My Complaints
+10. Submit New Complaint
+11. Upload Documents
+12. Notifications
+13. My Profile
+14. Change Password
+15. Logout
+
+Customers must only see their own authorized information.
+
+14. REPORTS & ANALYTICS
+
+1. Business Reports
+2. Property Reports
+3. Occupancy Reports
+4. Tenant Reports
+5. Rent Reports
+6. Payment Reports
+7. Outstanding Reports
+8. Cheque Reports
+9. Deposit Reports
+10. Income Reports
+11. Expense Reports
+12. Profit and Loss
+13. Employee Reports
+14. Maintenance Reports
+15. Purchase Reports
+16. Stock Reports
+17. Audit Reports
+18. Export to PDF / Excel, where supported
+
+15. NOTIFICATIONS & COMMUNICATION
+
+1. Notification Center
+2. Rent Due Alerts
+3. Agreement Expiry Alerts
+4. Payment Confirmation
+5. Cheque Due Alerts
+6. Maintenance Updates
+7. Approval Notifications
+8. Employee Notifications
+9. Customer Notifications
+10. Email / Push Notification Settings
+
+16. OWNER SETTINGS & CONTROL
+
+1. Owner Profile
+2. Business Profile
+3. Upload / Change Company Logo
+4. Company Name and Details
+5. Branch Management
+6. User Management
+7. Roles and Permissions
+8. Business Access Control
+9. Property Access Control
+10. Security Settings
+11. MFA Settings
+12. Device and Session Management
+13. Language Settings
+14. English / Arabic RTL / Hindi
+15. Currency Settings — QAR
+16. Time Zone — Asia/Qatar
+17. Notification Settings
+18. Document Settings
+19. Backup Settings
+20. Data Export
+21. Audit Logs
+22. System Health
+23. App Version
+24. Help and Support
+
+17. APP NAVIGATION & DESIGN
+
+* Provide a professional home dashboard.
+* Use a clear bottom navigation bar on mobile, with suitable main sections such as Home, Properties, Tenants, Payments and More.
+* Put additional modules inside organized menus.
+* Use a side navigation layout on desktop and tablet where appropriate.
+* Provide global search, quick actions and notification access.
+* Every page must have a clear title, back navigation, loading state, empty state, error state and permission checks.
+* All pages must be connected to real backend data and working actions.
+* Do not create buttons that look functional but do nothing.
+* Maintain consistent professional design and use the Owner-uploaded logo throughout the app and its documents.
+
+18. FINAL COMPLETION & TESTING
+
+* Create a screen-by-screen implementation checklist.
+* Give each screen a unique requirement ID.
+* Mark each screen Not Started, In Progress, Implemented, Tested, Passed, Failed or Blocked.
+* Test every screen and its real actions.
+* Test different Android and iPhone screen sizes, iPad, Windows and macOS.
+* Verify that users can only access pages and data permitted by their roles.
+* Do not mark a page complete until its functionality and security have been tested.
+* Deliver the app source code, database, deployment instructions, Android build, iOS build and test evidence.
+* Clearly disclose any unfinished feature or platform limitation.
+
+FINAL REQUIREMENT: ONE HOME PRO must be a complete, professional, easy-to-use Qatar property and business management application. All listed screens must be implemented according to user permissions and actual business workflows, not merely displayed as sample or dummy pages.
+
+मेरे अपलोड किए गए कंपनी लोगो को ONE HOME PRO का Official App Icon बनाएं। इसे Android और iPhone के Home Screen, App Drawer, App Launcher और ऐप की Splash Screen पर लगाएं। सभी आवश्यक icon sizes और formats तैयार करें। ऐप इंस्टॉल होने के बाद मोबाइल में यही लोगो ऐप के आइकन के रूप में दिखाई देना चाहिए।
