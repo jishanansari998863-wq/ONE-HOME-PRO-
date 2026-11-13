@@ -1,6 +1,7 @@
 package com.example.ui
 
 import com.example.data.db.entities.*
+import com.example.domain.document.DocumentUploadProgress
 import com.example.domain.security.AuthContext
 import com.example.domain.service.AuthResult
 import com.example.domain.service.BackupVerificationResult
@@ -126,6 +127,7 @@ data class OneHomeUiState(
     val bannerSuccess: String? = null,
     val mfaProvisionInfo: Pair<String, List<String>>? = null,
     val lastBackupVerification: BackupVerificationResult? = null,
+    val documentUploadProgress: DocumentUploadProgress = DocumentUploadProgress(),
     val data: BusinessSnapshotData = BusinessSnapshotData(),
     val reports: FinancialReportsState = FinancialReportsState()
 )

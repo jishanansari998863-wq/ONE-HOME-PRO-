@@ -6,14 +6,22 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.AppContainer
 import com.example.data.db.entities.*
+import com.example.domain.document.DocumentImageProcessor
+import com.example.domain.document.DocumentOutputFormat
+import com.example.domain.document.DocumentUploadProgress
+import com.example.domain.document.ScannedPageDraft
 import com.example.domain.security.AuthContext
 import com.example.domain.service.AuthResult
 import com.example.domain.service.JournalLineInput
 import com.example.localization.AppLanguage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class OneHomeProViewModel(
     private val container: AppContainer,
@@ -32,6 +40,23 @@ class OneHomeProViewModel(
 
     init {
         bootstrap()
+    }
+
+    fun stopObservers() {
+        dataCollectionJob?.cancel()
+        dataCollectionJob = null
+        viewModelScope.coroutineContext.cancelChildren()
+    }
+
+    suspend fun awaitStopObservers() {
+        dataCollectionJob?.cancelAndJoin()
+        dataCollectionJob = null
+        viewModelScope.coroutineContext.cancelChildren()
+    }
+
+    override fun onCleared() {
+        stopObservers()
+        super.onCleared()
     }
 
     private fun bootstrap() {
@@ -730,9 +755,187 @@ class OneHomeProViewModel(
         }
 
     // --- Documents, Notifications, Control & Backups ---
-    fun uploadVaultDocument(uri: Uri, entityType: String, entityId: String, category: String, title: String) =
-        runAction("Document stored in private encrypted vault") {
-            container.governanceBackupService.storePickedDocument(requireCtx(), uri, entityType, entityId, category, title)
+    fun clearDocumentUploadProgress() {
+        _uiState.update { it.copy(documentUploadProgress = DocumentUploadProgress()) }
+    }
+
+    fun uploadVaultDocument(
+        uri: Uri,
+        entityType: String,
+        entityId: String,
+        category: String,
+        title: String,
+        propertyId: String? = null,
+        isRestricted: Boolean = true,
+        onComplete: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isBusy = true,
+                    bannerError = null,
+                    bannerSuccess = null,
+                    documentUploadProgress = DocumentUploadProgress(
+                        isUploading = true,
+                        fraction = 0.05f,
+                        stageLabel = "Preparing file upload..."
+                    )
+                )
+            }
+            try {
+                val doc = withContext(Dispatchers.IO) {
+                    container.governanceBackupService.storePickedDocument(
+                        ctx = requireCtx(),
+                        sourceUri = uri,
+                        entityType = entityType,
+                        entityId = entityId,
+                        category = category,
+                        title = title,
+                        propertyId = propertyId,
+                        isRestricted = isRestricted
+                    ) { frac, stage ->
+                        _uiState.update { state ->
+                            state.copy(
+                                documentUploadProgress = DocumentUploadProgress(
+                                    isUploading = true,
+                                    fraction = frac,
+                                    stageLabel = stage
+                                )
+                            )
+                        }
+                    }
+                }
+                val msg = "Saved ${doc.category} (${doc.mimeType}) securely in encrypted vault"
+                _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        bannerSuccess = msg,
+                        documentUploadProgress = DocumentUploadProgress(
+                            isUploading = false,
+                            fraction = 1f,
+                            stageLabel = "Completed",
+                            successMessage = msg
+                        )
+                    )
+                }
+                onComplete(true)
+            } catch (e: Exception) {
+                val err = e.message ?: "Document upload failed"
+                _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        bannerError = err,
+                        documentUploadProgress = DocumentUploadProgress(
+                            isUploading = false,
+                            fraction = 0f,
+                            stageLabel = "Failed",
+                            errorMessage = err
+                        )
+                    )
+                }
+                onComplete(false)
+            }
+        }
+    }
+
+    fun uploadScannedPages(
+        pages: List<ScannedPageDraft>,
+        outputFormat: DocumentOutputFormat,
+        entityType: String,
+        entityId: String,
+        category: String,
+        title: String,
+        propertyId: String? = null,
+        isRestricted: Boolean = true,
+        onComplete: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isBusy = true,
+                    bannerError = null,
+                    bannerSuccess = null,
+                    documentUploadProgress = DocumentUploadProgress(
+                        isUploading = true,
+                        fraction = 0.10f,
+                        stageLabel = "Processing ${pages.size} scanned page(s)..."
+                    )
+                )
+            }
+            try {
+                val resolvedFormat = if (pages.size > 1) DocumentOutputFormat.PDF else outputFormat
+                val doc = withContext(Dispatchers.IO) {
+                    val bitmaps = pages.map { it.processedBitmap }
+                    val payload = DocumentImageProcessor.encodePages(bitmaps, resolvedFormat) { frac, stage ->
+                        _uiState.update { state ->
+                            state.copy(
+                                documentUploadProgress = DocumentUploadProgress(
+                                    isUploading = true,
+                                    fraction = frac * 0.6f,
+                                    stageLabel = stage
+                                )
+                            )
+                        }
+                    }
+                    container.governanceBackupService.storeProcessedDocumentBytes(
+                        ctx = requireCtx(),
+                        bytes = payload,
+                        mimeType = resolvedFormat.mimeType,
+                        extension = resolvedFormat.ext,
+                        entityType = entityType,
+                        entityId = entityId,
+                        category = category,
+                        title = title,
+                        propertyId = propertyId,
+                        isRestricted = isRestricted
+                    ) { frac, stage ->
+                        _uiState.update { state ->
+                            state.copy(
+                                documentUploadProgress = DocumentUploadProgress(
+                                    isUploading = true,
+                                    fraction = 0.6f + (frac * 0.4f),
+                                    stageLabel = stage
+                                )
+                            )
+                        }
+                    }
+                }
+                val msg = "Uploaded ${pages.size}-page ${doc.category} as ${resolvedFormat.label} (${doc.fileSizeBytes / 1024} KB)"
+                _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        bannerSuccess = msg,
+                        documentUploadProgress = DocumentUploadProgress(
+                            isUploading = false,
+                            fraction = 1f,
+                            stageLabel = "Completed",
+                            successMessage = msg
+                        )
+                    )
+                }
+                onComplete(true)
+            } catch (e: Exception) {
+                val err = e.message ?: "Scanned document upload failed"
+                _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        bannerError = err,
+                        documentUploadProgress = DocumentUploadProgress(
+                            isUploading = false,
+                            fraction = 0f,
+                            stageLabel = "Failed",
+                            errorMessage = err
+                        )
+                    )
+                }
+                onComplete(false)
+            }
+        }
+    }
+
+    fun deleteVaultDocument(docId: String) =
+        runAction("Document deleted from vault") {
+            container.governanceBackupService.deleteDocument(requireCtx(), docId)
         }
 
     fun logDocumentPreview(docId: String) {
@@ -740,6 +943,7 @@ class OneHomeProViewModel(
         viewModelScope.launch {
             try {
                 container.governanceBackupService.logDocumentAccess(ctx, docId, "PREVIEW")
+                _uiState.update { it.copy(bannerSuccess = "Document integrity & RBAC access verified") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(bannerError = e.message) }
             }

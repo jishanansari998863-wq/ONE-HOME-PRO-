@@ -44,6 +44,7 @@ class ComposeUiFlowRobolectricTest {
     @After
     fun tearDown() {
         runBlocking {
+            vm.awaitStopObservers()
             container.sessionStore.clearSessionToken()
             container.sessionStore.setLanguage(AppLanguage.EN)
         }

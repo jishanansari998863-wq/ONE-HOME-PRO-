@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.example.data.db.OneHomeProDatabase
 import com.example.data.db.entities.*
+import com.example.domain.document.DocumentImageProcessor
 import com.example.domain.security.ActionType
 import com.example.domain.security.AppModule
 import com.example.domain.security.AuthContext
@@ -29,10 +30,22 @@ class GovernanceBackupService(
 ) {
     private val opsDao = db.operationsDao()
     private val coreDao = db.coreAndTenancyDao()
+    private val hrDao = db.securityAndHrDao()
     private val accDao = db.accountingDao()
 
     private fun vaultDir(): File = File(context.filesDir, "private_vault").apply { mkdirs() }
     private fun backupDir(): File = File(context.filesDir, "encrypted_backups").apply { mkdirs() }
+
+    private fun getOrCreateVaultSecret(): String {
+        val keyFile = File(context.filesDir, ".vault_master_key")
+        if (keyFile.exists()) {
+            val existing = keyFile.readText(Charsets.UTF_8).trim()
+            if (existing.length >= 24) return existing
+        }
+        val secret = CryptoUtil.generateSecureToken()
+        keyFile.writeText(secret, Charsets.UTF_8)
+        return secret
+    }
 
     suspend fun storePickedDocument(
         ctx: AuthContext,
@@ -43,8 +56,42 @@ class GovernanceBackupService(
         title: String,
         propertyId: String? = null,
         expiryDateEpoch: Long? = null,
-        isRestricted: Boolean = true
+        isRestricted: Boolean = true,
+        onProgress: (Float, String) -> Unit = { _, _ -> }
     ): DocumentEntity {
+        onProgress(0.15f, "Validating selected file format...")
+        val validated = DocumentImageProcessor.validatePickedFile(context, sourceUri)
+        return storeProcessedDocumentBytes(
+            ctx = ctx,
+            bytes = validated.bytes,
+            mimeType = validated.mimeType,
+            extension = validated.extension,
+            entityType = entityType,
+            entityId = entityId,
+            category = category,
+            title = title.ifBlank { validated.displayName },
+            propertyId = propertyId,
+            expiryDateEpoch = expiryDateEpoch,
+            isRestricted = isRestricted,
+            onProgress = onProgress
+        )
+    }
+
+    suspend fun storeProcessedDocumentBytes(
+        ctx: AuthContext,
+        bytes: ByteArray,
+        mimeType: String,
+        extension: String,
+        entityType: String,
+        entityId: String,
+        category: String,
+        title: String,
+        propertyId: String? = null,
+        expiryDateEpoch: Long? = null,
+        isRestricted: Boolean = true,
+        onProgress: (Float, String) -> Unit = { _, _ -> }
+    ): DocumentEntity {
+        onProgress(0.25f, "Verifying role-based access and record ownership...")
         if (ctx.isCustomerPortalOnly()) {
             require(entityType == "CUSTOMER" && entityId == ctx.customerId) {
                 "Customers may only upload documents to their own profile"
@@ -53,36 +100,44 @@ class GovernanceBackupService(
             AuthorizationGuard.requirePermission(ctx, AppModule.DOCUMENTS, ActionType.CREATE, ctx.activeBusinessId, propertyId)
         }
 
-        val resolver = context.contentResolver
-        val mimeType = resolver.getType(sourceUri) ?: "application/octet-stream"
-        val bytes = resolver.openInputStream(sourceUri)?.use { it.readBytes() }
-            ?: throw IllegalArgumentException("Unable to read selected file")
+        val normalizedMime = mimeType.lowercase()
+        val normalizedExt = extension.lowercase()
+        require(normalizedExt in setOf("jpg", "jpeg", "png", "pdf")) {
+            "Unsupported format '$extension'. Supported formats: JPG, JPEG, PNG, PDF."
+        }
+        require(normalizedMime in setOf("image/jpeg", "image/jpg", "image/png", "application/pdf")) {
+            "Unsupported MIME type '$mimeType'. Supported types: JPG, JPEG, PNG, PDF."
+        }
         require(bytes.isNotEmpty() && bytes.size <= 15 * 1024 * 1024) {
-            "Document must be between 1 byte and 15 MB"
+            "Document size must be between 1 byte and 15 MB"
         }
 
+        val resolvedPropertyId = resolveAndValidateTargetRecord(
+            ctx = ctx,
+            entityType = entityType.uppercase(),
+            entityId = entityId,
+            explicitPropertyId = propertyId
+        )
+
+        onProgress(0.55f, "Encrypting document for secure vault storage...")
         val docId = CryptoUtil.newUuid()
-        val ext = when {
-            mimeType.contains("png") -> "png"
-            mimeType.contains("jpeg") || mimeType.contains("jpg") -> "jpg"
-            mimeType.contains("pdf") -> "pdf"
-            else -> "bin"
-        }
-        val destFile = File(vaultDir(), "${ctx.activeBusinessId}_$docId.$ext")
-        destFile.writeBytes(bytes)
+        val encryptedBytes = CryptoUtil.encryptAesGcm(bytes, getOrCreateVaultSecret())
+        val destFile = File(vaultDir(), "${ctx.activeBusinessId}_$docId.$normalizedExt.ohp")
+        destFile.writeBytes(encryptedBytes)
+
+        onProgress(0.82f, "Recording SHA-256 integrity checksum and audit entry...")
         val sha = CryptoUtil.sha256Hex(bytes)
         val now = System.currentTimeMillis()
-
         val entity = DocumentEntity(
             id = docId,
             businessId = ctx.activeBusinessId,
-            propertyId = propertyId,
-            entityType = entityType,
+            propertyId = resolvedPropertyId,
+            entityType = entityType.uppercase(),
             entityId = entityId,
-            category = category,
+            category = category.uppercase(),
             title = title.trim().ifBlank { "$category Document" },
             privateFilePath = destFile.absolutePath,
-            mimeType = mimeType,
+            mimeType = normalizedMime,
             sha256Checksum = sha,
             fileSizeBytes = bytes.size.toLong(),
             version = 1,
@@ -103,7 +158,120 @@ class GovernanceBackupService(
                 accessedAtEpoch = now
             )
         )
+        opsDao.insertAuditLog(
+            AuditLogEntity(
+                id = CryptoUtil.newUuid(),
+                businessId = ctx.activeBusinessId,
+                actorUserId = ctx.userId,
+                action = "UPLOAD_DOCUMENT",
+                entityType = entity.entityType,
+                entityId = entity.entityId,
+                summary = "Uploaded ${entity.category} (${entity.mimeType}, ${entity.fileSizeBytes} bytes) to ${entity.entityType}:${entity.entityId}",
+                occurredAtEpoch = now
+            )
+        )
+        onProgress(1.0f, "Upload complete")
         return entity
+    }
+
+    private suspend fun resolveAndValidateTargetRecord(
+        ctx: AuthContext,
+        entityType: String,
+        entityId: String,
+        explicitPropertyId: String?
+    ): String? {
+        require(entityId.isNotBlank()) { "Target record ID is required" }
+        return when (entityType) {
+            "CUSTOMER" -> {
+                val c = coreDao.getCustomerById(entityId)
+                    ?: throw IllegalArgumentException("Selected Tenant record does not exist")
+                require(c.businessId == ctx.activeBusinessId) { "Cross-business tenant upload blocked" }
+                explicitPropertyId
+            }
+            "PROPERTY" -> {
+                val p = coreDao.getPropertyById(entityId)
+                    ?: throw IllegalArgumentException("Selected Property record does not exist")
+                require(p.businessId == ctx.activeBusinessId) { "Cross-business property upload blocked" }
+                p.id
+            }
+            "EMPLOYEE" -> {
+                val e = hrDao.getEmployeeById(entityId)
+                    ?: throw IllegalArgumentException("Selected Employee record does not exist")
+                require(e.businessId == ctx.activeBusinessId) { "Cross-business employee upload blocked" }
+                explicitPropertyId
+            }
+            "AGREEMENT" -> {
+                val ag = coreDao.getAgreementById(entityId)
+                    ?: throw IllegalArgumentException("Selected Agreement record does not exist")
+                require(ag.businessId == ctx.activeBusinessId) { "Cross-business agreement upload blocked" }
+                ag.propertyId
+            }
+            "PAYMENT" -> {
+                val pay = coreDao.getPaymentById(entityId)
+                    ?: throw IllegalArgumentException("Selected Payment record does not exist")
+                require(pay.businessId == ctx.activeBusinessId) { "Cross-business payment upload blocked" }
+                val linkedPropId = pay.agreementId?.let { coreDao.getAgreementById(it)?.propertyId }
+                linkedPropId ?: explicitPropertyId
+            }
+            "BUSINESS" -> {
+                require(entityId == ctx.activeBusinessId) { "Cross-business upload blocked" }
+                explicitPropertyId
+            }
+            else -> explicitPropertyId
+        }
+    }
+
+    suspend fun readDecryptedDocumentBytes(ctx: AuthContext, documentId: String): Pair<DocumentEntity, ByteArray> {
+        val doc = logDocumentAccess(ctx, documentId, "PREVIEW")
+        val file = File(doc.privateFilePath)
+        require(file.exists()) { "Encrypted document file missing from private vault" }
+        val raw = file.readBytes()
+        val decrypted = if (doc.privateFilePath.endsWith(".ohp")) {
+            CryptoUtil.decryptAesGcm(raw, getOrCreateVaultSecret())
+        } else {
+            raw
+        }
+        require(CryptoUtil.sha256Hex(decrypted) == doc.sha256Checksum) {
+            "Document integrity checksum mismatch"
+        }
+        return doc to decrypted
+    }
+
+    suspend fun deleteDocument(ctx: AuthContext, documentId: String) {
+        val doc = opsDao.getDocumentById(documentId) ?: throw IllegalArgumentException("Document not found")
+        if (ctx.isCustomerPortalOnly()) {
+            require(doc.entityType == "CUSTOMER" && doc.entityId == ctx.customerId) {
+                "Customers may only remove their own documents"
+            }
+        } else {
+            AuthorizationGuard.requirePermission(ctx, AppModule.DOCUMENTS, ActionType.ARCHIVE, doc.businessId, doc.propertyId)
+        }
+        val now = System.currentTimeMillis()
+        opsDao.updateDocument(doc.copy(isArchived = true))
+        File(doc.privateFilePath).takeIf { it.exists() }?.delete()
+        opsDao.insertDocumentAccessLog(
+            DocumentAccessLogEntity(
+                id = CryptoUtil.newUuid(),
+                businessId = doc.businessId,
+                documentId = doc.id,
+                actorUserId = ctx.userId,
+                accessAction = "DELETE",
+                outcome = "ALLOWED",
+                accessedAtEpoch = now
+            )
+        )
+        opsDao.insertAuditLog(
+            AuditLogEntity(
+                id = CryptoUtil.newUuid(),
+                businessId = doc.businessId,
+                actorUserId = ctx.userId,
+                action = "DELETE_DOCUMENT",
+                entityType = doc.entityType,
+                entityId = doc.entityId,
+                summary = "Archived & removed document ${doc.title} (${doc.category})",
+                occurredAtEpoch = now
+            )
+        )
     }
 
     suspend fun logDocumentAccess(ctx: AuthContext, documentId: String, action: String): DocumentEntity {

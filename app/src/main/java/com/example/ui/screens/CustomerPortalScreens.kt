@@ -1,9 +1,5 @@
 package com.example.ui.screens
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,10 +9,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.domain.document.DocumentCategoryOption
+import com.example.domain.document.DocumentTargetType
 import com.example.domain.util.QatarFormatters
 import com.example.localization.LocalAppStrings
 import com.example.ui.OneHomeProViewModel
@@ -215,47 +212,13 @@ fun CustomerPortalScreen(
     }
 
     if (showUploadDoc && myCustId != null) {
-        var title by remember { mutableStateOf("") }
-        var category by remember { mutableStateOf("QID") }
-        val context = LocalContext.current
-        var pickedUri by remember { mutableStateOf<Uri?>(null) }
-        var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
-        val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> pickedUri = uri }
-        val pickPdf = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> pickedUri = uri }
-        val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
-            if (ok) pickedUri = pendingCameraUri
-        }
-        AlertDialog(
-            onDismissRequest = { showUploadDoc = false },
-            title = { Text("Upload Personal Document") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title*") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = category, onValueChange = { category = it.uppercase() }, label = { Text("Category (QID/PASSPORT/OTHER)") }, modifier = Modifier.fillMaxWidth())
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedButton(
-                            onClick = {
-                                val uri = createTempCameraImageUri(context)
-                                pendingCameraUri = uri
-                                takePhoto.launch(uri)
-                            },
-                            modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp)
-                        ) { Text("Camera") }
-                        OutlinedButton(onClick = { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp)) { Text("Photo") }
-                        OutlinedButton(onClick = { pickPdf.launch(arrayOf("application/pdf", "image/*")) }, modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp)) { Text("PDF") }
-                    }
-                    pickedUri?.let {
-                        Text("Selected: ${it.lastPathSegment ?: it}", style = MaterialTheme.typography.labelSmall, color = EmeraldSuccess)
-                    }
-                }
-            },
-            confirmButton = {
-                Button(enabled = pickedUri != null, onClick = {
-                    pickedUri?.let { vm.uploadVaultDocument(it, "CUSTOMER", myCustId, category, title) }
-                    showUploadDoc = false
-                }) { Text("Save") }
-            },
-            dismissButton = { TextButton(onClick = { showUploadDoc = false }) { Text(strings.cancel) } }
+        DocumentScannerStudioDialog(
+            uiState = uiState,
+            vm = vm,
+            initialTargetType = DocumentTargetType.TENANT,
+            initialTargetId = myCustId,
+            initialCategory = DocumentCategoryOption.QID,
+            onDismiss = { showUploadDoc = false }
         )
     }
 }

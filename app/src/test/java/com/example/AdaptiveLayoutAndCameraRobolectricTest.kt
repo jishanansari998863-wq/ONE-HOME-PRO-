@@ -28,6 +28,7 @@ class AdaptiveLayoutAndCameraRobolectricTest {
     private lateinit var app: OneHomeProApp
     private lateinit var db: OneHomeProDatabase
     private lateinit var container: AppContainer
+    private var activeVm: OneHomeProViewModel? = null
 
     @Before
     fun setup() {
@@ -56,6 +57,8 @@ class AdaptiveLayoutAndCameraRobolectricTest {
     @After
     fun tearDown() {
         runBlocking {
+            activeVm?.awaitStopObservers()
+            activeVm = null
             container.sessionStore.clearSessionToken()
             container.sessionStore.setLanguage(AppLanguage.EN)
         }
@@ -65,7 +68,7 @@ class AdaptiveLayoutAndCameraRobolectricTest {
     @Test
     @Config(sdk = [36], qualifiers = "w360dp-h780dp")
     fun `phone layout displays bottom navigation bar and hides side rail`() {
-        val vm = OneHomeProViewModel(container, splashDelayMs = 0L)
+        val vm = OneHomeProViewModel(container, splashDelayMs = 0L).also { activeVm = it }
         composeRule.setContent {
             OneHomeProAppRoot(vm)
         }
@@ -84,7 +87,7 @@ class AdaptiveLayoutAndCameraRobolectricTest {
     @Test
     @Config(sdk = [36], qualifiers = "w1024dp-h768dp")
     fun `tablet layout displays side navigation rail and hides bottom bar`() {
-        val vm = OneHomeProViewModel(container, splashDelayMs = 0L)
+        val vm = OneHomeProViewModel(container, splashDelayMs = 0L).also { activeVm = it }
         composeRule.setContent {
             OneHomeProAppRoot(vm)
         }

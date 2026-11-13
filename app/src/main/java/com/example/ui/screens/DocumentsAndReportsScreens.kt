@@ -1,9 +1,5 @@
 package com.example.ui.screens
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,10 +9,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.domain.document.DocumentCategoryOption
+import com.example.domain.document.DocumentTargetType
 import com.example.domain.security.ActionType
 import com.example.domain.security.AppModule
 import com.example.domain.util.QatarFormatters
@@ -40,7 +37,7 @@ fun DocumentsScreen(
     val strings = LocalAppStrings.current
     val data = uiState.data
     var selectedTab by remember { mutableIntStateOf(0) }
-    var showUpload by remember { mutableStateOf(false) }
+    var showScannerStudio by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().testTag("documents_screen")) {
         PrimaryTabRow(selectedTabIndex = selectedTab) {
@@ -56,15 +53,24 @@ fun DocumentsScreen(
             item {
                 SectionHeader(
                     title = strings.documents,
-                    subtitle = "Zero storage permissions: Photo Picker & SAF private app vault",
-                    actionLabel = if (ctx.hasPermission(AppModule.DOCUMENTS, ActionType.CREATE)) "Upload Document" else null,
+                    subtitle = "Camera scan, multi-page PDF, Photo Picker & encrypted vault",
+                    actionLabel = if (ctx.hasPermission(AppModule.DOCUMENTS, ActionType.CREATE)) "Scan / Upload" else null,
                     actionTag = "upload_document_button",
-                    onAction = { showUpload = true }
+                    onAction = { showScannerStudio = true }
                 )
             }
             if (selectedTab == 0) {
                 if (data.documents.isEmpty()) {
-                    item { EmptyStateCard("Document Vault Empty", "Upload QID copies, Passport scans, signed Lease Agreements, or Invoices safely.", Icons.Default.FolderShared, "Upload Document", "empty_documents", { showUpload = true }) }
+                    item {
+                        EmptyStateCard(
+                            title = "Document Vault Empty",
+                            description = "Scan Qatar ID, Passport, Agreements, Receipts, Invoices, Cheques or Property Records cleanly.",
+                            icon = Icons.Default.DocumentScanner,
+                            actionLabel = if (ctx.hasPermission(AppModule.DOCUMENTS, ActionType.CREATE)) "Open Scanner & Upload" else null,
+                            testTag = "empty_documents",
+                            onAction = { showScannerStudio = true }
+                        )
+                    }
                 } else {
                     items(data.documents, key = { it.id }) { doc ->
                         ElevatedCard(modifier = Modifier.fillMaxWidth().testTag("doc_card_${doc.id}")) {
@@ -78,8 +84,15 @@ fun DocumentsScreen(
                                     StatusBadge(if (doc.isRestricted) "RESTRICTED" else "STANDARD")
                                 }
                                 Spacer(Modifier.height(6.dp))
-                                OutlinedButton(onClick = { vm.logDocumentPreview(doc.id) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
-                                    Text("Log Verified Preview")
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(onClick = { vm.logDocumentPreview(doc.id) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
+                                        Text("Log Verified Preview")
+                                    }
+                                    if (ctx.hasPermission(AppModule.DOCUMENTS, ActionType.ARCHIVE)) {
+                                        OutlinedButton(onClick = { vm.deleteVaultDocument(doc.id) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
+                                            Text("Delete", color = CrimsonError)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -101,67 +114,13 @@ fun DocumentsScreen(
         }
     }
 
-    if (showUpload) {
-        var entityType by remember { mutableStateOf("BUSINESS") }
-        var category by remember { mutableStateOf("AGREEMENT") }
-        var title by remember { mutableStateOf("") }
-        val context = LocalContext.current
-        var pickedUri by remember { mutableStateOf<Uri?>(null) }
-        var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
-
-        val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> pickedUri = uri }
-        val pickPdf = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> pickedUri = uri }
-        val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
-            if (ok) pickedUri = pendingCameraUri
-        }
-
-        AlertDialog(
-            onDismissRequest = { showUpload = false },
-            title = { Text("Store Document in Private Vault") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Document Title*") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = category, onValueChange = { category = it.uppercase() }, label = { Text("Category (QID/PASSPORT/AGREEMENT/INVOICE)") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = entityType, onValueChange = { entityType = it.uppercase() }, label = { Text("Linked Entity (BUSINESS/CUSTOMER/PROPERTY)") }, modifier = Modifier.fillMaxWidth())
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedButton(
-                            onClick = {
-                                val uri = createTempCameraImageUri(context)
-                                pendingCameraUri = uri
-                                takePhoto.launch(uri)
-                            },
-                            modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp)
-                        ) {
-                            Text("Camera")
-                        }
-                        OutlinedButton(
-                            onClick = { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                            modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp)
-                        ) {
-                            Text("Photo")
-                        }
-                        OutlinedButton(
-                            onClick = { pickPdf.launch(arrayOf("application/pdf", "image/*")) },
-                            modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp)
-                        ) {
-                            Text("PDF/File")
-                        }
-                    }
-                    pickedUri?.let {
-                        Text("Selected: ${it.lastPathSegment ?: it}", style = MaterialTheme.typography.labelSmall, color = EmeraldSuccess)
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    enabled = pickedUri != null,
-                    onClick = {
-                        pickedUri?.let { vm.uploadVaultDocument(it, entityType, ctx.activeBusinessId, category, title) }
-                        showUpload = false
-                    }
-                ) { Text("Encrypt & Save") }
-            },
-            dismissButton = { TextButton(onClick = { showUpload = false }) { Text(strings.cancel) } }
+    if (showScannerStudio) {
+        DocumentScannerStudioDialog(
+            uiState = uiState,
+            vm = vm,
+            initialTargetType = DocumentTargetType.TENANT,
+            initialCategory = DocumentCategoryOption.QID,
+            onDismiss = { showScannerStudio = false }
         )
     }
 }
