@@ -20,6 +20,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   android-build-and-test:
     name: Test & Build Android APK
@@ -35,8 +39,95 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Configure Android SDK Command-line Tools & pre-accept licenses
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          if [ -d "$SDK_ROOT" ]; then
+            if [ ! -w "$SDK_ROOT" ]; then
+              sudo chown -R "$USER:$USER" "$SDK_ROOT"
+            fi
+          else
+            SDK_ROOT="$HOME/android-sdk"
+            mkdir -p "$SDK_ROOT"
+          fi
+          mkdir -p "$SDK_ROOT/licenses"
+
+          find_sdkmanager() {
+            if [ -x "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+              echo "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+            elif command -v sdkmanager >/dev/null 2>&1; then
+              command -v sdkmanager
+            elif [ -d "$SDK_ROOT/cmdline-tools" ]; then
+              find "$SDK_ROOT/cmdline-tools" -maxdepth 3 -type f -name sdkmanager 2>/dev/null | sed -n '1p' || true
+            fi
+          }
+
+          SDKMANAGER="$(find_sdkmanager)"
+          if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
+            TMP_DIR="$(mktemp -d)"
+            curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-12700392_latest.zip" -o "$TMP_DIR/cmdline-tools.zip"
+            unzip -q "$TMP_DIR/cmdline-tools.zip" -d "$TMP_DIR/extracted"
+            mkdir -p "$SDK_ROOT/cmdline-tools"
+            rm -rf "$SDK_ROOT/cmdline-tools/latest"
+            mv "$TMP_DIR/extracted/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
+            rm -rf "$TMP_DIR"
+            SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          fi
+
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+
+          # Accept all currently known SDK licenses non-interactively (ignore SIGPIPE 141 from yes)
+          set +o pipefail
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || {
+            rc=$?
+            [ "$rc" -eq 141 ] || exit "$rc"
+          }
+          set -o pipefail
+
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: true
+          packages: |
+            cmdline-tools;latest
+            platform-tools
+            build-tools;36.0.0
+            platforms;android-36
+
+      - name: Install Android 36.1 SDK (if listed) & verify SDK licenses
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(command -v sdkmanager)"
+          fi
+
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --version
+
+          SDK_LIST="$("$SDKMANAGER" --sdk_root="$SDK_ROOT" --list)"
+          if echo "$SDK_LIST" | grep -E '^[[:space:]]*platforms;android-36\.1([[:space:]]|\|)' >/dev/null; then
+            set +o pipefail
+            yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "platforms;android-36.1" || {
+              rc=$?
+              [ "$rc" -eq 141 ] || exit "$rc"
+            }
+            set -o pipefail
+          fi
+
+          set +o pipefail
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses || {
+            rc=$?
+            [ "$rc" -eq 141 ] || exit "$rc"
+          }
+          set -o pipefail
 
       - name: Decode debug keystore if missing
         run: |
@@ -50,13 +141,15 @@ jobs:
           gradle-version: '9.3.1'
 
       - name: Run Unit & Robolectric Tests
-        run: gradle :app:testDebugUnitTest --no-daemon
+        run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
 
       - name: Build Android Debug APK
-        run: gradle :app:assembleDebug --no-daemon
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
 
       - name: Verify Debug APK exists
-        run: ls -lh app/build/outputs/apk/debug/app-debug.apk
+        run: |
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          ls -lh app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload Test Reports
         if: always()
@@ -66,13 +159,15 @@ jobs:
           path: app/build/reports/tests/testDebugUnitTest/
 
       - name: Upload Android Debug APK Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: one-home-pro-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
       - name: Publish Debug APK to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release == 'true')
+        if: success() && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release == 'true'))
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v1.0.0-build-{0}', github.run_number) }}
