@@ -1,6 +1,10 @@
 package com.example.ui.components
 
+import android.content.Context
+import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.compose.foundation.Image
+import java.io.File
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -527,4 +531,10 @@ fun <T> DropdownSelector(
             }
         }
     }
+}
+
+fun createTempCameraImageUri(context: Context): Uri {
+    val dir = File(context.cacheDir, "camera_captures").apply { mkdirs() }
+    val photoFile = File.createTempFile("capture_${System.currentTimeMillis()}_", ".jpg", dir)
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", photoFile)
 }

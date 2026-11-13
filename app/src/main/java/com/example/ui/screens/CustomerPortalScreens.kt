@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -216,9 +217,14 @@ fun CustomerPortalScreen(
     if (showUploadDoc && myCustId != null) {
         var title by remember { mutableStateOf("") }
         var category by remember { mutableStateOf("QID") }
+        val context = LocalContext.current
         var pickedUri by remember { mutableStateOf<Uri?>(null) }
+        var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
         val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> pickedUri = uri }
         val pickPdf = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> pickedUri = uri }
+        val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+            if (ok) pickedUri = pendingCameraUri
+        }
         AlertDialog(
             onDismissRequest = { showUploadDoc = false },
             title = { Text("Upload Personal Document") },
@@ -226,9 +232,20 @@ fun CustomerPortalScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title*") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = category, onValueChange = { category = it.uppercase() }, label = { Text("Category (QID/PASSPORT/OTHER)") }, modifier = Modifier.fillMaxWidth())
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, modifier = Modifier.weight(1f)) { Text("Photo") }
-                        OutlinedButton(onClick = { pickPdf.launch(arrayOf("application/pdf", "image/*")) }, modifier = Modifier.weight(1f)) { Text("PDF") }
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OutlinedButton(
+                            onClick = {
+                                val uri = createTempCameraImageUri(context)
+                                pendingCameraUri = uri
+                                takePhoto.launch(uri)
+                            },
+                            modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp)
+                        ) { Text("Camera") }
+                        OutlinedButton(onClick = { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp)) { Text("Photo") }
+                        OutlinedButton(onClick = { pickPdf.launch(arrayOf("application/pdf", "image/*")) }, modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp)) { Text("PDF") }
+                    }
+                    pickedUri?.let {
+                        Text("Selected: ${it.lastPathSegment ?: it}", style = MaterialTheme.typography.labelSmall, color = EmeraldSuccess)
                     }
                 }
             },
