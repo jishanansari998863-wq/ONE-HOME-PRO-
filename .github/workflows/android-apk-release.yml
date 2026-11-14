@@ -33,11 +33,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Configure Android SDK Command-line Tools & pre-accept licenses
         shell: bash
@@ -164,7 +164,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-reports
-          path: app/build/reports/tests/testDebugUnitTest/
+          path: |
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/test-results/testDebugUnitTest/
 
       - name: Upload Android Debug APK Artifact
         if: success()

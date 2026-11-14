@@ -141,8 +141,13 @@ dependencies {
 }
 
 tasks.withType<Test> {
-  failFast = true
+  failFast = false
   timeout.set(Duration.ofMinutes(8))
+  javaLauncher.set(
+    javaToolchains.launcherFor {
+      languageVersion.set(JavaLanguageVersion.of(21))
+    }
+  )
   testLogging {
     events("passed", "failed", "skipped")
   }
