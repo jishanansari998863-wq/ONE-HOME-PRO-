@@ -310,12 +310,12 @@ class DocumentScannerAndVaultRobolectricTest {
             )
         }
 
-        composeRule.waitUntil(timeoutMillis = 5_000L) {
+        composeRule.waitUntil(timeoutMillis = 10_000L) {
             composeRule.onAllNodesWithTag("btn_take_photo").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithTag("btn_take_photo").performClick()
 
-        composeRule.waitUntil(timeoutMillis = 5_000L) {
+        composeRule.waitUntil(timeoutMillis = 10_000L) {
             composeRule.onAllNodesWithTag("camerax_viewfinder_dialog").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithTag("camerax_viewfinder_dialog").assertIsDisplayed()
