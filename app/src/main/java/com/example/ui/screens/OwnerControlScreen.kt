@@ -6,7 +6,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -268,7 +270,7 @@ fun OwnerControlScreen(
             onDismissRequest = { showAddBranch = false },
             title = { Text("Create Company / Branch") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Company Name*") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = branch, onValueChange = { branch = it }, label = { Text("Branch Name (e.g. Lusail)*") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = cr, onValueChange = { cr = it }, label = { Text("Qatar CR Number") }, modifier = Modifier.fillMaxWidth())
@@ -297,7 +299,7 @@ fun OwnerControlScreen(
             onDismissRequest = { showEditBiz = false },
             title = { Text("Edit Business Profile") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Company Name") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = branch, onValueChange = { branch = it }, label = { Text("Branch") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = cr, onValueChange = { cr = it }, label = { Text("Qatar CR Number") }, modifier = Modifier.fillMaxWidth())

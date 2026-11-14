@@ -3,7 +3,9 @@ package com.example.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -273,7 +275,7 @@ fun AccountingScreen(
             onDismissRequest = { showManualJournal = false },
             title = { Text("Post Balanced Manual Journal") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DropdownSelector("Debit Account", data.accounts, debitAcc, { "${it.code} ${it.name}" }, { debitAcc = it })
                     DropdownSelector("Credit Account", data.accounts, creditAcc, { "${it.code} ${it.name}" }, { creditAcc = it })
                     OutlinedTextField(value = amountQar, onValueChange = { amountQar = it }, label = { Text("Amount (QAR)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
@@ -318,7 +320,7 @@ fun AccountingScreen(
             onDismissRequest = { showAddBank = false },
             title = { Text("Add Qatar Bank Account") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = bank, onValueChange = { bank = it }, label = { Text("Bank Name") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Account Title") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = iban, onValueChange = { iban = it }, label = { Text("IBAN / Account Number") }, modifier = Modifier.fillMaxWidth())
@@ -393,17 +395,17 @@ fun AccountingScreen(
         var vendor by remember { mutableStateOf("Kahramaa") }
         var desc by remember { mutableStateOf("") }
         var amt by remember { mutableStateOf("") }
-        var method by remember { mutableStateOf("BANK") }
+        var method by remember { mutableStateOf("BANK_TRANSFER") }
         AlertDialog(
             onDismissRequest = { showExpense = false },
             title = { Text("Record Expense") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = cat, onValueChange = { cat = it }, label = { Text("Category") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = vendor, onValueChange = { vendor = it }, label = { Text("Vendor / Payee") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = desc, onValueChange = { desc = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = amt, onValueChange = { amt = it }, label = { Text("Amount (QAR)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = method, onValueChange = { method = it.uppercase() }, label = { Text("Method (BANK/CASH/PETTY_CASH)") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = method, onValueChange = { method = it.uppercase() }, label = { Text("Method (BANK_TRANSFER/BANK/CASH/PETTY_CASH)") }, modifier = Modifier.fillMaxWidth())
                 }
             },
             confirmButton = {

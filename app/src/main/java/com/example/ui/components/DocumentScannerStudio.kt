@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.RotateLeft
+import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -491,14 +493,14 @@ fun DocumentScannerStudioDialog(
                                         OutlinedButton(onClick = {
                                             updateActivePage { it.copy(rotationDegrees = (it.rotationDegrees + 270) % 360) }
                                         }, modifier = Modifier.defaultMinSize(minHeight = 48.dp).testTag("btn_rotate_left")) {
-                                            Icon(Icons.Default.RotateLeft, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Icon(Icons.AutoMirrored.Filled.RotateLeft, contentDescription = null, modifier = Modifier.size(16.dp))
                                             Spacer(Modifier.width(4.dp))
                                             Text("-90°")
                                         }
                                         OutlinedButton(onClick = {
                                             updateActivePage { it.copy(rotationDegrees = (it.rotationDegrees + 90) % 360) }
                                         }, modifier = Modifier.defaultMinSize(minHeight = 48.dp).testTag("btn_rotate_right")) {
-                                            Icon(Icons.Default.RotateRight, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = null, modifier = Modifier.size(16.dp))
                                             Spacer(Modifier.width(4.dp))
                                             Text("+90°")
                                         }

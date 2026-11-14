@@ -313,7 +313,12 @@ class GovernanceBackupService(
         return doc
     }
 
-    suspend fun markNotificationRead(notificationId: String) {
+    suspend fun markNotificationRead(ctx: AuthContext, notificationId: String) {
+        val notif = opsDao.getNotificationById(notificationId) ?: return
+        require(notif.businessId == ctx.activeBusinessId) { "Cross-business notification access blocked" }
+        require(ctx.userType == "OWNER" || notif.recipientUserId.isBlank() || notif.recipientUserId == ctx.userId) {
+            "Cannot modify another user's notification"
+        }
         opsDao.markNotificationRead(notificationId)
     }
 

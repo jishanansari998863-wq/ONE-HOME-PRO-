@@ -3,9 +3,12 @@ package com.example.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -83,7 +86,7 @@ fun PaymentsScreen(
                             EmptyStateCard(
                                 title = "No Monthly Rent Schedules",
                                 description = "Activate an agreement and tap Generate Rent to bill the current period.",
-                                icon = Icons.Default.ReceiptLong
+                                icon = Icons.AutoMirrored.Filled.ReceiptLong
                             )
                         }
                     } else {
@@ -183,7 +186,10 @@ fun PaymentsScreen(
             onDismissRequest = { showReceivePayment = false },
             title = { Text("Receive Confirmed Payment") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     DropdownSelector("Tenant", data.customers, selectedCust, { it.fullName }, { selectedCust = it }, testTag = "pay_customer_dropdown")
                     if (openRents.isNotEmpty()) {
                         DropdownSelector("Allocate to Rent", openRents, selectedRent, { "${it.periodKey} (Bal ${QatarFormatters.formatQar(it.amountDueFils - it.amountPaidFils)})" }, {

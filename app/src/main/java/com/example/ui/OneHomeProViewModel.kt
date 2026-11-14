@@ -950,8 +950,36 @@ class OneHomeProViewModel(
         }
     }
 
+    fun openDocumentPreview(docId: String, onLoaded: (DocumentEntity, ByteArray) -> Unit) {
+        val ctx = _uiState.value.authContext ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, bannerError = null) }
+            try {
+                val (doc, bytes) = withContext(Dispatchers.IO) {
+                    container.governanceBackupService.readDecryptedDocumentBytes(ctx, docId)
+                }
+                _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        bannerSuccess = "Document decrypted & SHA-256 integrity verified"
+                    )
+                }
+                onLoaded(doc, bytes)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isBusy = false, bannerError = e.message ?: "Preview failed") }
+            }
+        }
+    }
+
     fun markNotificationRead(id: String) {
-        viewModelScope.launch { container.governanceBackupService.markNotificationRead(id) }
+        val ctx = _uiState.value.authContext ?: return
+        viewModelScope.launch {
+            try {
+                container.governanceBackupService.markNotificationRead(ctx, id)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(bannerError = e.message ?: "Failed to update notification") }
+            }
+        }
     }
 
     fun createBackup(passphrase: String) = runAction("Encrypted backup created") {

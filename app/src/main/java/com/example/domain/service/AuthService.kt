@@ -141,6 +141,7 @@ class AuthService(
 
             if (enableMfa) {
                 val secret = CryptoUtil.generateTotpSecret()
+                val recoveryCodes = CryptoUtil.generateRecoveryCodes(6)
                 dao.upsertMfaCredential(
                     MfaCredentialEntity(
                         id = CryptoUtil.newUuid(),
@@ -149,6 +150,15 @@ class AuthService(
                         isVerified = true,
                         createdAtEpoch = now
                     )
+                )
+                dao.insertRecoveryCodes(
+                    recoveryCodes.map { code ->
+                        RecoveryCodeEntity(
+                            id = CryptoUtil.newUuid(),
+                            userId = ownerId,
+                            codeHash = CryptoUtil.sha256Hex(code)
+                        )
+                    }
                 )
             }
 
@@ -583,6 +593,12 @@ class AuthService(
     }
 
     suspend fun revokeSpecificSession(ctx: AuthContext, sessionId: String) {
+        val session = dao.getSessionById(sessionId) ?: throw IllegalArgumentException("Session not found")
+        val canRevokeOther = ctx.userType == "OWNER" &&
+            dao.getBusinessAccessForUser(session.userId).any { it.businessId == ctx.activeBusinessId }
+        if (session.userId != ctx.userId && !canRevokeOther) {
+            throw AuthorizationException("Cannot revoke another user's session")
+        }
         dao.revokeSessionById(sessionId, "REVOKED_FROM_SECURITY_PANEL")
     }
 
@@ -726,7 +742,12 @@ class AuthService(
     suspend fun setUserAccountStatus(ctx: AuthContext, targetUserId: String, newStatus: String) {
         AuthorizationGuard.requireOwner(ctx)
         require(targetUserId != ctx.userId) { "Owner cannot suspend themselves" }
+        require(newStatus in setOf("ACTIVE", "SUSPENDED", "DISABLED")) { "Unsupported account status: $newStatus" }
         val target = dao.getUserById(targetUserId) ?: throw IllegalArgumentException("User not found")
+        val targetAccess = dao.getBusinessAccessForUser(targetUserId)
+        require(targetAccess.any { it.businessId == ctx.activeBusinessId } || target.customerId != null && coreDao.getCustomerById(target.customerId)?.businessId == ctx.activeBusinessId) {
+            "Cross-business user modification blocked"
+        }
         val now = System.currentTimeMillis()
         db.withTransaction {
             dao.updateUser(target.copy(status = newStatus, updatedAtEpoch = now))
@@ -749,23 +770,26 @@ class AuthService(
 
     suspend fun toggleRolePermission(ctx: AuthContext, roleId: String, permissionId: String, granted: Boolean) {
         AuthorizationGuard.requireOwner(ctx)
+        val role = dao.getRoleById(roleId) ?: throw IllegalArgumentException("Role not found")
+        require(role.businessId == ctx.activeBusinessId) { "Cross-business role modification blocked" }
         val current = dao.getAllPermissions().associateBy { it.id }
         require(current.containsKey(permissionId)) { "Unknown permission" }
-        // Rebuild role permissions cleanly
-        val existingForBiz = dao.getRoleByName(ctx.activeBusinessId, "OWNER")
-        if (existingForBiz?.id == roleId && !granted) {
+        if (role.name == "OWNER" && !granted) {
             throw IllegalStateException("Cannot remove permissions from OWNER role")
         }
-        // Simple insert if granted, or clear & reinsert handled in UI/service:
         if (granted) {
-            dao.insertRolePermission(
-                RolePermissionEntity(
-                    id = CryptoUtil.newUuid(),
-                    businessId = ctx.activeBusinessId,
-                    roleId = roleId,
-                    permissionId = permissionId
+            if (dao.getRolePermission(roleId, permissionId) == null) {
+                dao.insertRolePermission(
+                    RolePermissionEntity(
+                        id = CryptoUtil.newUuid(),
+                        businessId = ctx.activeBusinessId,
+                        roleId = roleId,
+                        permissionId = permissionId
+                    )
                 )
-            )
+            }
+        } else {
+            dao.deleteRolePermission(roleId, permissionId)
         }
     }
 
@@ -785,9 +809,6 @@ class AuthService(
         ensurePermissionCatalogSeeded()
         val allPerms = dao.getAllPermissions()
 
-        fun createRole(name: String, desc: String, filter: (PermissionEntity) -> Boolean) {
-            // Note: called inside coroutine
-        }
         val roleDefs = listOf(
             "OWNER" to "Full business & security administration",
             "PROPERTY_MANAGER" to "Properties, tenants, agreements, rent collection & maintenance",

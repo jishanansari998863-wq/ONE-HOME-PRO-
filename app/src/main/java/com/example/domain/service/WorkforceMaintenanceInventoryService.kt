@@ -15,11 +15,13 @@ class WorkforceMaintenanceInventoryService(
     private val accountingService: AccountingService
 ) {
     private val hrDao = db.securityAndHrDao()
+    private val coreDao = db.coreAndTenancyDao()
     private val opsDao = db.operationsDao()
 
     // --- HR & Workforce ---
     suspend fun createDepartment(ctx: AuthContext, name: String, description: String): DepartmentEntity {
         AuthorizationGuard.requirePermission(ctx, AppModule.EMPLOYEES, ActionType.CREATE, ctx.activeBusinessId)
+        require(name.isNotBlank()) { "Department name is required" }
         val dep = DepartmentEntity(
             id = CryptoUtil.newUuid(),
             businessId = ctx.activeBusinessId,
@@ -33,6 +35,9 @@ class WorkforceMaintenanceInventoryService(
 
     suspend fun createTeam(ctx: AuthContext, departmentId: String, name: String): TeamEntity {
         AuthorizationGuard.requirePermission(ctx, AppModule.EMPLOYEES, ActionType.CREATE, ctx.activeBusinessId)
+        require(name.isNotBlank()) { "Team name is required" }
+        val dept = hrDao.getDepartmentById(departmentId) ?: throw IllegalArgumentException("Department not found")
+        require(dept.businessId == ctx.activeBusinessId) { "Cross-business department blocked" }
         val team = TeamEntity(
             id = CryptoUtil.newUuid(),
             businessId = ctx.activeBusinessId,
@@ -151,8 +156,13 @@ class WorkforceMaintenanceInventoryService(
         isPreventive: Boolean = false,
         attachmentUri: String? = null
     ): ComplaintEntity {
+        val property = coreDao.getPropertyById(propertyId) ?: throw IllegalArgumentException("Property not found")
+        require(property.businessId == ctx.activeBusinessId) { "Cross-business property complaint blocked" }
         if (ctx.isCustomerPortalOnly()) {
             require(customerId == ctx.customerId) { "Customers can only file complaints for themselves" }
+            val hasLeaseOnProp = coreDao.getAgreementsByBusiness(ctx.activeBusinessId)
+                .any { it.customerId == ctx.customerId && it.propertyId == propertyId }
+            require(hasLeaseOnProp) { "Customers can only file complaints for their own leased property" }
         } else {
             AuthorizationGuard.requirePermission(ctx, AppModule.MAINTENANCE, ActionType.CREATE, ctx.activeBusinessId, propertyId)
         }
@@ -215,6 +225,9 @@ class WorkforceMaintenanceInventoryService(
     ) {
         val comp = opsDao.getComplaintById(complaintId) ?: throw IllegalArgumentException("Complaint not found")
         AuthorizationGuard.requirePermission(ctx, AppModule.MAINTENANCE, ActionType.EDIT, comp.businessId, comp.propertyId)
+        val tech = hrDao.getEmployeeById(technicianEmployeeId) ?: throw IllegalArgumentException("Technician not found")
+        require(tech.businessId == comp.businessId) { "Cross-business technician assignment blocked" }
+        require(tech.status == "ACTIVE") { "Deactivated employee cannot be assigned maintenance jobs" }
         val now = System.currentTimeMillis()
         db.withTransaction {
             opsDao.insertJobAssignment(
@@ -453,6 +466,7 @@ class WorkforceMaintenanceInventoryService(
         crNumber: String
     ): SupplierEntity {
         AuthorizationGuard.requirePermission(ctx, AppModule.INVENTORY, ActionType.CREATE, ctx.activeBusinessId)
+        require(name.isNotBlank()) { "Supplier name is required" }
         val now = System.currentTimeMillis()
         val id = CryptoUtil.newUuid()
         val sup = SupplierEntity(
@@ -480,6 +494,7 @@ class WorkforceMaintenanceInventoryService(
         reorderLevel: Long
     ): ItemEntity {
         AuthorizationGuard.requirePermission(ctx, AppModule.INVENTORY, ActionType.CREATE, ctx.activeBusinessId)
+        require(itemName.isNotBlank()) { "Item name is required" }
         val now = System.currentTimeMillis()
         return db.withTransaction {
             val catId = CryptoUtil.newUuid()
@@ -556,6 +571,8 @@ class WorkforceMaintenanceInventoryService(
         val now = System.currentTimeMillis()
         db.withTransaction {
             val po = opsDao.getPurchaseById(purchaseId) ?: throw IllegalArgumentException("Purchase not found")
+            require(po.businessId == ctx.activeBusinessId) { "Cross-business purchase approval blocked" }
+            require(po.status == "REQUESTED") { "Only REQUESTED purchase orders can be approved" }
             opsDao.insertPurchaseApproval(
                 PurchaseApprovalEntity(
                     id = CryptoUtil.newUuid(),
@@ -581,6 +598,7 @@ class WorkforceMaintenanceInventoryService(
         val now = System.currentTimeMillis()
         db.withTransaction {
             val po = opsDao.getPurchaseById(purchaseId) ?: throw IllegalArgumentException("Purchase not found")
+            require(po.businessId == ctx.activeBusinessId) { "Cross-business goods receipt blocked" }
             require(po.status == "APPROVED" || po.status == "ORDERED" || po.status == "PARTIALLY_RECEIVED") {
                 "Purchase must be APPROVED before receiving goods"
             }
@@ -665,6 +683,7 @@ class WorkforceMaintenanceInventoryService(
         val now = System.currentTimeMillis()
         db.withTransaction {
             val po = opsDao.getPurchaseById(purchaseId) ?: throw IllegalArgumentException("Purchase not found")
+            require(po.businessId == ctx.activeBusinessId) { "Cross-business supplier payment blocked" }
             val remaining = (po.totalAmountFils - po.paidAmountFils).coerceAtLeast(0L)
             require(amountFils <= remaining) { "Payment exceeds remaining payable balance" }
             val payId = CryptoUtil.newUuid()
@@ -719,10 +738,11 @@ class WorkforceMaintenanceInventoryService(
         reason: String
     ) {
         AuthorizationGuard.requirePermission(ctx, AppModule.INVENTORY, ActionType.APPROVE, ctx.activeBusinessId)
-        require(qtyDelta != 0L)
+        require(qtyDelta != 0L) { "Adjustment quantity delta cannot be zero" }
         val now = System.currentTimeMillis()
         db.withTransaction {
             val item = opsDao.getItemById(itemId) ?: throw IllegalArgumentException("Item not found")
+            require(item.businessId == ctx.activeBusinessId) { "Cross-business inventory adjustment blocked" }
             val newQty = item.currentStockQty + qtyDelta
             require(newQty >= 0L) { "Negative stock is prohibited without authorized override" }
             val moveId = CryptoUtil.newUuid()
@@ -757,15 +777,43 @@ class WorkforceMaintenanceInventoryService(
                     occurredAtEpoch = now
                 )
             )
+            val valuationDelta = kotlin.math.abs(qtyDelta) * item.weightedAvgCostFils.coerceAtLeast(0L)
+            if (valuationDelta > 0L) {
+                val lines = if (qtyDelta < 0L) {
+                    listOf(
+                        JournalLineInput(AccountingService.ACC_MAINTENANCE_EXPENSE, valuationDelta, 0L, "Inventory shrinkage: ${item.name} ($reason)"),
+                        JournalLineInput(AccountingService.ACC_INVENTORY, 0L, valuationDelta, "Stock count / adjustment reduction")
+                    )
+                } else {
+                    listOf(
+                        JournalLineInput(AccountingService.ACC_INVENTORY, valuationDelta, 0L, "Inventory surplus: ${item.name} ($reason)"),
+                        JournalLineInput(AccountingService.ACC_OTHER_INCOME, 0L, valuationDelta, "Stock count / adjustment gain")
+                    )
+                }
+                accountingService.postJournalInternal(
+                    businessId = ctx.activeBusinessId,
+                    propertyId = null,
+                    entryDateEpoch = now,
+                    description = "Inventory adjustment (${item.name}, delta=$qtyDelta): $reason",
+                    sourceType = "INVENTORY_ADJUSTMENT",
+                    sourceId = moveId,
+                    idempotencyKey = "JE-ADJ-$moveId",
+                    createdByUserId = ctx.userId,
+                    approvedByUserId = ctx.userId,
+                    lines = lines
+                )
+            }
             opsDao.updateItem(item.copy(currentStockQty = newQty, updatedAtEpoch = now))
         }
     }
 
     suspend fun recordStockCount(ctx: AuthContext, itemId: String, stockLocationId: String, countedQty: Long) {
         AuthorizationGuard.requirePermission(ctx, AppModule.INVENTORY, ActionType.POST, ctx.activeBusinessId)
+        require(countedQty >= 0L) { "Counted quantity cannot be negative" }
         val now = System.currentTimeMillis()
         db.withTransaction {
             val item = opsDao.getItemById(itemId) ?: throw IllegalArgumentException("Item not found")
+            require(item.businessId == ctx.activeBusinessId) { "Cross-business stock count blocked" }
             val countId = CryptoUtil.newUuid()
             val variance = countedQty - item.currentStockQty
             opsDao.insertStockCount(

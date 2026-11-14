@@ -212,4 +212,58 @@ class SecurityAndIsolationRobolectricTest {
 
         assertEquals(room1.id.isNotBlank(), true)
     }
+
+    @Test
+    fun `role permission toggle, session revocation, and user status management enforce RBAC and isolation`() = runBlocking {
+        val ownerAuth = authService.setupInitialOwnerAndBusiness(
+            fullName = "Owner Admin",
+            email = "admin@onehome.qa",
+            password = "StrongPass#2026",
+            businessName = "Doha Prime",
+            branchName = "HQ",
+            enableMfa = false,
+            rememberMe = false,
+            deviceName = "OwnerTablet"
+        ) as AuthResult.Authenticated
+        val ownerCtx = ownerAuth.context
+
+        val prop = propertyService.createProperty(ownerCtx, "Lusail Plaza", "LSL", "COMMERCIAL", "Lusail", "Doha", "")
+        val emp = workforceService.addEmployee(ownerCtx, "Nadia Staff", "Clerk", null, "+97450002222", "nadia@onehome.qa", "2920001", "Doha", "08:00-17:00")
+        val staffUser = authService.createStaffUser(ownerCtx, emp.id, emp.fullName, "nadia@onehome.qa", "StaffPass#2026", "TECHNICIAN", listOf(prop.id))
+        val staffLogin = authService.login("nadia@onehome.qa", "StaffPass#2026", false, "StaffPhone") as AuthResult.NewDeviceVerificationRequired
+        val staffAuth = authService.verifyNewDeviceChallenge(staffLogin.userId, staffLogin.verificationCode, true, false, "StaffPhone") as AuthResult.Authenticated
+        val staffCtx = staffAuth.context
+
+        val hrDao = db.securityAndHrDao()
+        val techRole = hrDao.getRoleByName(ownerCtx.activeBusinessId, "TECHNICIAN")!!
+        val ownerRole = hrDao.getRoleByName(ownerCtx.activeBusinessId, "OWNER")!!
+        val permId = hrDao.getAllPermissions().first { it.module == AppModule.REPORTS.name }.id
+
+        // Grant permission idempotently (no duplicate row)
+        authService.toggleRolePermission(ownerCtx, techRole.id, permId, true)
+        authService.toggleRolePermission(ownerCtx, techRole.id, permId, true)
+        assertNotNull(hrDao.getRolePermission(techRole.id, permId))
+
+        // Revoke permission removes mapping
+        authService.toggleRolePermission(ownerCtx, techRole.id, permId, false)
+        assertNull(hrDao.getRolePermission(techRole.id, permId))
+
+        // Owner role cannot lose permissions
+        try {
+            authService.toggleRolePermission(ownerCtx, ownerRole.id, permId, false)
+            fail("Removing OWNER permission must be rejected")
+        } catch (_: IllegalStateException) { /* expected */ }
+
+        // Staff cannot revoke another user's session
+        try {
+            authService.revokeSpecificSession(staffCtx, ownerCtx.sessionId)
+            fail("Staff must not revoke Owner's session")
+        } catch (_: AuthorizationException) { /* expected */ }
+
+        // Owner can suspend staff user and that revokes active sessions
+        authService.setUserAccountStatus(ownerCtx, staffUser.id, "SUSPENDED")
+        assertNull(authService.validateSessionToken(staffAuth.rawSessionToken))
+        authService.setUserAccountStatus(ownerCtx, staffUser.id, "ACTIVE")
+        assertEquals("ACTIVE", hrDao.getUserById(staffUser.id)?.status)
+    }
 }

@@ -48,6 +48,9 @@ interface CoreAndTenancyDao {
     @Query("SELECT * FROM buildings WHERE businessId = :businessId")
     suspend fun getBuildingsByBusiness(businessId: String): List<BuildingEntity>
 
+    @Query("SELECT * FROM buildings WHERE id = :id LIMIT 1")
+    suspend fun getBuildingById(id: String): BuildingEntity?
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertBuilding(entity: BuildingEntity)
 
@@ -56,6 +59,9 @@ interface CoreAndTenancyDao {
 
     @Query("SELECT * FROM floors WHERE businessId = :businessId")
     suspend fun getFloorsByBusiness(businessId: String): List<FloorEntity>
+
+    @Query("SELECT * FROM floors WHERE id = :id LIMIT 1")
+    suspend fun getFloorById(id: String): FloorEntity?
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertFloor(entity: FloorEntity)
@@ -264,6 +270,9 @@ interface CoreAndTenancyDao {
 
     @Query("SELECT * FROM advance_rents WHERE businessId = :businessId ORDER BY createdAtEpoch DESC")
     fun observeAdvanceRents(businessId: String): Flow<List<AdvanceRentEntity>>
+
+    @Query("SELECT * FROM advance_rents WHERE paymentId = :paymentId LIMIT 1")
+    suspend fun getAdvanceRentByPaymentId(paymentId: String): AdvanceRentEntity?
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAdvanceRent(entity: AdvanceRentEntity)

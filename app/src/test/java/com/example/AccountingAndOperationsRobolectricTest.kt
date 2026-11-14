@@ -222,4 +222,62 @@ class AccountingAndOperationsRobolectricTest {
             fail("Wrong backup passphrase must fail AES-GCM verification")
         } catch (_: Exception) { /* expected */ }
     }
+
+    @Test
+    fun `cleared cheque payment reversal, expense BANK credit, and stock count variance preserve GL balance`() = runBlocking {
+        val prop = propertyService.createProperty(ownerCtx, "West Bay Tower", "WBT", "RESIDENTIAL", "West Bay", "Doha", "")
+        val bldg = propertyService.addBuilding(ownerCtx, prop.id, "Main", "M1", 5)
+        val fl = propertyService.addFloor(ownerCtx, prop.id, bldg.id, 1, "F1")
+        val room = propertyService.addRoom(ownerCtx, prop.id, bldg.id, fl.id, "105", "STUDIO", 2, "FURNISHED", 400_000L, "AC", 2, "K1", "Bed")
+        val cust = propertyService.createCustomer(ownerCtx, "Tariq", "+97455001122", "tariq@qa.com", "2910999", "", "QA", "", "", "")
+        val now = System.currentTimeMillis()
+        val ag = propertyService.createAndActivateAgreement(ownerCtx, room.id, cust.id, "MONTHLY", 400_000L, 0L, 0L, now, now + 60L * 86_400_000L, 30, "")
+        propertyService.generateRentForPeriod(ownerCtx, now)
+        val rent = db.coreAndTenancyDao().getMonthlyRentsByBusiness(ownerCtx.activeBusinessId).first()
+
+        // Clear a cheque -> creates linked confirmed payment + credits/debits Bank GL
+        val chq = rentPaymentService.registerCheque(ownerCtx, cust.id, ag.id, rent.id, "CHQ-500", "QIB", 400_000L, now, "Tariq", "Qatar Homes")
+        rentPaymentService.transitionChequeStatus(ownerCtx, chq.id, "CLEARED", bankReference = "QIB-CLR")
+
+        // Cannot bounce an already CLEARED cheque
+        try {
+            rentPaymentService.transitionChequeStatus(ownerCtx, chq.id, "BOUNCED", bounceReason = "Late return")
+            fail("Bouncing an already CLEARED cheque must be rejected")
+        } catch (_: IllegalArgumentException) { /* expected */ }
+
+        // Reverse the payment created on cheque clearance -> Bank GL returns to 0 and rent reopens
+        val chqPay = db.coreAndTenancyDao().getPaymentsByBusiness(ownerCtx.activeBusinessId).first()
+        rentPaymentService.reverseOrRefundPayment(ownerCtx, chqPay.id, "Cheque clear error")
+        val reopenedRent = db.coreAndTenancyDao().getMonthlyRentById(rent.id)!!
+        assertEquals("DUE", reopenedRent.status)
+        assertEquals(0L, reopenedRent.amountPaidFils)
+
+        val tbAfterRev = accountingService.computeTrialBalance(ownerCtx.activeBusinessId)
+        val bankBal = tbAfterRev.firstOrNull { it.code == AccountingService.ACC_BANK }?.netBalanceFils ?: 0L
+        assertEquals(0L, bankBal)
+
+        // Expense via "BANK" hits ACC_BANK (1010) cleanly
+        accountingService.recordExpense(ownerCtx, prop.id, "UTILITIES", "Kahramaa", "Water bill", 10_000L, "BANK")
+        val tbAfterExp = accountingService.computeTrialBalance(ownerCtx.activeBusinessId)
+        val bankAfterExp = tbAfterExp.firstOrNull { it.code == AccountingService.ACC_BANK }?.netBalanceFils ?: 0L
+        assertEquals(-10_000L, bankAfterExp)
+
+        // Stock count variance posts balanced Inventory GL adjustment
+        val sup = opsService.createSupplier(ownerCtx, "Qatar Supply", "Salim", "+97444001122", "", "CR-1")
+        val item = opsService.createItemCategoryAndItem(ownerCtx, "PLUMBING", "Valve", "SKU-V1", "PCS", 2L)
+        val loc = db.operationsDao().observeStockLocations(ownerCtx.activeBusinessId).first().first()
+        val po = opsService.createPurchaseOrder(ownerCtx, sup.id, prop.id, item.id, 10L, 1_500L, "Valves")
+        opsService.approvePurchase(ownerCtx, po.id, "OK")
+        opsService.receiveGoods(ownerCtx, po.id, loc.id, "INV-V1")
+
+        // Count 8 instead of 10 -> shortage variance of 2 * 1,500 = 3,000 fils
+        opsService.recordStockCount(ownerCtx, item.id, loc.id, 8L)
+        assertEquals(8L, db.operationsDao().getItemById(item.id)!!.currentStockQty)
+        val invVal = accountingService.computeTrialBalance(ownerCtx.activeBusinessId)
+            .first { it.code == AccountingService.ACC_INVENTORY }.netBalanceFils
+        assertEquals(12_000L, invVal)
+
+        val bs = accountingService.computeBalanceSheet(ownerCtx.activeBusinessId)
+        assertTrue(bs.isBalanced)
+    }
 }

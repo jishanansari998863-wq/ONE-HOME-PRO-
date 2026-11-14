@@ -6,8 +6,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -167,7 +170,7 @@ fun WorkforceScreen(
             onDismissRequest = { showAddEmp = false },
             title = { Text("Onboard Employee") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Full Name*") }, modifier = Modifier.fillMaxWidth().testTag("emp_name_input"))
                     OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Job Title*") }, modifier = Modifier.fillMaxWidth())
                     if (data.departments.isNotEmpty()) {
@@ -329,7 +332,7 @@ fun MaintenanceScreen(
             onDismissRequest = { showCreate = false },
             title = { Text("Create Maintenance / Complaint") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DropdownSelector("Property", data.properties, prop, { it.name }, { prop = it })
                     OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Issue Title*") }, modifier = Modifier.fillMaxWidth().testTag("complaint_title_input"))
                     OutlinedTextField(value = desc, onValueChange = { desc = it }, label = { Text("Details") }, modifier = Modifier.fillMaxWidth())
@@ -378,7 +381,7 @@ fun MaintenanceScreen(
             onDismissRequest = { reportTarget = null },
             title = { Text("Submit Job Work Report") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = summary, onValueChange = { summary = it }, label = { Text("Work Completed Summary*") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = mins, onValueChange = { mins = it }, label = { Text("Labour Minutes") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = labourQar, onValueChange = { labourQar = it }, label = { Text("External Labour Cost (QAR)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
@@ -467,7 +470,7 @@ fun InventoryScreen(
                                     if (low) StatusBadge("LOW STOCK")
                                     Spacer(Modifier.width(6.dp))
                                     IconButton(onClick = { countTarget = item }) {
-                                        Icon(Icons.Default.FactCheck, contentDescription = "Physical Stock Count")
+                                        Icon(Icons.AutoMirrored.Filled.FactCheck, contentDescription = "Physical Stock Count")
                                     }
                                 }
                             }
@@ -585,7 +588,7 @@ fun InventoryScreen(
             onDismissRequest = { showCreatePo = false },
             title = { Text("Create Purchase Order") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DropdownSelector("Supplier", data.suppliers, sup, { it.name }, { sup = it })
                     DropdownSelector("Item", data.items, item, { "${it.sku} - ${it.name}" }, { item = it })
                     OutlinedTextField(value = qty, onValueChange = { qty = it }, label = { Text("Order Qty") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())

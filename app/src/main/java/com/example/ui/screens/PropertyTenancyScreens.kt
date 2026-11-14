@@ -3,7 +3,9 @@ package com.example.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -200,7 +202,7 @@ fun PropertiesScreen(
             onDismissRequest = { showAddProperty = false },
             title = { Text("Add Property") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Property Name") }, modifier = Modifier.fillMaxWidth().testTag("prop_name_input"))
                     OutlinedTextField(value = code, onValueChange = { code = it }, label = { Text("Property Code (e.g. DOHA-01)") }, modifier = Modifier.fillMaxWidth().testTag("prop_code_input"))
                     OutlinedTextField(value = type, onValueChange = { type = it }, label = { Text("Type (RESIDENTIAL_BUILDING/VILLA/COMMERCIAL)") }, modifier = Modifier.fillMaxWidth())
@@ -281,7 +283,7 @@ fun PropertiesScreen(
             onDismissRequest = { showAddRoom = false },
             title = { Text("Add Room / Unit") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DropdownSelector("Floor", propFloors, selectedFloor, { it.label }, { selectedFloor = it })
                     OutlinedTextField(value = roomNumber, onValueChange = { roomNumber = it }, label = { Text("Room / Flat Number (e.g. 101)") }, modifier = Modifier.fillMaxWidth().testTag("room_number_input"))
                     OutlinedTextField(value = roomType, onValueChange = { roomType = it }, label = { Text("Room Type (STUDIO/1BHK/PARTITION/BEDSPACE)") }, modifier = Modifier.fillMaxWidth())
@@ -475,7 +477,7 @@ fun TenantsScreen(
             onDismissRequest = { showAddTenant = false },
             title = { Text("Register Tenant") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedTextField(value = fullName, onValueChange = { fullName = it }, label = { Text("Full Name*") }, modifier = Modifier.fillMaxWidth().testTag("tenant_name_input"))
                     OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Qatar Mobile (+974...)*") }, modifier = Modifier.fillMaxWidth().testTag("tenant_phone_input"))
                     OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
@@ -652,7 +654,7 @@ fun AgreementsScreen(
             onDismissRequest = { showCreate = false },
             title = { Text("Activate Rental Agreement") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DropdownSelector("Vacant Room", vacantRooms, selectedRoom, { "Room ${it.roomNumber} (${QatarFormatters.formatQar(it.monthlyRateFils)})" }, {
                         selectedRoom = it
                         rentQar = "%.2f".format(it.monthlyRateFils / 100.0)

@@ -33,6 +33,9 @@ interface SecurityAndHrDao {
     @Query("SELECT * FROM login_sessions WHERE tokenHash = :tokenHash LIMIT 1")
     suspend fun getSessionByTokenHash(tokenHash: String): LoginSessionEntity?
 
+    @Query("SELECT * FROM login_sessions WHERE id = :sessionId LIMIT 1")
+    suspend fun getSessionById(sessionId: String): LoginSessionEntity?
+
     @Query("SELECT * FROM login_sessions WHERE userId = :userId ORDER BY createdAtEpoch DESC")
     fun observeSessionsForUser(userId: String): Flow<List<LoginSessionEntity>>
 
@@ -115,6 +118,9 @@ interface SecurityAndHrDao {
     @Query("SELECT * FROM roles WHERE businessId = :businessId AND name = :name LIMIT 1")
     suspend fun getRoleByName(businessId: String, name: String): RoleEntity?
 
+    @Query("SELECT * FROM roles WHERE id = :roleId LIMIT 1")
+    suspend fun getRoleById(roleId: String): RoleEntity?
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertRole(entity: RoleEntity)
 
@@ -127,8 +133,14 @@ interface SecurityAndHrDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertPermissions(entities: List<PermissionEntity>)
 
+    @Query("SELECT * FROM role_permissions WHERE roleId = :roleId AND permissionId = :permissionId LIMIT 1")
+    suspend fun getRolePermission(roleId: String, permissionId: String): RolePermissionEntity?
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertRolePermission(entity: RolePermissionEntity)
+
+    @Query("DELETE FROM role_permissions WHERE roleId = :roleId AND permissionId = :permissionId")
+    suspend fun deleteRolePermission(roleId: String, permissionId: String)
 
     @Query("DELETE FROM role_permissions WHERE roleId = :roleId")
     suspend fun clearRolePermissions(roleId: String)
@@ -183,6 +195,9 @@ interface SecurityAndHrDao {
 
     @Query("SELECT * FROM departments WHERE businessId = :businessId ORDER BY name ASC")
     fun observeDepartments(businessId: String): Flow<List<DepartmentEntity>>
+
+    @Query("SELECT * FROM departments WHERE id = :id LIMIT 1")
+    suspend fun getDepartmentById(id: String): DepartmentEntity?
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertDepartment(entity: DepartmentEntity)

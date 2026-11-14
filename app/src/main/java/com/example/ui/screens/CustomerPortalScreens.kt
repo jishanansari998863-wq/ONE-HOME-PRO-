@@ -1,17 +1,25 @@
 package com.example.ui.screens
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.data.db.entities.DocumentEntity
 import com.example.domain.document.DocumentCategoryOption
 import com.example.domain.document.DocumentTargetType
 import com.example.domain.util.QatarFormatters
@@ -46,6 +54,7 @@ fun CustomerPortalScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var showNewComplaint by remember { mutableStateOf(false) }
     var showUploadDoc by remember { mutableStateOf(false) }
+    var previewPayload by remember { mutableStateOf<Pair<DocumentEntity, ByteArray>?>(null) }
 
     Column(modifier = Modifier.fillMaxSize().testTag("customer_portal_screen")) {
         ScrollableTabRow(selectedTabIndex = selectedTab) {
@@ -86,7 +95,7 @@ fun CustomerPortalScreen(
                             onClick = { vm.logout() },
                             modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).testTag("customer_logout_button")
                         ) {
-                            Icon(Icons.Default.Logout, contentDescription = null)
+                            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
                             Text(strings.logout)
                         }
@@ -177,7 +186,11 @@ fun CustomerPortalScreen(
                                         Text("${doc.category} • ${doc.title}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                         Text("${doc.mimeType} • ${doc.fileSizeBytes} bytes", style = MaterialTheme.typography.bodySmall)
                                     }
-                                    StatusBadge("SAVED")
+                                    TextButton(onClick = {
+                                        vm.openDocumentPreview(doc.id) { loaded, bytes -> previewPayload = loaded to bytes }
+                                    }) {
+                                        Text("Preview")
+                                    }
                                 }
                             }
                         }
@@ -219,6 +232,32 @@ fun CustomerPortalScreen(
             initialTargetId = myCustId,
             initialCategory = DocumentCategoryOption.QID,
             onDismiss = { showUploadDoc = false }
+        )
+    }
+
+    previewPayload?.let { (doc, bytes) ->
+        val bmp = remember(doc.id, bytes) {
+            if (doc.mimeType.startsWith("image/")) BitmapFactory.decodeByteArray(bytes, 0, bytes.size) else null
+        }
+        AlertDialog(
+            onDismissRequest = { previewPayload = null },
+            title = { Text("${doc.category} • ${doc.title}") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (bmp != null) {
+                        Image(
+                            bitmap = bmp.asImageBitmap(),
+                            contentDescription = "Preview of ${doc.title}",
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp).clip(RoundedCornerShape(10.dp)),
+                            contentScale = ContentScale.Fit
+                        )
+                    } else {
+                        Text("PDF Document Verified (${bytes.size} bytes)", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Text("SHA-256: ${doc.sha256Checksum.take(24)}...", style = MaterialTheme.typography.labelSmall.copy(fontFamily = MonoFontFamily))
+                }
+            },
+            confirmButton = { Button(onClick = { previewPayload = null }) { Text("Close") } }
         )
     }
 }

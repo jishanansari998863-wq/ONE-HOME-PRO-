@@ -205,6 +205,9 @@ interface OperationsDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertNotification(entity: NotificationEntity)
 
+    @Query("SELECT * FROM notifications WHERE id = :id LIMIT 1")
+    suspend fun getNotificationById(id: String): NotificationEntity?
+
     @Query("UPDATE notifications SET isRead = 1 WHERE id = :notificationId")
     suspend fun markNotificationRead(notificationId: String)
 

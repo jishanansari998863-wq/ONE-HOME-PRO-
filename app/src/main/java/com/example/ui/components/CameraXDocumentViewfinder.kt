@@ -32,6 +32,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.domain.document.DocumentCategoryOption
@@ -57,6 +59,7 @@ fun CameraXDocumentViewfinderDialog(
     var cameraUnavailableMsg by remember { mutableStateOf<String?>(null) }
     var isTakingPicture by remember { mutableStateOf(false) }
 
+    var cameraProviderRef by remember { mutableStateOf<ProcessCameraProvider?>(null) }
     var cameraControl by remember { mutableStateOf<Camera?>(null) }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var pendingSystemUri by remember { mutableStateOf<Uri?>(null) }
@@ -88,6 +91,7 @@ fun CameraXDocumentViewfinderDialog(
         providerFuture.addListener({
             runCatching {
                 val provider = providerFuture.get()
+                cameraProviderRef = provider
                 val selector = if (useFrontCamera) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
                 if (!provider.hasCamera(selector)) {
                     cameraUnavailableMsg = "Requested camera lens not detected on this device. Use System Camera fallback below."
@@ -112,9 +116,7 @@ fun CameraXDocumentViewfinderDialog(
 
     DisposableEffect(Unit) {
         onDispose {
-            runCatching {
-                ProcessCameraProvider.getInstance(context).get().unbindAll()
-            }
+            runCatching { cameraProviderRef?.unbindAll() }
         }
     }
 
@@ -122,11 +124,15 @@ fun CameraXDocumentViewfinderDialog(
         cameraControl?.cameraControl?.enableTorch(torchEnabled)
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize().testTag("camerax_viewfinder_dialog"),
-        color = Color.Black
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
-        Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+        Surface(
+            modifier = Modifier.fillMaxSize().testTag("camerax_viewfinder_dialog"),
+            color = Color.Black
+        ) {
+            Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
             if (cameraUnavailableMsg == null) {
                 AndroidView(
                     factory = { previewView },
@@ -288,5 +294,6 @@ fun CameraXDocumentViewfinderDialog(
                 Spacer(Modifier.width(72.dp))
             }
         }
+    }
     }
 }

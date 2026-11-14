@@ -1,17 +1,24 @@
 package com.example.ui.screens
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.data.db.entities.DocumentEntity
 import com.example.domain.document.DocumentCategoryOption
 import com.example.domain.document.DocumentTargetType
 import com.example.domain.security.ActionType
@@ -38,6 +45,7 @@ fun DocumentsScreen(
     val data = uiState.data
     var selectedTab by remember { mutableIntStateOf(0) }
     var showScannerStudio by remember { mutableStateOf(false) }
+    var previewPayload by remember { mutableStateOf<Pair<DocumentEntity, ByteArray>?>(null) }
 
     Column(modifier = Modifier.fillMaxSize().testTag("documents_screen")) {
         PrimaryTabRow(selectedTabIndex = selectedTab) {
@@ -85,8 +93,12 @@ fun DocumentsScreen(
                                 }
                                 Spacer(Modifier.height(6.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(onClick = { vm.logDocumentPreview(doc.id) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
-                                        Text("Log Verified Preview")
+                                    OutlinedButton(onClick = {
+                                        vm.openDocumentPreview(doc.id) { loadedDoc, bytes ->
+                                            previewPayload = loadedDoc to bytes
+                                        }
+                                    }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
+                                        Text("Preview")
                                     }
                                     if (ctx.hasPermission(AppModule.DOCUMENTS, ActionType.ARCHIVE)) {
                                         OutlinedButton(onClick = { vm.deleteVaultDocument(doc.id) }, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
@@ -121,6 +133,40 @@ fun DocumentsScreen(
             initialTargetType = DocumentTargetType.TENANT,
             initialCategory = DocumentCategoryOption.QID,
             onDismiss = { showScannerStudio = false }
+        )
+    }
+
+    previewPayload?.let { (doc, bytes) ->
+        val bmp = remember(doc.id, bytes) {
+            if (doc.mimeType.startsWith("image/")) {
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            } else null
+        }
+        AlertDialog(
+            onDismissRequest = { previewPayload = null },
+            title = { Text("${doc.category} • ${doc.title}") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (bmp != null) {
+                        Image(
+                            bitmap = bmp.asImageBitmap(),
+                            contentDescription = "Decrypted preview of ${doc.title}",
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp).clip(RoundedCornerShape(10.dp)),
+                            contentScale = ContentScale.Fit
+                        )
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = CrimsonError, modifier = Modifier.size(36.dp))
+                            Text("PDF Verified (${bytes.size} bytes decrypted cleanly)", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    Text("Entity: ${doc.entityType} | MIME: ${doc.mimeType}", style = MaterialTheme.typography.bodySmall)
+                    Text("SHA-256: ${doc.sha256Checksum.take(24)}...", style = MaterialTheme.typography.labelSmall.copy(fontFamily = MonoFontFamily))
+                }
+            },
+            confirmButton = {
+                Button(onClick = { previewPayload = null }) { Text("Close") }
+            }
         )
     }
 }

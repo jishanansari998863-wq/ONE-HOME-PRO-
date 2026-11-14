@@ -1,5 +1,6 @@
 package com.example
 
+import android.Manifest
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -26,6 +27,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -279,5 +281,46 @@ class DocumentScannerAndVaultRobolectricTest {
         composeRule.onNodeWithTag("cat_chip_PASSPORT").assertExists()
         composeRule.onNodeWithTag("cat_chip_CHEQUE").assertExists()
         composeRule.onNodeWithTag("btn_review_and_confirm_upload").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `clicking Take Photo when Camera permission is granted opens CameraX viewfinder dialog`() {
+        Shadows.shadowOf(app).grantPermissions(Manifest.permission.CAMERA)
+        val vm = OneHomeProViewModel(container, splashDelayMs = 0L).also { activeVm = it }
+        composeRule.setContent {
+            val state = OneHomeUiState(
+                authContext = ownerCtx,
+                data = BusinessSnapshotData(
+                    businesses = listOf(
+                        BusinessEntity(
+                            id = ownerCtx.activeBusinessId,
+                            name = "Doha Realty WLL",
+                            code = "DRW",
+                            branchName = "West Bay",
+                            createdAtEpoch = 0L,
+                            updatedAtEpoch = 0L
+                        )
+                    )
+                )
+            )
+            DocumentScannerStudioDialog(
+                uiState = state,
+                vm = vm,
+                onDismiss = {}
+            )
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000L) {
+            composeRule.onAllNodesWithTag("btn_take_photo").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("btn_take_photo").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000L) {
+            composeRule.onAllNodesWithTag("camerax_viewfinder_dialog").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("camerax_viewfinder_dialog").assertIsDisplayed()
+        composeRule.onNodeWithTag("camera_close_btn").performClick()
+        composeRule.waitForIdle()
+        composeRule.onAllNodesWithTag("camerax_viewfinder_dialog").assertCountEquals(0)
     }
 }

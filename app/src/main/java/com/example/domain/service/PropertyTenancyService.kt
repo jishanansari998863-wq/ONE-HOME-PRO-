@@ -157,6 +157,9 @@ class PropertyTenancyService(
         floorsCount: Int
     ): BuildingEntity {
         AuthorizationGuard.requirePermission(ctx, AppModule.PROPERTIES, ActionType.CREATE, ctx.activeBusinessId, propertyId)
+        val property = dao.getPropertyById(propertyId) ?: throw IllegalArgumentException("Property not found")
+        require(property.businessId == ctx.activeBusinessId) { "Cross-business property access blocked" }
+        require(name.isNotBlank()) { "Building name is required" }
         val now = System.currentTimeMillis()
         val b = BuildingEntity(
             id = CryptoUtil.newUuid(),
@@ -180,6 +183,10 @@ class PropertyTenancyService(
         label: String
     ): FloorEntity {
         AuthorizationGuard.requirePermission(ctx, AppModule.PROPERTIES, ActionType.CREATE, ctx.activeBusinessId, propertyId)
+        val building = dao.getBuildingById(buildingId) ?: throw IllegalArgumentException("Building not found")
+        require(building.businessId == ctx.activeBusinessId && building.propertyId == propertyId) {
+            "Building does not belong to selected property"
+        }
         val now = System.currentTimeMillis()
         val f = FloorEntity(
             id = CryptoUtil.newUuid(),
@@ -212,6 +219,10 @@ class PropertyTenancyService(
         photoUri: String? = null
     ): RoomEntity {
         AuthorizationGuard.requirePermission(ctx, AppModule.PROPERTIES, ActionType.CREATE, ctx.activeBusinessId, propertyId)
+        val floor = dao.getFloorById(floorId) ?: throw IllegalArgumentException("Floor not found")
+        require(floor.businessId == ctx.activeBusinessId && floor.propertyId == propertyId && floor.buildingId == buildingId) {
+            "Floor does not belong to selected building/property"
+        }
         require(roomNumber.isNotBlank()) { "Room number is required" }
         require(monthlyRateFils > 0) { "Monthly rate must be > 0 QAR" }
         val now = System.currentTimeMillis()
@@ -262,6 +273,8 @@ class PropertyTenancyService(
         repairRequired: Boolean
     ): PropertyInspectionEntity {
         AuthorizationGuard.requirePermission(ctx, AppModule.PROPERTIES, ActionType.CREATE, ctx.activeBusinessId, propertyId)
+        val prop = dao.getPropertyById(propertyId) ?: throw IllegalArgumentException("Property not found")
+        require(prop.businessId == ctx.activeBusinessId) { "Cross-business property inspection blocked" }
         val entity = PropertyInspectionEntity(
             id = CryptoUtil.newUuid(),
             businessId = ctx.activeBusinessId,
@@ -290,6 +303,9 @@ class PropertyTenancyService(
         val room = dao.getRoomById(roomId) ?: throw IllegalArgumentException("Room not found")
         AuthorizationGuard.requirePermission(ctx, AppModule.PROPERTIES, ActionType.EDIT, room.businessId, room.propertyId)
         require(room.status == "VACANT") { "Only VACANT rooms can be reserved" }
+        require(daysValid > 0) { "Reservation validity must be at least 1 day" }
+        val customer = dao.getCustomerById(customerId) ?: throw IllegalArgumentException("Customer not found")
+        require(customer.businessId == room.businessId) { "Cross-business reservation blocked" }
         val now = System.currentTimeMillis()
         return db.withTransaction {
             val res = RoomReservationEntity(
@@ -378,6 +394,9 @@ class PropertyTenancyService(
         phone: String
     ): FamilyMemberEntity {
         AuthorizationGuard.requirePermission(ctx, AppModule.TENANTS, ActionType.EDIT, ctx.activeBusinessId)
+        val customer = dao.getCustomerById(customerId) ?: throw IllegalArgumentException("Customer not found")
+        require(customer.businessId == ctx.activeBusinessId) { "Cross-business customer access blocked" }
+        require(fullName.isNotBlank()) { "Family member name is required" }
         val fm = FamilyMemberEntity(
             id = CryptoUtil.newUuid(),
             businessId = ctx.activeBusinessId,
@@ -498,6 +517,7 @@ class PropertyTenancyService(
         AuthorizationGuard.requirePermission(ctx, AppModule.AGREEMENTS, ActionType.EDIT, old.businessId, old.propertyId)
         require(old.status == "ACTIVE" || old.status == "EXPIRED") { "Only active/expired agreements can be renewed" }
         require(newEndDateEpoch > old.endDateEpoch) { "Renewal end date must be after current end date" }
+        require(newRentAmountFils > 0) { "Renewed rent amount must be positive" }
         val now = System.currentTimeMillis()
         return db.withTransaction {
             dao.updateAgreement(old.copy(status = "RENEWED", updatedAtEpoch = now))
@@ -517,6 +537,19 @@ class PropertyTenancyService(
                 updatedAtEpoch = now
             )
             dao.insertAgreement(renewed)
+            dao.insertAgreementMember(
+                AgreementMemberEntity(
+                    id = CryptoUtil.newUuid(),
+                    businessId = old.businessId,
+                    agreementId = newId,
+                    customerId = old.customerId,
+                    createdAtEpoch = now
+                )
+            )
+            val room = dao.getRoomById(old.roomId)
+            if (room != null && room.status != "OCCUPIED") {
+                dao.updateRoom(room.copy(status = "OCCUPIED", updatedAtEpoch = now))
+            }
             dao.insertTenancyHistory(
                 TenancyHistoryEntity(
                     id = CryptoUtil.newUuid(),
@@ -538,6 +571,8 @@ class PropertyTenancyService(
     suspend fun terminateAndMoveOut(ctx: AuthContext, agreementId: String, reason: String) {
         val old = dao.getAgreementById(agreementId) ?: throw IllegalArgumentException("Agreement not found")
         AuthorizationGuard.requirePermission(ctx, AppModule.AGREEMENTS, ActionType.EDIT, old.businessId, old.propertyId)
+        require(old.status == "ACTIVE") { "Only ACTIVE agreements can be terminated" }
+        val cleanReason = reason.trim().ifBlank { "Move-out" }
         val now = System.currentTimeMillis()
         db.withTransaction {
             dao.updateAgreement(old.copy(status = "TERMINATED", moveOutDateEpoch = now, updatedAtEpoch = now))
@@ -554,7 +589,7 @@ class PropertyTenancyService(
                     customerId = old.customerId,
                     agreementId = old.id,
                     eventType = "MOVE_OUT",
-                    summary = "Terminated & moved out: $reason",
+                    summary = "Terminated & moved out: $cleanReason",
                     actorUserId = ctx.userId,
                     occurredAtEpoch = now
                 )

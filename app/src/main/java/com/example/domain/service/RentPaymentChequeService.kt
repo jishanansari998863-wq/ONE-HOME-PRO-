@@ -243,6 +243,9 @@ class RentPaymentChequeService(
             }
             dao.updatePayment(pay.copy(status = "REVERSED"))
             dao.getReceiptByPaymentId(pay.id)?.let { dao.updateReceipt(it.copy(isVoided = true)) }
+            dao.getAdvanceRentByPaymentId(pay.id)?.let { adv ->
+                dao.updateAdvanceRent(adv.copy(remainingAmountFils = 0L, status = "REVERSED", updatedAtEpoch = now))
+            }
         }
     }
 
@@ -266,7 +269,11 @@ class RentPaymentChequeService(
         val now = System.currentTimeMillis()
         return db.withTransaction {
             val customer = dao.getCustomerById(customerId) ?: throw IllegalArgumentException("Customer not found")
+            require(customer.businessId == ctx.activeBusinessId) { "Cross-business cheque blocked" }
             val ag = agreementId?.let { dao.getAgreementById(it) }
+            if (ag != null) {
+                require(ag.businessId == ctx.activeBusinessId) { "Cross-business agreement blocked" }
+            }
             val chId = CryptoUtil.newUuid()
             // Received cheque posts to Cheques Receivable (undeposited), NEVER cleared bank income!
             val journal = accountingService.postJournalInternal(
@@ -331,9 +338,16 @@ class RentPaymentChequeService(
             )
 
             when (newStatus) {
+                "DEPOSITED" -> {
+                    require(ch.status in setOf("RECEIVED", "HELD", "DUE_SOON")) {
+                        "Invalid transition from ${ch.status} to DEPOSITED"
+                    }
+                }
                 "CLEARED" -> {
-                    require(ch.status != "CLEARED" && ch.status != "BOUNCED") { "Invalid transition to CLEARED" }
-                    accountingService.postJournalInternal(
+                    require(ch.status in setOf("RECEIVED", "HELD", "DUE_SOON", "DEPOSITED")) {
+                        "Invalid transition from ${ch.status} to CLEARED"
+                    }
+                    val clearJournal = accountingService.postJournalInternal(
                         businessId = ch.businessId,
                         propertyId = ch.propertyId.ifBlank { null },
                         entryDateEpoch = now,
@@ -361,6 +375,7 @@ class RentPaymentChequeService(
                         method = "CHEQUE",
                         status = "CONFIRMED",
                         chequeId = ch.id,
+                        journalEntryId = clearJournal.id,
                         notes = "Cleared cheque #${ch.chequeNumber} (${ch.bankName})",
                         receivedAtEpoch = now,
                         receivedByUserId = ctx.userId,
@@ -408,6 +423,9 @@ class RentPaymentChequeService(
                     )
                 }
                 "BOUNCED" -> {
+                    require(ch.status in setOf("RECEIVED", "HELD", "DUE_SOON", "DEPOSITED")) {
+                        "Invalid transition from ${ch.status} to BOUNCED"
+                    }
                     require(bounceReason.isNotBlank()) { "Bounce reason is required" }
                     accountingService.postJournalInternal(
                         businessId = ch.businessId,
@@ -424,6 +442,7 @@ class RentPaymentChequeService(
                         )
                     )
                 }
+                else -> throw IllegalArgumentException("Unsupported cheque status transition: $newStatus")
             }
             dao.updateCheque(updated)
             updated

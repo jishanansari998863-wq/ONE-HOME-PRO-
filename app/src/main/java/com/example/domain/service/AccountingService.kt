@@ -360,10 +360,11 @@ class AccountingService(private val db: OneHomeProDatabase) {
     ): ExpenseRecordEntity {
         AuthorizationGuard.requirePermission(ctx, AppModule.ACCOUNTING, ActionType.POST, ctx.activeBusinessId, propertyId)
         require(amountFils > 0) { "Amount must be positive" }
+        val normalizedMethod = paymentMethod.trim().uppercase()
         val now = System.currentTimeMillis()
         return db.withTransaction {
-            val creditAccount = when (paymentMethod) {
-                "BANK_TRANSFER", "CARD" -> ACC_BANK
+            val creditAccount = when (normalizedMethod) {
+                "BANK", "BANK_TRANSFER", "CARD" -> ACC_BANK
                 "PETTY_CASH" -> ACC_PETTY_CASH
                 else -> ACC_CASH
             }

@@ -10,6 +10,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.FactCheck
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -309,13 +313,13 @@ fun DashboardScreen(
                 Triple(strings.totalProperties, scopedProps.size.toString(), Icons.Default.Apartment to { onNavigate(AppDestination.PROPERTIES) }),
                 Triple(strings.totalRooms, "$occupiedRooms / $totalRooms", Icons.Default.MeetingRoom to { onNavigate(AppDestination.PROPERTIES) }),
                 Triple(strings.occupancyRate, "$occupancyPct%", Icons.Default.PieChart to { onNavigate(AppDestination.REPORTS) }),
-                Triple(strings.rentBilled, QatarFormatters.formatQar(rentBilledFils), Icons.Default.ReceiptLong to { onNavigate(AppDestination.PAYMENTS) }),
+                Triple(strings.rentBilled, QatarFormatters.formatQar(rentBilledFils), Icons.AutoMirrored.Filled.ReceiptLong to { onNavigate(AppDestination.PAYMENTS) }),
                 Triple(strings.rentCollected, QatarFormatters.formatQar(rentCollectedFils), Icons.Default.Payments to { onNavigate(AppDestination.PAYMENTS) }),
                 Triple(strings.overdueRent, QatarFormatters.formatQar(overdueFils), Icons.Default.WarningAmber to { onNavigate(AppDestination.PAYMENTS) }),
                 Triple(strings.depositsHeld, QatarFormatters.formatQar(depositsHeldFils), Icons.Default.Savings to { onNavigate(AppDestination.DEPOSITS) }),
                 Triple(strings.cashAndBank, QatarFormatters.formatQar(cashAndBankFils), Icons.Default.AccountBalanceWallet to { onNavigate(AppDestination.ACCOUNTING) }),
-                Triple(strings.netProfit, QatarFormatters.formatQar(netProfitFils), Icons.Default.TrendingUp to { onNavigate(AppDestination.REPORTS) }),
-                Triple(strings.pendingApprovals, pendingApprovals.toString(), Icons.Default.FactCheck to { onNavigate(AppDestination.INVENTORY) }),
+                Triple(strings.netProfit, QatarFormatters.formatQar(netProfitFils), Icons.AutoMirrored.Filled.TrendingUp to { onNavigate(AppDestination.REPORTS) }),
+                Triple(strings.pendingApprovals, pendingApprovals.toString(), Icons.AutoMirrored.Filled.FactCheck to { onNavigate(AppDestination.INVENTORY) }),
                 Triple(strings.openComplaints, openMaintenance.toString(), Icons.Default.Handyman to { onNavigate(AppDestination.MAINTENANCE) }),
                 Triple(strings.lowStockItems, lowStockCount.toString(), Icons.Default.Inventory2 to { onNavigate(AppDestination.INVENTORY) })
             )
@@ -442,7 +446,7 @@ fun MoreHubScreen(
                 onClick = onLogout,
                 modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).testTag("more_logout_button")
             ) {
-                Icon(Icons.Default.Logout, contentDescription = null)
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(strings.logout)
             }
