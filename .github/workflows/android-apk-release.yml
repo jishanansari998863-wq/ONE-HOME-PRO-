@@ -94,13 +94,8 @@ jobs:
         with:
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: true
-          packages: |
-            cmdline-tools;latest
-            platform-tools
-            build-tools;36.0.0
-            platforms;android-36
 
-      - name: Install Android 36.1 SDK (if listed) & verify SDK licenses
+      - name: Install Android SDK packages & verify licenses
         shell: bash
         run: |
           set -euo pipefail
@@ -110,24 +105,37 @@ jobs:
             SDKMANAGER="$(command -v sdkmanager)"
           fi
 
-          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --version
-
-          SDK_LIST="$("$SDKMANAGER" --sdk_root="$SDK_ROOT" --list)"
-          if echo "$SDK_LIST" | grep -E '^[[:space:]]*platforms;android-36\.1([[:space:]]|\|)' >/dev/null; then
+          accept_licenses() {
             set +o pipefail
-            yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "platforms;android-36.1" || {
+            yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || {
               rc=$?
               [ "$rc" -eq 141 ] || exit "$rc"
             }
             set -o pipefail
+          }
+
+          install_pkg() {
+            set +o pipefail
+            yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" "$1" || {
+              rc=$?
+              [ "$rc" -eq 141 ] || exit "$rc"
+            }
+            set -o pipefail
+          }
+
+          accept_licenses
+          install_pkg "cmdline-tools;latest"
+          install_pkg "platform-tools"
+          install_pkg "build-tools;36.0.0"
+          install_pkg "platforms;android-36"
+
+          SDK_LIST="$("$SDKMANAGER" --sdk_root="$SDK_ROOT" --list)"
+          if echo "$SDK_LIST" | grep -E '^[[:space:]]*platforms;android-36\.1([[:space:]]|\|)' >/dev/null; then
+            install_pkg "platforms;android-36.1"
           fi
 
-          set +o pipefail
-          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses || {
-            rc=$?
-            [ "$rc" -eq 141 ] || exit "$rc"
-          }
-          set -o pipefail
+          accept_licenses
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --version
 
       - name: Decode debug keystore if missing
         run: |
