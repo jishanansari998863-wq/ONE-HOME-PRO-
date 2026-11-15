@@ -380,7 +380,7 @@ class AccountingService(private val db: OneHomeProDatabase) {
                 createdByUserId = ctx.userId,
                 lines = listOf(
                     JournalLineInput(ACC_OPERATING_EXPENSE, amountFils, 0L, description),
-                    JournalLineInput(creditAccount, 0L, amountFils, paymentMethod)
+                    JournalLineInput(creditAccount, 0L, amountFils, normalizedMethod)
                 )
             )
             val rec = ExpenseRecordEntity(
@@ -391,7 +391,7 @@ class AccountingService(private val db: OneHomeProDatabase) {
                 vendorName = vendorName,
                 description = description,
                 amountFils = amountFils,
-                paymentMethod = paymentMethod,
+                paymentMethod = normalizedMethod,
                 status = "POSTED",
                 accountId = expAcc.id,
                 journalEntryId = journal.id,
@@ -400,7 +400,7 @@ class AccountingService(private val db: OneHomeProDatabase) {
                 approvedByUserId = ctx.userId
             )
             dao.insertExpenseRecord(rec)
-            if (paymentMethod == "CASH") {
+            if (creditAccount == ACC_CASH) {
                 dao.insertCashbookEntry(
                     CashbookEntryEntity(
                         id = CryptoUtil.newUuid(),
@@ -414,7 +414,7 @@ class AccountingService(private val db: OneHomeProDatabase) {
                         createdByUserId = ctx.userId
                     )
                 )
-            } else if (paymentMethod == "PETTY_CASH") {
+            } else if (creditAccount == ACC_PETTY_CASH) {
                 dao.insertPettyCashEntry(
                     PettyCashEntryEntity(
                         id = CryptoUtil.newUuid(),

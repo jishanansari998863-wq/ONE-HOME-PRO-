@@ -18,7 +18,9 @@ import com.example.localization.AppLanguage
 import com.example.ui.BusinessSnapshotData
 import com.example.ui.OneHomeProViewModel
 import com.example.ui.OneHomeUiState
+import android.os.Looper
 import com.example.ui.components.DocumentScannerStudioDialog
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
@@ -50,7 +52,7 @@ class DocumentScannerAndVaultRobolectricTest {
             .allowMainThreadQueries()
             .build()
         container = AppContainer(app, db)
-        runBlocking {
+        runBlocking(Dispatchers.IO) {
             container.sessionStore.clearSessionToken()
             container.sessionStore.setLanguage(AppLanguage.EN)
             val res = container.authService.setupInitialOwnerAndBusiness(
@@ -69,12 +71,14 @@ class DocumentScannerAndVaultRobolectricTest {
 
     @After
     fun tearDown() {
-        runBlocking {
-            activeVm?.awaitStopObservers()
-            activeVm = null
+        activeVm?.stopObservers()
+        activeVm = null
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        runBlocking(Dispatchers.IO) {
             container.sessionStore.clearSessionToken()
             container.sessionStore.setLanguage(AppLanguage.EN)
         }
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
         db.close()
     }
 

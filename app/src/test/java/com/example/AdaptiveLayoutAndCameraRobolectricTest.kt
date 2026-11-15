@@ -1,5 +1,6 @@
 package com.example
 
+import android.os.Looper
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.room.Room
@@ -9,6 +10,7 @@ import com.example.domain.service.AuthResult
 import com.example.localization.AppLanguage
 import com.example.ui.OneHomeProViewModel
 import com.example.ui.components.createTempCameraImageUri
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
@@ -17,6 +19,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -37,7 +40,7 @@ class AdaptiveLayoutAndCameraRobolectricTest {
             .allowMainThreadQueries()
             .build()
         container = AppContainer(app, db)
-        runBlocking {
+        runBlocking(Dispatchers.IO) {
             container.sessionStore.clearSessionToken()
             container.sessionStore.setLanguage(AppLanguage.EN)
             val res = container.authService.setupInitialOwnerAndBusiness(
@@ -56,12 +59,14 @@ class AdaptiveLayoutAndCameraRobolectricTest {
 
     @After
     fun tearDown() {
-        runBlocking {
-            activeVm?.awaitStopObservers()
-            activeVm = null
+        activeVm?.stopObservers()
+        activeVm = null
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        runBlocking(Dispatchers.IO) {
             container.sessionStore.clearSessionToken()
             container.sessionStore.setLanguage(AppLanguage.EN)
         }
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
         db.close()
     }
 

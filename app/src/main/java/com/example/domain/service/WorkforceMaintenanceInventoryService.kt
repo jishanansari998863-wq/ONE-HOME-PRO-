@@ -688,7 +688,8 @@ class WorkforceMaintenanceInventoryService(
             require(amountFils <= remaining) { "Payment exceeds remaining payable balance" }
             val payId = CryptoUtil.newUuid()
             val ref = "SPAY-${payId.take(6).uppercase()}"
-            val creditCode = if (method == "CASH") AccountingService.ACC_CASH else AccountingService.ACC_BANK
+            val cleanMethod = method.trim().uppercase().ifBlank { "BANK_TRANSFER" }
+            val creditCode = if (cleanMethod == "CASH") AccountingService.ACC_CASH else AccountingService.ACC_BANK
             val je = accountingService.postJournalInternal(
                 businessId = po.businessId,
                 propertyId = po.propertyId,
@@ -700,7 +701,7 @@ class WorkforceMaintenanceInventoryService(
                 createdByUserId = ctx.userId,
                 lines = listOf(
                     JournalLineInput(AccountingService.ACC_ACCOUNTS_PAYABLE, amountFils, 0L, "Settle payable"),
-                    JournalLineInput(creditCode, 0L, amountFils, method)
+                    JournalLineInput(creditCode, 0L, amountFils, cleanMethod)
                 )
             )
             opsDao.insertSupplierPayment(
@@ -710,7 +711,7 @@ class WorkforceMaintenanceInventoryService(
                     supplierId = po.supplierId,
                     referenceNumber = ref,
                     amountFils = amountFils,
-                    method = method,
+                    method = cleanMethod,
                     journalEntryId = je.id,
                     paidByUserId = ctx.userId,
                     paidAtEpoch = now

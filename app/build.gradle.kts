@@ -143,14 +143,18 @@ dependencies {
 tasks.withType<Test> {
   failFast = false
   maxHeapSize = "2048m"
-  forkEvery = 2
-  timeout.set(Duration.ofMinutes(8))
+  forkEvery = 0
+  timeout.set(Duration.ofMinutes(15))
   javaLauncher.set(
     javaToolchains.launcherFor {
       languageVersion.set(JavaLanguageVersion.of(21))
     }
   )
   testLogging {
-    events("passed", "failed", "skipped")
+    events("started", "passed", "failed", "skipped")
+    exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    showExceptions = true
+    showCauses = true
+    showStackTraces = true
   }
 }

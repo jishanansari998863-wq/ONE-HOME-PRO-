@@ -1,5 +1,6 @@
 package com.example
 
+import android.os.Looper
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.room.Room
@@ -7,6 +8,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.example.data.db.OneHomeProDatabase
 import com.example.localization.AppLanguage
 import com.example.ui.OneHomeProViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
@@ -14,6 +16,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -34,7 +37,7 @@ class ComposeUiFlowRobolectricTest {
             .allowMainThreadQueries()
             .build()
         container = AppContainer(app, db)
-        runBlocking {
+        runBlocking(Dispatchers.IO) {
             container.sessionStore.clearSessionToken()
             container.sessionStore.setLanguage(AppLanguage.EN)
         }
@@ -43,11 +46,13 @@ class ComposeUiFlowRobolectricTest {
 
     @After
     fun tearDown() {
-        runBlocking {
-            vm.awaitStopObservers()
+        vm.stopObservers()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        runBlocking(Dispatchers.IO) {
             container.sessionStore.clearSessionToken()
             container.sessionStore.setLanguage(AppLanguage.EN)
         }
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
         db.close()
     }
 
