@@ -3,6 +3,7 @@ package com.example
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.example.base.InMemoryCentralAuthorityTestDouble
 import com.example.data.db.OneHomeProDatabase
 import com.example.domain.security.AuthContext
 import com.example.domain.security.SessionStore
@@ -41,7 +42,10 @@ class AccountingAndOperationsRobolectricTest {
             .build()
         sessionStore = SessionStore(context)
         accountingService = AccountingService(db)
-        authService = AuthService(db, sessionStore, accountingService)
+        val central = InMemoryCentralAuthorityTestDouble().apply {
+            preApproveUserForTest("uid_acc_owner", "acc-owner@onehome.qa", "Owner", "OWNER")
+        }
+        authService = AuthService(db, sessionStore, accountingService, central)
         propertyService = PropertyTenancyService(db, accountingService, authService)
         rentPaymentService = RentPaymentChequeService(db, accountingService)
         opsService = WorkforceMaintenanceInventoryService(db, accountingService)

@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import com.example.data.db.entities.*
 import kotlinx.coroutines.flow.Flow
 
@@ -138,4 +139,44 @@ interface AccountingDao {
 
     @Update
     suspend fun updateFiscalPeriod(entity: FiscalPeriodEntity)
+
+    // --- Cloud Sync / Multi-Device Restore Helpers ---
+    @Query("SELECT * FROM income_records WHERE businessId = :businessId")
+    suspend fun getIncomeRecordsByBusiness(businessId: String): List<IncomeRecordEntity>
+
+    @Query("SELECT * FROM expense_records WHERE businessId = :businessId")
+    suspend fun getExpenseRecordsByBusiness(businessId: String): List<ExpenseRecordEntity>
+
+    @Query("SELECT * FROM cashbook_entries WHERE businessId = :businessId")
+    suspend fun getCashbookEntriesByBusiness(businessId: String): List<CashbookEntryEntity>
+
+    @Query("SELECT * FROM petty_cash_entries WHERE businessId = :businessId")
+    suspend fun getPettyCashEntriesByBusiness(businessId: String): List<PettyCashEntryEntity>
+
+    @Query("SELECT * FROM bank_transactions WHERE businessId = :businessId")
+    suspend fun getBankTransactionsByBusiness(businessId: String): List<BankTransactionEntity>
+
+    @Query("SELECT * FROM bank_reconciliations WHERE businessId = :businessId")
+    suspend fun getBankReconciliationsByBusiness(businessId: String): List<BankReconciliationEntity>
+
+    @Query("SELECT * FROM fiscal_periods WHERE businessId = :businessId")
+    suspend fun getFiscalPeriodsByBusiness(businessId: String): List<FiscalPeriodEntity>
+
+    @Query("SELECT COUNT(*) FROM journal_lines WHERE accountId = :accountId")
+    suspend fun countJournalLinesForAccount(accountId: String): Int
+
+    @Query("DELETE FROM chart_of_accounts WHERE id = :accountId")
+    suspend fun deleteAccountById(accountId: String)
+
+    @Upsert suspend fun upsertAccounts(items: List<ChartOfAccountEntity>)
+    @Upsert suspend fun upsertJournalEntries(items: List<JournalEntryEntity>)
+    @Upsert suspend fun upsertJournalLines(items: List<JournalLineEntity>)
+    @Upsert suspend fun upsertIncomeRecords(items: List<IncomeRecordEntity>)
+    @Upsert suspend fun upsertExpenseRecords(items: List<ExpenseRecordEntity>)
+    @Upsert suspend fun upsertBankAccounts(items: List<BankAccountEntity>)
+    @Upsert suspend fun upsertCashbookEntries(items: List<CashbookEntryEntity>)
+    @Upsert suspend fun upsertPettyCashEntries(items: List<PettyCashEntryEntity>)
+    @Upsert suspend fun upsertBankTransactions(items: List<BankTransactionEntity>)
+    @Upsert suspend fun upsertBankReconciliations(items: List<BankReconciliationEntity>)
+    @Upsert suspend fun upsertFiscalPeriods(items: List<FiscalPeriodEntity>)
 }

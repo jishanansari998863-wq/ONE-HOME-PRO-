@@ -46,19 +46,27 @@ data class AuthContext(
     val employeeId: String?,
     val permissionKeys: Set<String>, // "MODULE:ACTION"
     val sessionId: String,
-    val deviceId: String
+    val deviceId: String,
+    val isSuperAdmin: Boolean = false,
+    val serverSessionId: String? = null
 ) {
     fun hasPermission(module: AppModule, action: ActionType): Boolean {
-        if (userType == "OWNER") return true
+        if (isSuperAdmin || userType == "OWNER") return true
         return permissionKeys.contains("${module.name}:${action.name}")
     }
 
-    fun isCustomerPortalOnly(): Boolean = userType == "CUSTOMER"
+    fun isCustomerPortalOnly(): Boolean = userType == "CUSTOMER" && !isSuperAdmin
 }
 
 class AuthorizationException(message: String) : SecurityException(message)
 
 object AuthorizationGuard {
+    fun requireSuperAdmin(ctx: AuthContext) {
+        if (!ctx.isSuperAdmin || !SuperAdminConfig.isSuperAdminEmail(ctx.email)) {
+            throw AuthorizationException("Exclusive Super Admin authority required.")
+        }
+    }
+
     fun requirePermission(
         ctx: AuthContext,
         module: AppModule,

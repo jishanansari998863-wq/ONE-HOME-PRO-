@@ -267,9 +267,9 @@ fun StatusBadge(status: String, modifier: Modifier = Modifier) {
     val (bg, fg) = when (normalized) {
         "ACTIVE", "PAID", "CONFIRMED", "CLEARED", "COMPLETED", "APPROVED", "VACANT", "PRESENT", "OPEN", "RECONCILED", "VERIFIED_RESTORE", "SETTLED" ->
             EmeraldContainer to EmeraldSuccess
-        "DUE", "PARTIAL", "PENDING", "PENDING_CLEARANCE", "DEPOSITED", "RECEIVED", "RESERVED", "IN_PROGRESS", "HELD", "ASSIGNED", "AWAITING_APPROVAL", "AWAITING_CUSTOMER" ->
+        "DUE", "PARTIAL", "PENDING", "PENDING_APPROVAL", "PENDING_CLEARANCE", "DEPOSITED", "RECEIVED", "RESERVED", "IN_PROGRESS", "HELD", "ASSIGNED", "AWAITING_APPROVAL", "AWAITING_CUSTOMER" ->
             AmberContainer to AmberWarning
-        "OVERDUE", "BOUNCED", "REJECTED", "FAILED", "REVERSED", "MAINTENANCE", "SUSPENDED", "LOCKED", "CRITICAL", "DISCREPANCY", "CLOSED" ->
+        "OVERDUE", "BOUNCED", "REJECTED", "FAILED", "REVERSED", "MAINTENANCE", "SUSPENDED", "REVOKED", "LOCKED", "EMERGENCY_LOCKED", "DEVICE_REVOKED_LOST", "CRITICAL", "DISCREPANCY", "CLOSED" ->
             CrimsonContainer to CrimsonError
         else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
     }

@@ -3,6 +3,7 @@ package com.example
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.example.base.InMemoryCentralAuthorityTestDouble
 import com.example.data.db.OneHomeProDatabase
 import com.example.domain.security.*
 import com.example.domain.service.*
@@ -23,6 +24,7 @@ class SecurityAndIsolationRobolectricTest {
     private lateinit var db: OneHomeProDatabase
     private lateinit var sessionStore: SessionStore
     private lateinit var accountingService: AccountingService
+    private lateinit var central: InMemoryCentralAuthorityTestDouble
     private lateinit var authService: AuthService
     private lateinit var propertyService: PropertyTenancyService
     private lateinit var workforceService: WorkforceMaintenanceInventoryService
@@ -35,7 +37,16 @@ class SecurityAndIsolationRobolectricTest {
             .build()
         sessionStore = SessionStore(context)
         accountingService = AccountingService(db)
-        authService = AuthService(db, sessionStore, accountingService)
+        central = InMemoryCentralAuthorityTestDouble()
+        central.preApproveUserForTest("uid_owner1", "owner@onehome.qa", "Tariq Al-Thani", "OWNER")
+        central.preApproveUserForTest("uid_owner2", "owner2@onehome.qa", "Owner One", "OWNER")
+        central.preApproveUserForTest("uid_mfa", "mfa@onehome.qa", "Owner MFA", "OWNER")
+        central.preApproveUserForTest("uid_root", "root@onehome.qa", "Owner Root", "OWNER")
+        central.preApproveUserForTest("uid_admin", "admin@onehome.qa", "Owner Admin", "OWNER")
+        central.preApproveUserForTest("uid_nasser", "nasser@qa.com", "Nasser", "CUSTOMER")
+        central.preApproveUserForTest("uid_samir", "samir@onehome.qa", "Samir Tech", "EMPLOYEE")
+        central.preApproveUserForTest("uid_nadia", "nadia@onehome.qa", "Nadia Staff", "EMPLOYEE")
+        authService = AuthService(db, sessionStore, accountingService, central)
         propertyService = PropertyTenancyService(db, accountingService, authService)
         workforceService = WorkforceMaintenanceInventoryService(db, accountingService)
     }
@@ -78,6 +89,7 @@ class SecurityAndIsolationRobolectricTest {
 
     @Test
     fun `Remember Me revocable session token rejects after logout and logoutAllDevices`() = runBlocking {
+        central.signInAsTestIdentity("uid_owner2", "owner2@onehome.qa", "Owner One")
         val setup = authService.setupInitialOwnerAndBusiness(
             fullName = "Owner One",
             email = "owner2@onehome.qa",
@@ -107,6 +119,7 @@ class SecurityAndIsolationRobolectricTest {
 
     @Test
     fun `Password reset revokes all active sessions and MFA + recovery code flow succeeds`() = runBlocking {
+        central.signInAsTestIdentity("uid_mfa", "mfa@onehome.qa", "Owner MFA")
         val setup = authService.setupInitialOwnerAndBusiness(
             fullName = "Owner MFA",
             email = "mfa@onehome.qa",
@@ -141,6 +154,7 @@ class SecurityAndIsolationRobolectricTest {
 
     @Test
     fun `RBAC, employee privilege restriction, cross-business and cross-customer isolation are enforced`() = runBlocking {
+        central.signInAsTestIdentity("uid_root", "root@onehome.qa", "Owner Root")
         val ownerAuth = authService.setupInitialOwnerAndBusiness(
             fullName = "Owner Root",
             email = "root@onehome.qa",
@@ -215,6 +229,7 @@ class SecurityAndIsolationRobolectricTest {
 
     @Test
     fun `role permission toggle, session revocation, and user status management enforce RBAC and isolation`() = runBlocking {
+        central.signInAsTestIdentity("uid_admin", "admin@onehome.qa", "Owner Admin")
         val ownerAuth = authService.setupInitialOwnerAndBusiness(
             fullName = "Owner Admin",
             email = "admin@onehome.qa",

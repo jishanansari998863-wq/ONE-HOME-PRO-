@@ -1,19 +1,22 @@
 package com.example.ui
 
+import android.content.Context
 import android.net.Uri
 import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.AppContainer
 import com.example.data.db.entities.*
+import com.example.data.remote.GoogleSignInHelper
 import com.example.domain.document.DocumentImageProcessor
 import com.example.domain.document.DocumentOutputFormat
 import com.example.domain.document.DocumentUploadProgress
 import com.example.domain.document.ScannedPageDraft
-import com.example.domain.security.AuthContext
+import com.example.domain.security.*
 import com.example.domain.service.AuthResult
 import com.example.domain.service.JournalLineInput
 import com.example.localization.AppLanguage
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -37,6 +40,7 @@ class OneHomeProViewModel(
     val uiState: StateFlow<OneHomeUiState> = _uiState.asStateFlow()
 
     private var dataCollectionJob: Job? = null
+    private var gateRevocationJob: Job? = null
 
     init {
         bootstrap()
@@ -45,12 +49,16 @@ class OneHomeProViewModel(
     fun stopObservers() {
         dataCollectionJob?.cancel()
         dataCollectionJob = null
+        gateRevocationJob?.cancel()
+        gateRevocationJob = null
         viewModelScope.coroutineContext.cancelChildren()
     }
 
     suspend fun awaitStopObservers() {
         dataCollectionJob?.cancelAndJoin()
         dataCollectionJob = null
+        gateRevocationJob?.cancelAndJoin()
+        gateRevocationJob = null
         viewModelScope.coroutineContext.cancelChildren()
     }
 
@@ -75,14 +83,25 @@ class OneHomeProViewModel(
             val hasUsers = container.authService.hasAnyUsers()
             val restoredCtx = if (hasUsers) container.authService.validateStoredSessionOrNull() else null
             if (restoredCtx != null) {
+                val id = container.centralAuthority.currentIdentity()
+                val status = runCatching { container.centralAuthority.getPlatformStatus() }.getOrNull()
+                _uiState.update { it.copy(centralIdentity = id, platformStatus = status) }
                 onAuthenticated(restoredCtx)
+                if (restoredCtx.isSuperAdmin) {
+                    refreshSuperAdminData()
+                }
             } else {
-                _uiState.update {
-                    it.copy(
-                        isInitializing = false,
-                        hasExistingUsers = hasUsers,
-                        authStep = if (hasUsers) AuthScreenStep.LOGIN else AuthScreenStep.WELCOME_SETUP
-                    )
+                val identity = container.centralAuthority.currentIdentity()
+                if (identity != null) {
+                    evaluateSignedInIdentity(identity)
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isInitializing = false,
+                            hasExistingUsers = hasUsers,
+                            authStep = AuthScreenStep.RESTRICTED_GATE
+                        )
+                    }
                 }
             }
         }
@@ -143,6 +162,680 @@ class OneHomeProViewModel(
 
     private fun deviceLabel(): String = "${Build.MANUFACTURER} ${Build.MODEL}".trim().ifBlank { "Android Device" }
 
+    // --- Central Super Admin & Restricted Gate Actions ---
+    fun onGoogleSignInClicked(activityContext: Context) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
+            val signedIn = GoogleSignInHelper.signInInteractive(
+                activityContext = activityContext,
+                onCancelled = {
+                    _uiState.update {
+                        it.copy(
+                            isBusy = false,
+                            bannerError = "Sign-in was cancelled. Please select a verified Google account to continue."
+                        )
+                    }
+                },
+                onError = { msg ->
+                    _uiState.update { it.copy(isBusy = false, bannerError = msg) }
+                }
+            )
+            if (signedIn) {
+                val id = container.centralAuthority.currentIdentity()
+                if (id != null) {
+                    evaluateSignedInIdentity(id)
+                } else {
+                    _uiState.update { it.copy(isBusy = false, bannerError = "Google identity unavailable after sign-in.") }
+                }
+            }
+        }
+    }
+
+    fun evaluateCurrentCentralIdentity() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, bannerError = null) }
+            val id = container.centralAuthority.currentIdentity()
+            if (id != null) {
+                evaluateSignedInIdentity(id)
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isInitializing = false,
+                        isBusy = false,
+                        centralIdentity = null,
+                        authStep = AuthScreenStep.RESTRICTED_GATE
+                    )
+                }
+            }
+        }
+    }
+
+    private suspend fun evaluateSignedInIdentity(identity: CentralIdentity) {
+        try {
+            val status = container.centralAuthority.getPlatformStatus()
+            val isSuperAdmin = identity.emailVerified &&
+                SuperAdminConfig.isSuperAdminEmail(identity.email) &&
+                container.centralAuthority.isVerifiedSuperAdminCurrent()
+
+            val deviceId = container.sessionStore.getOrCreateDeviceId()
+            val revokedDevice = container.centralAuthority.isDeviceRevokedLost(identity.uid, deviceId)
+            if (revokedDevice != null) {
+                _uiState.update {
+                    it.copy(
+                        isInitializing = false,
+                        isBusy = false,
+                        centralIdentity = identity,
+                        platformStatus = status,
+                        gateLockReason = revokedDevice.revokedReason
+                            ?: "This device (${revokedDevice.deviceName}) was marked LOST/REVOKED by Super Admin. It cannot access ONE HOME PRO unless re-authorized from an active Super Admin device.",
+                        authStep = AuthScreenStep.DEVICE_REVOKED_LOCKED
+                    )
+                }
+                return
+            }
+
+            if (isSuperAdmin) {
+                val bootstrapped = container.centralAuthority.isPlatformBootstrapped()
+                val secQuestion = if (bootstrapped) {
+                    runCatching { container.centralAuthority.getSuperAdminSecurityQuestion() }.getOrNull()
+                } else null
+                _uiState.update {
+                    it.copy(
+                        isInitializing = false,
+                        isBusy = false,
+                        centralIdentity = identity,
+                        platformStatus = status,
+                        superAdminSecurityQuestion = secQuestion,
+                        gateLockReason = null,
+                        authStep = if (bootstrapped) AuthScreenStep.SUPER_ADMIN_VERIFY else AuthScreenStep.SUPER_ADMIN_BOOTSTRAP
+                    )
+                }
+                return
+            }
+
+            if (status.emergencyLockAllNonSuperAdmin) {
+                _uiState.update {
+                    it.copy(
+                        isInitializing = false,
+                        isBusy = false,
+                        centralIdentity = identity,
+                        platformStatus = status,
+                        gateLockReason = status.lockMessage ?: "Global Emergency Lock activated by Super Admin.",
+                        authStep = AuthScreenStep.EMERGENCY_LOCKED
+                    )
+                }
+                return
+            }
+
+            val req = container.centralAuthority.getMyAccessRequest()
+            val grant = container.centralAuthority.getMyAccessGrant()
+            if (grant != null && grant.isActiveGrant()) {
+                val deviceId = container.sessionStore.getOrCreateDeviceId()
+                when (
+                    val res = container.centralAuthority.verifyAndOpenApprovedSession(
+                        uid = identity.uid,
+                        email = identity.email,
+                        businessId = grant.activeBusinessId,
+                        deviceId = deviceId,
+                        deviceName = deviceLabel(),
+                        rememberMe = true
+                    )
+                ) {
+                    is CentralVerificationResult.Approved -> {
+                        val auth = container.authService.activateApprovedCentralSession(
+                            grant = res.grant,
+                            business = res.business,
+                            serverSessionId = res.serverSessionId,
+                            rememberMe = true,
+                            deviceName = deviceLabel(),
+                            isSuperAdmin = false
+                        )
+                        _uiState.update {
+                            it.copy(
+                                centralIdentity = identity,
+                                platformStatus = status,
+                                myAccessRequest = req,
+                                myAccessGrant = grant,
+                                gateLockReason = null
+                            )
+                        }
+                        onAuthenticated(auth.context)
+                    }
+                    is CentralVerificationResult.Denied -> {
+                        _uiState.update {
+                            it.copy(
+                                isInitializing = false,
+                                isBusy = false,
+                                centralIdentity = identity,
+                                platformStatus = status,
+                                myAccessRequest = req,
+                                myAccessGrant = grant,
+                                gateLockReason = res.reason,
+                                bannerError = res.reason,
+                                authStep = if (res.emergencyLocked) AuthScreenStep.EMERGENCY_LOCKED else AuthScreenStep.ACCESS_REQUEST
+                            )
+                        }
+                    }
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isInitializing = false,
+                        isBusy = false,
+                        centralIdentity = identity,
+                        platformStatus = status,
+                        myAccessRequest = req,
+                        myAccessGrant = grant,
+                        gateLockReason = grant?.let { g -> "Access status is ${g.status}." } ?: req?.reviewNote,
+                        authStep = AuthScreenStep.ACCESS_REQUEST
+                    )
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _uiState.update {
+                it.copy(
+                    isInitializing = false,
+                    isBusy = false,
+                    centralIdentity = identity,
+                    bannerError = e.message ?: "Central verification failed",
+                    authStep = AuthScreenStep.ACCESS_REQUEST
+                )
+            }
+        }
+    }
+
+    fun bootstrapSuperAdmin(
+        masterPassword: String,
+        securityQuestion: String = "",
+        securityAnswer: String = ""
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
+            try {
+                val deviceId = container.sessionStore.getOrCreateDeviceId()
+                val kit = container.centralAuthority.bootstrapSuperAdminWithRecovery(
+                    masterPassword = masterPassword,
+                    securityQuestion = securityQuestion,
+                    securityAnswer = securityAnswer,
+                    deviceId = deviceId,
+                    deviceName = deviceLabel()
+                )
+                val status = container.centralAuthority.getPlatformStatus()
+                _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        platformStatus = status,
+                        superAdminMfaProvision = kit.totpSecret to kit.recoveryCodes,
+                        lastRecoveryKit = kit,
+                        superAdminSecurityQuestion = kit.securityQuestion.takeIf { q -> q.isNotBlank() },
+                        authStep = AuthScreenStep.SUPER_ADMIN_VERIFY,
+                        bannerSuccess = "Super Admin authority locked with TOTP MFA, single-use recovery codes, and Master Recovery Key. Save these once!"
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isBusy = false, bannerError = e.message ?: "Bootstrap failed") }
+            }
+        }
+    }
+
+    fun verifySuperAdminChallenge(masterPassword: String, totpOrRecoveryCode: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
+            try {
+                val id = container.centralAuthority.currentIdentity()
+                    ?: throw AuthorizationException("Google Sign-In required for Super Admin verification.")
+                val deviceId = container.sessionStore.getOrCreateDeviceId()
+                val revokedDev = container.centralAuthority.isDeviceRevokedLost(id.uid, deviceId)
+                if (revokedDev != null) {
+                    _uiState.update {
+                        it.copy(
+                            isBusy = false,
+                            gateLockReason = revokedDev.revokedReason
+                                ?: "This device was revoked as LOST/STOLEN and cannot sign in until re-authorized.",
+                            authStep = AuthScreenStep.DEVICE_REVOKED_LOCKED
+                        )
+                    }
+                    return@launch
+                }
+                val ok = container.centralAuthority.verifySuperAdminChallenge(masterPassword, totpOrRecoveryCode)
+                if (!ok) {
+                    _uiState.update {
+                        it.copy(isBusy = false, bannerError = "Invalid Super Admin master password, TOTP, or recovery code.")
+                    }
+                    return@launch
+                }
+                when (
+                    val res = container.centralAuthority.verifyAndOpenApprovedSession(
+                        uid = id.uid,
+                        email = id.email,
+                        businessId = null,
+                        deviceId = deviceId,
+                        deviceName = deviceLabel(),
+                        rememberMe = true
+                    )
+                ) {
+                    is CentralVerificationResult.Approved -> {
+                        val auth = container.authService.activateApprovedCentralSession(
+                            grant = res.grant,
+                            business = res.business,
+                            serverSessionId = res.serverSessionId,
+                            rememberMe = true,
+                            deviceName = deviceLabel(),
+                            isSuperAdmin = true
+                        )
+                        val restoreAttempt = runCatching {
+                            container.cloudSyncService.restoreBusinessFromCloudIfEmpty(auth.context)
+                        }
+                        val restoreInfo = restoreAttempt.getOrNull()
+                        val restoreErr = restoreAttempt.exceptionOrNull()?.message
+                        _uiState.update {
+                            it.copy(
+                                superAdminMfaProvision = null,
+                                lastRecoveryKit = null,
+                                myAccessGrant = res.grant,
+                                lastCloudSyncEpoch = restoreInfo?.syncedAtEpoch ?: it.lastCloudSyncEpoch,
+                                lastCloudSyncCount = restoreInfo?.restoredRecordCount ?: it.lastCloudSyncCount,
+                                bannerError = restoreErr,
+                                bannerSuccess = if (restoreInfo != null) {
+                                    "Super Admin verified & restored ${restoreInfo.restoredRecordCount} cloud records from ${restoreInfo.syncedFromDeviceName}"
+                                } else {
+                                    "Super Admin authority verified"
+                                }
+                            )
+                        }
+                        onAuthenticated(auth.context)
+                        refreshSuperAdminData()
+                    }
+                    is CentralVerificationResult.Denied -> {
+                        val nextStep = if (res.status == SuperAdminConfig.DEVICE_REVOKED_LOST) {
+                            AuthScreenStep.DEVICE_REVOKED_LOCKED
+                        } else _uiState.value.authStep
+                        _uiState.update {
+                            it.copy(
+                                isBusy = false,
+                                gateLockReason = res.reason,
+                                bannerError = res.reason,
+                                authStep = nextStep
+                            )
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isBusy = false, bannerError = e.message ?: "Super Admin verification failed") }
+            }
+        }
+    }
+
+    fun openSuperAdminRecovery() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
+            val secQuestion = runCatching { container.centralAuthority.getSuperAdminSecurityQuestion() }.getOrNull()
+            _uiState.update {
+                it.copy(
+                    isBusy = false,
+                    superAdminSecurityQuestion = secQuestion,
+                    authStep = AuthScreenStep.SUPER_ADMIN_RECOVERY
+                )
+            }
+        }
+    }
+
+    fun recoverSuperAdminAccount(
+        recoveryProof: String,
+        newMasterPassword: String,
+        newSecurityQuestion: String,
+        newSecurityAnswer: String,
+        revokeOtherDevices: Boolean
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
+            try {
+                val id = container.centralAuthority.currentIdentity()
+                    ?: throw AuthorizationException("Verified Google Sign-In required before Super Admin recovery.")
+                val deviceId = container.sessionStore.getOrCreateDeviceId()
+                val kit = container.centralAuthority.recoverSuperAdminAccount(
+                    SuperAdminRecoveryRequest(
+                        recoveryProof = recoveryProof,
+                        newMasterPassword = newMasterPassword,
+                        securityQuestion = newSecurityQuestion.takeIf { it.isNotBlank() },
+                        securityAnswer = newSecurityAnswer.takeIf { it.isNotBlank() },
+                        revokeOtherDevices = revokeOtherDevices,
+                        currentDeviceId = deviceId,
+                        currentDeviceName = deviceLabel()
+                    )
+                )
+                when (
+                    val res = container.centralAuthority.verifyAndOpenApprovedSession(
+                        uid = id.uid,
+                        email = id.email,
+                        businessId = null,
+                        deviceId = deviceId,
+                        deviceName = deviceLabel(),
+                        rememberMe = true
+                    )
+                ) {
+                    is CentralVerificationResult.Approved -> {
+                        val auth = container.authService.activateApprovedCentralSession(
+                            grant = res.grant,
+                            business = res.business,
+                            serverSessionId = res.serverSessionId,
+                            rememberMe = true,
+                            deviceName = deviceLabel(),
+                            isSuperAdmin = true
+                        )
+                        val restoreAttempt = runCatching {
+                            container.cloudSyncService.restoreBusinessFromCloudIfEmpty(auth.context)
+                        }
+                        val restoreInfo = restoreAttempt.getOrNull()
+                        val restoreErr = restoreAttempt.exceptionOrNull()?.message
+                        _uiState.update {
+                            it.copy(
+                                lastRecoveryKit = kit,
+                                superAdminMfaProvision = kit.totpSecret to kit.recoveryCodes,
+                                superAdminSecurityQuestion = kit.securityQuestion.takeIf { q -> q.isNotBlank() },
+                                myAccessGrant = res.grant,
+                                lastCloudSyncEpoch = restoreInfo?.syncedAtEpoch ?: it.lastCloudSyncEpoch,
+                                lastCloudSyncCount = restoreInfo?.restoredRecordCount ?: it.lastCloudSyncCount,
+                                bannerError = restoreErr,
+                                bannerSuccess = buildString {
+                                    append("Super Admin recovered on new device. New Master Password, MFA & Recovery Key activated.")
+                                    if (revokeOtherDevices) append(" Lost phone locked.")
+                                    if (restoreInfo != null) append(" Restored ${restoreInfo.restoredRecordCount} cloud records.")
+                                }
+                            )
+                        }
+                        onAuthenticated(auth.context)
+                        refreshSuperAdminData()
+                    }
+                    is CentralVerificationResult.Denied -> {
+                        _uiState.update {
+                            it.copy(
+                                isBusy = false,
+                                gateLockReason = res.reason,
+                                bannerError = res.reason,
+                                authStep = if (res.status == SuperAdminConfig.DEVICE_REVOKED_LOST) {
+                                    AuthScreenStep.DEVICE_REVOKED_LOCKED
+                                } else AuthScreenStep.SUPER_ADMIN_RECOVERY
+                            )
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isBusy = false, bannerError = e.message ?: "Account recovery failed") }
+            }
+        }
+    }
+
+    fun updateSuperAdminRecoverySettings(
+        currentMasterPassword: String,
+        securityQuestion: String,
+        securityAnswer: String,
+        rotateBackupKit: Boolean
+    ) {
+        val ctx = requireCtx()
+        AuthorizationGuard.requireSuperAdmin(ctx)
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
+            try {
+                val kit = container.centralAuthority.updateSuperAdminRecoverySettings(
+                    currentMasterPassword = currentMasterPassword,
+                    securityQuestion = securityQuestion,
+                    securityAnswer = securityAnswer,
+                    rotateBackupKit = rotateBackupKit
+                )
+                val secQ = container.centralAuthority.getSuperAdminSecurityQuestion()
+                _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        lastRecoveryKit = kit ?: it.lastRecoveryKit,
+                        superAdminSecurityQuestion = secQ ?: it.superAdminSecurityQuestion,
+                        bannerSuccess = if (rotateBackupKit) {
+                            "Recovery kit rotated (new TOTP, recovery codes & Master Recovery Key). Save securely!"
+                        } else {
+                            "Security recovery question & answer updated."
+                        }
+                    )
+                }
+                refreshSuperAdminData()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isBusy = false, bannerError = e.message ?: "Failed to update recovery settings") }
+            }
+        }
+    }
+
+    fun markAdminDeviceLost(targetDeviceId: String, reason: String) =
+        runAction("Device marked LOST & all its sessions revoked immediately") {
+            AuthorizationGuard.requireSuperAdmin(requireCtx())
+            val callerDev = container.sessionStore.getOrCreateDeviceId()
+            container.centralAuthority.markAdminDeviceLost(targetDeviceId, reason, callerDev)
+            refreshSuperAdminData()
+        }
+
+    fun reauthorizeAdminDevice(targetDeviceId: String, masterPassword: String) =
+        runAction("Returned device re-authorized for Super Admin access") {
+            AuthorizationGuard.requireSuperAdmin(requireCtx())
+            val callerDev = container.sessionStore.getOrCreateDeviceId()
+            container.centralAuthority.reauthorizeAdminDevice(targetDeviceId, masterPassword, callerDev)
+            refreshSuperAdminData()
+        }
+
+    fun revokeAllOtherAdminDevices(reason: String) =
+        runAction("All other Super Admin devices & sessions revoked immediately") {
+            AuthorizationGuard.requireSuperAdmin(requireCtx())
+            val callerDev = container.sessionStore.getOrCreateDeviceId()
+            container.centralAuthority.revokeAllOtherAdminDevicesAndSessions(callerDev, reason)
+            refreshSuperAdminData()
+        }
+
+    fun syncBusinessDataToCloud() {
+        val ctx = requireCtx()
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
+            try {
+                val snap = withContext(Dispatchers.IO) {
+                    container.cloudSyncService.syncBusinessToCloud(
+                        ctx = ctx,
+                        deviceName = deviceLabel(),
+                        language = _uiState.value.language,
+                        darkTheme = _uiState.value.darkTheme
+                    )
+                }
+                _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        lastCloudSyncEpoch = snap.syncedAtEpoch,
+                        lastCloudSyncCount = snap.recordCount,
+                        bannerSuccess = "Synced ${snap.recordCount} business, accounting & settings records to encrypted cloud backup."
+                    )
+                }
+                refreshSuperAdminData()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isBusy = false, bannerError = e.message ?: "Cloud backup sync failed") }
+            }
+        }
+    }
+
+    fun restoreBusinessDataFromCloud() {
+        val ctx = requireCtx()
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
+            try {
+                val restored = withContext(Dispatchers.IO) {
+                    container.cloudSyncService.restoreBusinessFromCloud(ctx)
+                }
+                if (restored == null) {
+                    _uiState.update {
+                        it.copy(isBusy = false, bannerError = "No cloud snapshot found yet for business ${ctx.activeBusinessId}.")
+                    }
+                } else {
+                    refreshFinancialReports()
+                    _uiState.update {
+                        it.copy(
+                            isBusy = false,
+                            lastCloudSyncEpoch = restored.syncedAtEpoch,
+                            lastCloudSyncCount = restored.restoredRecordCount,
+                            bannerSuccess = "Restored ${restored.restoredRecordCount} records & app settings from '${restored.syncedFromDeviceName}'."
+                        )
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isBusy = false, bannerError = e.message ?: "Cloud restore failed") }
+            }
+        }
+    }
+
+    fun submitAccessRequest(
+        fullName: String,
+        phone: String,
+        requestedRole: String,
+        requestedBusinessName: String,
+        requestedBranchName: String,
+        qidNumber: String,
+        passportNumber: String,
+        identityDocSummary: String
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
+            try {
+                val deviceId = container.sessionStore.getOrCreateDeviceId()
+                val req = container.centralAuthority.submitAccessRequest(
+                    AccessRequestSubmission(
+                        fullName = fullName,
+                        phone = phone,
+                        requestedRole = requestedRole,
+                        requestedBusinessName = requestedBusinessName,
+                        requestedBranchName = requestedBranchName,
+                        qidNumber = qidNumber.ifBlank { null },
+                        passportNumber = passportNumber.ifBlank { null },
+                        identityDocSummary = identityDocSummary.ifBlank { null },
+                        deviceId = deviceId,
+                        deviceName = deviceLabel()
+                    )
+                )
+                _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        myAccessRequest = req,
+                        authStep = AuthScreenStep.ACCESS_REQUEST,
+                        bannerSuccess = "Access request submitted as PENDING_APPROVAL. Dashboard stays locked until Super Admin approves."
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isBusy = false, bannerError = e.message ?: "Failed to submit access request") }
+            }
+        }
+    }
+
+    fun refreshCentralGateStatus() {
+        val id = container.centralAuthority.currentIdentity()
+        if (id != null) {
+            evaluateCurrentCentralIdentity()
+        } else {
+            _uiState.update { it.copy(authStep = AuthScreenStep.RESTRICTED_GATE) }
+        }
+    }
+
+    fun refreshSuperAdminData() {
+        val ctx = _uiState.value.authContext ?: return
+        if (!ctx.isSuperAdmin) return
+        viewModelScope.launch {
+            try {
+                val status = container.centralAuthority.getPlatformStatus()
+                val reqs = container.centralAuthority.listAllAccessRequests()
+                val grants = container.centralAuthority.listAllAccessGrants()
+                val biz = container.centralAuthority.listAllBusinesses()
+                val logs = container.centralAuthority.listAuditLogs()
+                val devices = container.centralAuthority.listAdminDevices()
+                val secQuestion = runCatching { container.centralAuthority.getSuperAdminSecurityQuestion() }.getOrNull()
+                _uiState.update {
+                    it.copy(
+                        platformStatus = status,
+                        centralAccessRequests = reqs,
+                        centralAccessGrants = grants,
+                        centralBusinesses = biz,
+                        centralAuditLogs = logs,
+                        adminDevices = devices,
+                        superAdminSecurityQuestion = secQuestion ?: it.superAdminSecurityQuestion
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(bannerError = e.message ?: "Failed to load Super Admin console") }
+            }
+        }
+    }
+
+    fun approveCentralAccessRequest(
+        requestUid: String,
+        assignedRole: String,
+        existingBusinessId: String?,
+        permissionKeys: List<String>,
+        allowedPropertyIds: List<String>,
+        note: String
+    ) = runAction("Access request approved") {
+        AuthorizationGuard.requireSuperAdmin(requireCtx())
+        container.centralAuthority.approveAccessRequest(
+            requestUid = requestUid,
+            assignedRole = assignedRole,
+            existingBusinessId = existingBusinessId,
+            permissionKeys = permissionKeys,
+            allowedPropertyIds = allowedPropertyIds,
+            note = note
+        )
+        refreshSuperAdminData()
+    }
+
+    fun rejectCentralAccessRequest(requestUid: String, note: String) = runAction("Access request rejected") {
+        AuthorizationGuard.requireSuperAdmin(requireCtx())
+        container.centralAuthority.rejectAccessRequest(requestUid, note)
+        refreshSuperAdminData()
+    }
+
+    fun setCentralUserStatus(targetUid: String, newStatus: String, note: String) =
+        runAction("Central user authorization set to $newStatus") {
+            AuthorizationGuard.requireSuperAdmin(requireCtx())
+            container.centralAuthority.setUserGrantStatus(targetUid, newStatus, note)
+            refreshSuperAdminData()
+        }
+
+    fun revokeCentralUserSessions(targetUid: String, reason: String) =
+        runAction("All central sessions revoked for user") {
+            AuthorizationGuard.requireSuperAdmin(requireCtx())
+            container.centralAuthority.revokeAllUserSessionsCentral(targetUid, reason)
+            refreshSuperAdminData()
+        }
+
+    fun toggleRegistrationsEnabled(enabled: Boolean) =
+        runAction(if (enabled) "Access requests enabled" else "Public access requests paused") {
+            AuthorizationGuard.requireSuperAdmin(requireCtx())
+            container.centralAuthority.setRegistrationsEnabled(enabled)
+            refreshSuperAdminData()
+        }
+
+    fun toggleEmergencyLock(locked: Boolean, lockMessage: String) =
+        runAction(if (locked) "GLOBAL EMERGENCY LOCK ACTIVATED" else "Global Emergency Lock lifted") {
+            AuthorizationGuard.requireSuperAdmin(requireCtx())
+            container.centralAuthority.setEmergencyLock(locked, lockMessage)
+            refreshSuperAdminData()
+        }
+
     // --- Authentication Actions ---
     fun setupOwnerAndBusiness(
         fullName: String,
@@ -160,6 +853,9 @@ class OneHomeProViewModel(
                 )
             ) {
                 is AuthResult.Authenticated -> onAuthenticated(res.context)
+                is AuthResult.PendingApproval -> _uiState.update {
+                    it.copy(isBusy = false, gateLockReason = res.message, bannerError = res.message, authStep = AuthScreenStep.ACCESS_REQUEST)
+                }
                 is AuthResult.Failed -> throw IllegalStateException(res.message)
                 else -> {}
             }
@@ -172,6 +868,14 @@ class OneHomeProViewModel(
             try {
                 when (val res = container.authService.login(email, password, rememberMe, deviceLabel())) {
                     is AuthResult.Authenticated -> onAuthenticated(res.context)
+                    is AuthResult.PendingApproval -> _uiState.update {
+                        it.copy(
+                            isBusy = false,
+                            gateLockReason = res.message,
+                            bannerError = res.message,
+                            authStep = if (res.status == "EMERGENCY_LOCKED") AuthScreenStep.EMERGENCY_LOCKED else AuthScreenStep.ACCESS_REQUEST
+                        )
+                    }
                     is AuthResult.MfaRequired -> _uiState.update {
                         it.copy(
                             isBusy = false,
@@ -206,6 +910,15 @@ class OneHomeProViewModel(
                 )
             ) {
                 is AuthResult.Authenticated -> onAuthenticated(res.context)
+                is AuthResult.PendingApproval -> _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        pendingDeviceChallenge = null,
+                        gateLockReason = res.message,
+                        bannerError = res.message,
+                        authStep = if (res.status == "EMERGENCY_LOCKED") AuthScreenStep.EMERGENCY_LOCKED else AuthScreenStep.ACCESS_REQUEST
+                    )
+                }
                 is AuthResult.MfaRequired -> _uiState.update {
                     it.copy(
                         isBusy = false,
@@ -214,8 +927,15 @@ class OneHomeProViewModel(
                         authStep = AuthScreenStep.MFA_CHALLENGE
                     )
                 }
+                is AuthResult.NewDeviceVerificationRequired -> _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        pendingDeviceChallenge = res,
+                        bannerError = "Additional device verification required",
+                        authStep = AuthScreenStep.DEVICE_CHALLENGE
+                    )
+                }
                 is AuthResult.Failed -> _uiState.update { it.copy(isBusy = false, bannerError = res.message) }
-                else -> {}
             }
         }
     }
@@ -230,6 +950,15 @@ class OneHomeProViewModel(
                 )
             ) {
                 is AuthResult.Authenticated -> onAuthenticated(res.context)
+                is AuthResult.PendingApproval -> _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        pendingMfaChallenge = null,
+                        gateLockReason = res.message,
+                        bannerError = res.message,
+                        authStep = if (res.status == "EMERGENCY_LOCKED") AuthScreenStep.EMERGENCY_LOCKED else AuthScreenStep.ACCESS_REQUEST
+                    )
+                }
                 is AuthResult.Failed -> _uiState.update { it.copy(isBusy = false, bannerError = res.message) }
                 else -> {}
             }
@@ -283,18 +1012,34 @@ class OneHomeProViewModel(
         runAction("MFA disabled") { container.authService.disableMfa(ctx) }
     }
 
-    fun logout() {
-        val ctx = _uiState.value.authContext ?: return
+    fun signOutCentral() {
+        val ctx = _uiState.value.authContext
         viewModelScope.launch {
-            container.authService.logoutCurrentSession(ctx)
+            gateRevocationJob?.cancel()
+            gateRevocationJob = null
             dataCollectionJob?.cancel()
+            dataCollectionJob = null
+            if (ctx != null) {
+                runCatching { container.authService.logoutCurrentSession(ctx) }
+            }
+            runCatching { container.centralAuthority.signOutCentral() }
             _uiState.update {
                 it.copy(
                     authContext = null,
-                    hasExistingUsers = true,
-                    authStep = AuthScreenStep.LOGIN,
+                    centralIdentity = null,
+                    myAccessRequest = null,
+                    myAccessGrant = null,
+                    superAdminMfaProvision = null,
+                    lastRecoveryKit = null,
+                    adminDevices = emptyList(),
+                    centralAccessRequests = emptyList(),
+                    centralAccessGrants = emptyList(),
+                    centralBusinesses = emptyList(),
+                    centralAuditLogs = emptyList(),
                     pendingMfaChallenge = null,
                     pendingDeviceChallenge = null,
+                    gateLockReason = null,
+                    authStep = AuthScreenStep.RESTRICTED_GATE,
                     data = BusinessSnapshotData(),
                     bannerSuccess = "Signed out securely"
                 )
@@ -302,16 +1047,28 @@ class OneHomeProViewModel(
         }
     }
 
+    fun logout() {
+        signOutCentral()
+    }
+
     fun logoutAllDevices() {
         val ctx = _uiState.value.authContext ?: return
         viewModelScope.launch {
-            container.authService.logoutAllDevices(ctx)
+            gateRevocationJob?.cancel()
+            gateRevocationJob = null
             dataCollectionJob?.cancel()
+            dataCollectionJob = null
+            runCatching { container.authService.logoutAllDevices(ctx) }
+            runCatching { container.centralAuthority.signOutCentral() }
             _uiState.update {
                 it.copy(
                     authContext = null,
+                    centralIdentity = null,
+                    myAccessRequest = null,
+                    myAccessGrant = null,
+                    superAdminMfaProvision = null,
                     hasExistingUsers = true,
-                    authStep = AuthScreenStep.LOGIN,
+                    authStep = AuthScreenStep.RESTRICTED_GATE,
                     data = BusinessSnapshotData(),
                     bannerSuccess = "All devices signed out and sessions revoked"
                 )
@@ -337,7 +1094,10 @@ class OneHomeProViewModel(
     }
 
     private fun onAuthenticated(ctx: AuthContext) {
-        val defaultDest = if (ctx.isCustomerPortalOnly()) AppDestination.CUSTOMER_PORTAL else AppDestination.DASHBOARD
+        val defaultDest = when {
+            ctx.isCustomerPortalOnly() -> AppDestination.CUSTOMER_PORTAL
+            else -> AppDestination.DASHBOARD
+        }
         _uiState.update {
             it.copy(
                 isInitializing = false,
@@ -352,7 +1112,46 @@ class OneHomeProViewModel(
             )
         }
         startObservingBusinessData(ctx)
+        startObservingCentralRevocation(ctx)
         refreshFinancialReports()
+    }
+
+    private fun startObservingCentralRevocation(ctx: AuthContext) {
+        gateRevocationJob?.cancel()
+        val serverSessionId = ctx.serverSessionId ?: return
+        val uid = container.centralAuthority.currentIdentity()?.uid ?: ctx.userId
+        gateRevocationJob = viewModelScope.launch {
+            val deviceId = container.sessionStore.getOrCreateDeviceId()
+            container.centralAuthority.observeGateRevocation(
+                uid = uid,
+                businessId = ctx.activeBusinessId,
+                serverSessionId = serverSessionId,
+                deviceId = deviceId
+            ).collectLatest { reason ->
+                if (!reason.isNullOrBlank()) {
+                    gateRevocationJob?.cancel()
+                    dataCollectionJob?.cancel()
+                    runCatching { container.authService.logoutCurrentSession(ctx) }
+                    val isDeviceLost = reason.contains("LOST", ignoreCase = true) ||
+                        reason.contains("STOLEN", ignoreCase = true) ||
+                        reason.contains("DEVICE_LOST", ignoreCase = true)
+                    val isEmergency = reason.contains("Emergency Lock", ignoreCase = true)
+                    _uiState.update {
+                        it.copy(
+                            authContext = null,
+                            data = BusinessSnapshotData(),
+                            gateLockReason = reason,
+                            bannerError = reason,
+                            authStep = when {
+                                isDeviceLost -> AuthScreenStep.DEVICE_REVOKED_LOCKED
+                                isEmergency -> AuthScreenStep.EMERGENCY_LOCKED
+                                else -> AuthScreenStep.ACCESS_REQUEST
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
 
     private fun startObservingBusinessData(ctx: AuthContext) {

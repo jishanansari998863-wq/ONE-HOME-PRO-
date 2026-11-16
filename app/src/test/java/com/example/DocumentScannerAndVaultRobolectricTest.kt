@@ -51,7 +51,12 @@ class DocumentScannerAndVaultRobolectricTest {
         db = Room.inMemoryDatabaseBuilder(app, OneHomeProDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        container = AppContainer(app, db)
+        val central = com.example.base.InMemoryCentralAuthorityTestDouble().apply {
+            preApproveUserForTest("uid_nasser_owner", "nasser@onehome.qa", "Nasser Al-Thani", "OWNER")
+            preApproveUserForTest("uid_ali_cust", "ali@example.qa", "Ali Hassan", "CUSTOMER")
+            preApproveUserForTest("uid_samir_tech", "samir@onehome.qa", "Samir Tech", "EMPLOYEE")
+        }
+        container = AppContainer(app, db, central)
         runBlocking(Dispatchers.IO) {
             container.sessionStore.clearSessionToken()
             container.sessionStore.setLanguage(AppLanguage.EN)

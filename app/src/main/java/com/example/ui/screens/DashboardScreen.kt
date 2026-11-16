@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.domain.security.ActionType
 import com.example.domain.security.AppModule
+import com.example.domain.security.SuperAdminConfig
 import com.example.domain.util.QatarFormatters
 import com.example.localization.LocalAppStrings
 import com.example.ui.AppDestination
@@ -305,6 +306,16 @@ fun DashboardScreen(
                             Text(strings.accounting)
                         }
                     }
+                    if (ctx.isSuperAdmin && SuperAdminConfig.isSuperAdminEmail(ctx.email)) {
+                        Button(
+                            onClick = { onNavigate(AppDestination.SUPER_ADMIN_CONSOLE) },
+                            modifier = Modifier.defaultMinSize(minHeight = 48.dp).testTag("qa_super_admin_console")
+                        ) {
+                            Icon(Icons.Default.Shield, contentDescription = null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Super Admin")
+                        }
+                    }
                 }
             }
 
@@ -383,21 +394,37 @@ fun MoreHubScreen(
     val strings = LocalAppStrings.current
     val ctx = uiState.authContext ?: return
 
-    val modules = listOf(
-        ModuleHubItem(strings.agreements, "Lease contracts, renewals & move-outs", Icons.Default.Description, AppDestination.AGREEMENTS, AppModule.AGREEMENTS),
-        ModuleHubItem(strings.cheques, "Received, deposited, cleared & bounced cheques", Icons.Default.AccountBalanceWallet, AppDestination.CHEQUES, AppModule.CHEQUES),
-        ModuleHubItem(strings.securityDeposits, "Held deposits, deductions & refunds", Icons.Default.Savings, AppDestination.DEPOSITS, AppModule.DEPOSITS),
-        ModuleHubItem(strings.accounting, "Double-entry GL, Trial Balance, P&L, Bank & Cashbook", Icons.Default.AccountBalance, AppDestination.ACCOUNTING, AppModule.ACCOUNTING),
-        ModuleHubItem(strings.workforceHr, "Departments, employees, roles & attendance", Icons.Default.Badge, AppDestination.WORKFORCE, AppModule.EMPLOYEES),
-        ModuleHubItem(strings.maintenance, "Complaints, technician jobs, photos & materials", Icons.Default.Build, AppDestination.MAINTENANCE, AppModule.MAINTENANCE),
-        ModuleHubItem(strings.purchaseInventory, "Suppliers, items, POs, GRN & physical counts", Icons.Default.Inventory, AppDestination.INVENTORY, AppModule.INVENTORY),
-        ModuleHubItem(strings.documents, "QID, contracts & encrypted private vault", Icons.Default.FolderShared, AppDestination.DOCUMENTS, AppModule.DOCUMENTS),
-        ModuleHubItem(strings.reportsAnalytics, "All 17 operational & financial reports", Icons.Default.Analytics, AppDestination.REPORTS, AppModule.REPORTS),
-        ModuleHubItem(strings.notifications, "Alerts & local delivery inbox", Icons.Default.NotificationsActive, AppDestination.NOTIFICATIONS, AppModule.NOTIFICATIONS),
-        ModuleHubItem(strings.ownerControlCenter, "Branches, RBAC, Backups, Audit & Health", Icons.Default.AdminPanelSettings, AppDestination.OWNER_CONTROL, AppModule.SETTINGS),
-        ModuleHubItem("Account & Security", "MFA, sessions, devices & sign out", Icons.Default.Security, AppDestination.ACCOUNT_SECURITY, AppModule.SECURITY)
-    ).filter {
-        it.requiredModule == AppModule.SECURITY || ctx.hasPermission(it.requiredModule, ActionType.VIEW)
+    val isExclusiveSuperAdmin = ctx.isSuperAdmin && SuperAdminConfig.isSuperAdminEmail(ctx.email)
+    val modules = buildList {
+        if (isExclusiveSuperAdmin) {
+            add(
+                ModuleHubItem(
+                    "Super Admin Authority Console",
+                    "Approve requests, revoke grants, emergency lock & audit logs",
+                    Icons.Default.Shield,
+                    AppDestination.SUPER_ADMIN_CONSOLE,
+                    AppModule.SECURITY
+                )
+            )
+        }
+        addAll(
+            listOf(
+                ModuleHubItem(strings.agreements, "Lease contracts, renewals & move-outs", Icons.Default.Description, AppDestination.AGREEMENTS, AppModule.AGREEMENTS),
+                ModuleHubItem(strings.cheques, "Received, deposited, cleared & bounced cheques", Icons.Default.AccountBalanceWallet, AppDestination.CHEQUES, AppModule.CHEQUES),
+                ModuleHubItem(strings.securityDeposits, "Held deposits, deductions & refunds", Icons.Default.Savings, AppDestination.DEPOSITS, AppModule.DEPOSITS),
+                ModuleHubItem(strings.accounting, "Double-entry GL, Trial Balance, P&L, Bank & Cashbook", Icons.Default.AccountBalance, AppDestination.ACCOUNTING, AppModule.ACCOUNTING),
+                ModuleHubItem(strings.workforceHr, "Departments, employees, roles & attendance", Icons.Default.Badge, AppDestination.WORKFORCE, AppModule.EMPLOYEES),
+                ModuleHubItem(strings.maintenance, "Complaints, technician jobs, photos & materials", Icons.Default.Build, AppDestination.MAINTENANCE, AppModule.MAINTENANCE),
+                ModuleHubItem(strings.purchaseInventory, "Suppliers, items, POs, GRN & physical counts", Icons.Default.Inventory, AppDestination.INVENTORY, AppModule.INVENTORY),
+                ModuleHubItem(strings.documents, "QID, contracts & encrypted private vault", Icons.Default.FolderShared, AppDestination.DOCUMENTS, AppModule.DOCUMENTS),
+                ModuleHubItem(strings.reportsAnalytics, "All 17 operational & financial reports", Icons.Default.Analytics, AppDestination.REPORTS, AppModule.REPORTS),
+                ModuleHubItem(strings.notifications, "Alerts & local delivery inbox", Icons.Default.NotificationsActive, AppDestination.NOTIFICATIONS, AppModule.NOTIFICATIONS),
+                ModuleHubItem(strings.ownerControlCenter, "Branches, RBAC, Backups, Audit & Health", Icons.Default.AdminPanelSettings, AppDestination.OWNER_CONTROL, AppModule.SETTINGS),
+                ModuleHubItem("Account & Security", "MFA, sessions, devices & sign out", Icons.Default.Security, AppDestination.ACCOUNT_SECURITY, AppModule.SECURITY)
+            ).filter {
+                it.requiredModule == AppModule.SECURITY || ctx.hasPermission(it.requiredModule, ActionType.VIEW)
+            }
+        )
     }
 
     LazyColumn(

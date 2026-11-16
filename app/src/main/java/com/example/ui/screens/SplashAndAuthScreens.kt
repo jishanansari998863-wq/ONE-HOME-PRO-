@@ -1,6 +1,10 @@
 package com.example.ui.screens
 
+import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,8 +21,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -27,11 +31,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.R
+import com.example.domain.security.SuperAdminConfig
 import com.example.domain.util.QatarFormatters
 import com.example.localization.AppLanguage
 import com.example.localization.LocalAppStrings
-import com.example.ui.AuthScreenStep
 import com.example.ui.OneHomeUiState
+import com.example.ui.components.DropdownSelector
 import com.example.ui.components.EmptyStateCard
 import com.example.ui.components.FeedbackBanner
 import com.example.ui.components.StatusBadge
@@ -139,32 +144,372 @@ private fun AuthHeaderCard(
 }
 
 @Composable
-fun WelcomeSetupScreen(
+fun RestrictedWelcomeGateScreen(
     uiState: OneHomeUiState,
     onChangeLanguage: (AppLanguage) -> Unit,
-    onSetupOwner: (String, String, String, String, String, Boolean, Boolean) -> Unit,
+    onGoogleSignIn: (Context) -> Unit,
+    onOpenCredentialsLogin: () -> Unit,
     onDismissBanner: () -> Unit
 ) {
     val strings = LocalAppStrings.current
-    var fullName by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var showPassword by remember { mutableStateOf(false) }
-    var businessName by remember { mutableStateOf("") }
-    var branchName by remember { mutableStateOf("Doha HQ") }
-    var enableMfa by remember { mutableStateOf(false) }
-    var rememberMe by remember { mutableStateOf(true) }
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(20.dp)
-            .testTag("welcome_setup_screen"),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .testTag("restricted_gate_screen"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
         AuthHeaderCard(
             subtitle = strings.editionSubtitle,
+            language = uiState.language,
+            onChangeLanguage = onChangeLanguage
+        )
+        Spacer(Modifier.height(14.dp))
+        FeedbackBanner(uiState.bannerError, uiState.bannerSuccess, onDismissBanner)
+        ElevatedCard(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(22.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AdminPanelSettings,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Exclusive Super Admin Access Gate",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Server-Verified Entry Required",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                Surface(
+                    color = AmberContainer.copy(alpha = 0.65f),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "ONE HOME PRO operates under strict Super Admin authorization. Installing this APK or submitting documents never grants automatic business access until explicitly approved on the central server.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AmberWarning,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+
+                Button(
+                    onClick = { onGoogleSignIn(context) },
+                    enabled = !uiState.isBusy,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 48.dp)
+                        .testTag("google_signin_gate_button")
+                ) {
+                    if (uiState.isBusy) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Continue with Google Account")
+                    }
+                }
+
+                if (uiState.hasExistingUsers) {
+                    OutlinedButton(
+                        onClick = onOpenCredentialsLogin,
+                        enabled = !uiState.isBusy,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 48.dp)
+                            .testTag("open_credentials_login_button")
+                    ) {
+                        Icon(Icons.Default.Password, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Existing Approved User Sign In")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SuperAdminBootstrapScreen(
+    uiState: OneHomeUiState,
+    onChangeLanguage: (AppLanguage) -> Unit,
+    onBootstrap: (String, String, String) -> Unit,
+    onSignOut: () -> Unit,
+    onDismissBanner: () -> Unit
+) {
+    val strings = LocalAppStrings.current
+    var masterPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var securityQuestion by remember { mutableStateOf("") }
+    var securityAnswer by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp)
+            .testTag("super_admin_bootstrap_screen"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        AuthHeaderCard(
+            subtitle = "First-Time Super Admin Authority Initialization",
+            language = uiState.language,
+            onChangeLanguage = onChangeLanguage
+        )
+        Spacer(Modifier.height(12.dp))
+        FeedbackBanner(uiState.bannerError, uiState.bannerSuccess, onDismissBanner)
+        ElevatedCard(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "Lock Exclusive Super Admin Authority",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Verified Identity: ${uiState.centralIdentity?.email ?: SuperAdminConfig.SUPER_ADMIN_EMAIL}\nYour Super Admin account stays bound to your verified Google identity (never locked to a single phone). Mandatory TOTP MFA, recovery codes, and a Master Recovery Key will be generated.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = masterPassword,
+                    onValueChange = { masterPassword = it },
+                    label = { Text("Super Admin Master Password (min 10 chars)") },
+                    leadingIcon = { Icon(Icons.Default.Security, contentDescription = null) },
+                    trailingIcon = {
+                        IconButton(onClick = { showPassword = !showPassword }) {
+                            Icon(if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = "Toggle password")
+                        }
+                    },
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("sa_bootstrap_password_input")
+                )
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    label = { Text("Confirm Master Password") },
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("sa_bootstrap_confirm_input")
+                )
+                val mismatch = confirmPassword.isNotEmpty() && masterPassword != confirmPassword
+                if (mismatch) {
+                    Text("Passwords do not match", color = CrimsonError, style = MaterialTheme.typography.labelSmall)
+                }
+                HorizontalDivider()
+                Text(
+                    text = "Dual-Loss Backup Recovery Question (Optional)",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                OutlinedTextField(
+                    value = securityQuestion,
+                    onValueChange = { securityQuestion = it },
+                    label = { Text("Security Recovery Question (e.g., First office city?)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("sa_bootstrap_question_input")
+                )
+                OutlinedTextField(
+                    value = securityAnswer,
+                    onValueChange = { securityAnswer = it },
+                    label = { Text("Security Recovery Answer") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("sa_bootstrap_answer_input")
+                )
+                Button(
+                    onClick = { onBootstrap(masterPassword, securityQuestion, securityAnswer) },
+                    enabled = !uiState.isBusy && masterPassword.length >= 10 && masterPassword == confirmPassword,
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).testTag("sa_bootstrap_submit_button")
+                ) {
+                    Text("Bootstrap & Generate MFA + Recovery Kit")
+                }
+                TextButton(
+                    onClick = onSignOut,
+                    modifier = Modifier.align(Alignment.CenterHorizontally).defaultMinSize(minHeight = 48.dp)
+                ) {
+                    Text(strings.logout)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SuperAdminVerifyScreen(
+    uiState: OneHomeUiState,
+    onChangeLanguage: (AppLanguage) -> Unit,
+    onVerify: (String, String) -> Unit,
+    onOpenRecovery: () -> Unit,
+    onSignOut: () -> Unit,
+    onDismissBanner: () -> Unit
+) {
+    val strings = LocalAppStrings.current
+    var masterPassword by remember { mutableStateOf("") }
+    var totpOrRecovery by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp)
+            .testTag("super_admin_verify_screen"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        AuthHeaderCard(
+            subtitle = "Super Admin 2-Factor Verification",
+            language = uiState.language,
+            onChangeLanguage = onChangeLanguage
+        )
+        Spacer(Modifier.height(12.dp))
+        FeedbackBanner(uiState.bannerError, uiState.bannerSuccess, onDismissBanner)
+        ElevatedCard(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Shield, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Super Admin Authority Challenge",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Text(
+                    text = "Verified Account: ${uiState.centralIdentity?.email ?: SuperAdminConfig.SUPER_ADMIN_EMAIL}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                val kit = uiState.lastRecoveryKit
+                val provisionPair = uiState.superAdminMfaProvision
+                if (kit != null || provisionPair != null) {
+                    val secret = kit?.totpSecret ?: provisionPair!!.first
+                    val codes = kit?.recoveryCodes ?: provisionPair!!.second
+                    Surface(
+                        color = ArchitecturalGoldContainer,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("sa_mfa_provision_box")
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                "SAVE ONCE IN SAFE PLACE — EMERGENCY NEW-PHONE RECOVERY KIT",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text("TOTP Secret: $secret", style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily))
+                            Text("Single-Use Recovery Codes: ${codes.joinToString(", ")}", style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily))
+                            if (kit != null && kit.masterRecoveryKey.isNotBlank()) {
+                                Text("Master Recovery Key: ${kit.masterRecoveryKey}", style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = masterPassword,
+                    onValueChange = { masterPassword = it },
+                    label = { Text("Master Password") },
+                    trailingIcon = {
+                        IconButton(onClick = { showPassword = !showPassword }) {
+                            Icon(if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = "Toggle password")
+                        }
+                    },
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("sa_verify_password_input")
+                )
+                OutlinedTextField(
+                    value = totpOrRecovery,
+                    onValueChange = { totpOrRecovery = it },
+                    label = { Text("6-Digit TOTP, Recovery Code, or Master Recovery Key") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("sa_verify_code_input")
+                )
+                Button(
+                    onClick = { onVerify(masterPassword, totpOrRecovery) },
+                    enabled = !uiState.isBusy && masterPassword.isNotBlank() && totpOrRecovery.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).testTag("sa_verify_submit_button")
+                ) {
+                    Text("Verify & Enter Super Admin Console")
+                }
+                OutlinedButton(
+                    onClick = onOpenRecovery,
+                    enabled = !uiState.isBusy,
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).testTag("sa_open_recovery_button")
+                ) {
+                    Icon(Icons.Default.PhonelinkErase, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Lost Phone or Forgot Password? Recover Account")
+                }
+                TextButton(
+                    onClick = onSignOut,
+                    modifier = Modifier.align(Alignment.CenterHorizontally).defaultMinSize(minHeight = 48.dp)
+                ) {
+                    Text(strings.logout)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SuperAdminRecoveryScreen(
+    uiState: OneHomeUiState,
+    onChangeLanguage: (AppLanguage) -> Unit,
+    onRecover: (String, String, String, String, Boolean) -> Unit,
+    onBack: () -> Unit,
+    onSignOut: () -> Unit,
+    onDismissBanner: () -> Unit
+) {
+    BackHandler { onBack() }
+    val strings = LocalAppStrings.current
+    var recoveryProof by remember { mutableStateOf("") }
+    var newMasterPassword by remember { mutableStateOf("") }
+    var confirmMasterPassword by remember { mutableStateOf("") }
+    var newQuestion by remember { mutableStateOf("") }
+    var newAnswer by remember { mutableStateOf("") }
+    var revokeOtherDevices by remember { mutableStateOf(true) }
+    var showPassword by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp)
+            .testTag("super_admin_recovery_screen"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        AuthHeaderCard(
+            subtitle = "Super Admin Account & Lost-Device Recovery",
             language = uiState.language,
             onChangeLanguage = onChangeLanguage
         )
@@ -174,108 +519,449 @@ fun WelcomeSetupScreen(
             shape = RoundedCornerShape(20.dp),
             modifier = Modifier.widthIn(max = 540.dp).fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Restore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Recover Exclusive Super Admin", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                }
                 Text(
-                    text = strings.createOwnerAccount,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "Clean workspace: 0 sample records. Configure your real Owner credentials and company branch in Qatar (QAR / Asia/Qatar).",
+                    text = "Verified Google Account: ${uiState.centralIdentity?.email ?: SuperAdminConfig.SUPER_ADMIN_EMAIL}\nUse this if you lost your old phone (with TOTP) OR lost both phone & Master Password. Rotating credentials immediately invalidates prior credentials and locks old lost devices.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.height(16.dp))
+
+                uiState.superAdminSecurityQuestion?.takeIf { it.isNotBlank() }?.let { question ->
+                    Surface(
+                        color = ArchitecturalGoldContainer,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("sa_recovery_question_box")
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text("Configured Security Question:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            Text(question, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+
                 OutlinedTextField(
-                    value = fullName,
-                    onValueChange = { fullName = it },
-                    label = { Text(strings.fullName) },
-                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                    value = recoveryProof,
+                    onValueChange = { recoveryProof = it },
+                    label = { Text("Master Recovery Key, Single-Use Code, or Security Answer") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("setup_full_name_input")
+                    modifier = Modifier.fillMaxWidth().testTag("sa_recovery_proof_input")
                 )
-                Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text(strings.email) },
-                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("setup_email_input")
-                )
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("${strings.password} (min 8 chars)") },
-                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                    value = newMasterPassword,
+                    onValueChange = { newMasterPassword = it },
+                    label = { Text("New Master Password (min 10 chars)") },
                     trailingIcon = {
                         IconButton(onClick = { showPassword = !showPassword }) {
-                            Icon(if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = "Toggle password visibility")
+                            Icon(if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = "Toggle password")
                         }
                     },
                     visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("setup_password_input")
+                    modifier = Modifier.fillMaxWidth().testTag("sa_recovery_new_password_input")
                 )
-                Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
-                    value = businessName,
-                    onValueChange = { businessName = it },
-                    label = { Text(strings.businessName) },
-                    leadingIcon = { Icon(Icons.Default.Business, contentDescription = null) },
+                    value = confirmMasterPassword,
+                    onValueChange = { confirmMasterPassword = it },
+                    label = { Text("Confirm New Master Password") },
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("setup_business_name_input")
+                    modifier = Modifier.fillMaxWidth().testTag("sa_recovery_confirm_password_input")
                 )
-                Spacer(Modifier.height(10.dp))
+                if (confirmMasterPassword.isNotEmpty() && newMasterPassword != confirmMasterPassword) {
+                    Text("Passwords do not match", color = CrimsonError, style = MaterialTheme.typography.labelSmall)
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Immediately Lock Lost Phone & Revoke Other Sessions",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Prevents the old lost device from entering even with valid password/OTP until explicitly re-authorized.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = revokeOtherDevices,
+                        onCheckedChange = { revokeOtherDevices = it },
+                        modifier = Modifier.testTag("sa_recovery_revoke_others_switch")
+                    )
+                }
+
                 OutlinedTextField(
-                    value = branchName,
-                    onValueChange = { branchName = it },
-                    label = { Text(strings.branchName) },
-                    leadingIcon = { Icon(Icons.Default.LocationCity, contentDescription = null) },
+                    value = newQuestion,
+                    onValueChange = { newQuestion = it },
+                    label = { Text("Update Security Question (Optional)") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("setup_branch_name_input")
+                    modifier = Modifier.fillMaxWidth().testTag("sa_recovery_new_question_input")
                 )
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Checkbox(
-                        checked = rememberMe,
-                        onCheckedChange = { rememberMe = it },
-                        modifier = Modifier.testTag("setup_remember_me_checkbox")
-                    )
-                    Text(strings.rememberMe, style = MaterialTheme.typography.bodyMedium)
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Checkbox(
-                        checked = enableMfa,
-                        onCheckedChange = { enableMfa = it },
-                        modifier = Modifier.testTag("setup_mfa_checkbox")
-                    )
-                    Text("Enable 2-Step MFA at setup", style = MaterialTheme.typography.bodyMedium)
-                }
-                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = newAnswer,
+                    onValueChange = { newAnswer = it },
+                    label = { Text("Update Security Answer (Optional)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("sa_recovery_new_answer_input")
+                )
+
                 Button(
                     onClick = {
-                        onSetupOwner(fullName, email, password, businessName, branchName, enableMfa, rememberMe)
+                        onRecover(recoveryProof, newMasterPassword, newQuestion, newAnswer, revokeOtherDevices)
                     },
-                    enabled = !uiState.isBusy,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .defaultMinSize(minHeight = 48.dp)
-                        .testTag("setup_submit_button")
+                    enabled = !uiState.isBusy &&
+                        recoveryProof.isNotBlank() &&
+                        newMasterPassword.length >= 10 &&
+                        newMasterPassword == confirmMasterPassword,
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).testTag("sa_recovery_submit_button")
                 ) {
-                    if (uiState.isBusy) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
-                    } else {
-                        Text(strings.createOwnerAccount)
+                    Text("Complete Recovery & Lock Old Devices")
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(
+                        onClick = onBack,
+                        modifier = Modifier.defaultMinSize(minHeight = 48.dp).testTag("sa_recovery_back_button")
+                    ) {
+                        Text(strings.back)
+                    }
+                    TextButton(
+                        onClick = onSignOut,
+                        modifier = Modifier.defaultMinSize(minHeight = 48.dp)
+                    ) {
+                        Text(strings.logout)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DeviceRevokedLockedScreen(
+    uiState: OneHomeUiState,
+    onRefreshStatus: () -> Unit,
+    onSignOut: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .testTag("device_revoked_locked_screen"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        ElevatedCard(
+            colors = CardDefaults.elevatedCardColors(containerColor = CrimsonContainer.copy(alpha = 0.45f)),
+            modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(Icons.Default.PhonelinkLock, contentDescription = null, tint = CrimsonError, modifier = Modifier.size(56.dp))
+                Text(
+                    text = "Device Permanently Locked (Lost / Revoked)",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = CrimsonError
+                )
+                Text(
+                    text = uiState.gateLockReason
+                        ?: "This physical device was revoked as LOST or replaced during Super Admin recovery. Even a valid Master Password or OTP cannot unlock this device unless an active Super Admin device explicitly re-authorizes it.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    Button(
+                        onClick = onRefreshStatus,
+                        modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp).testTag("device_locked_recheck_button")
+                    ) {
+                        Text("Recheck")
+                    }
+                    OutlinedButton(
+                        onClick = onSignOut,
+                        modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp).testTag("device_locked_signout_button")
+                    ) {
+                        Text("Sign Out")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AccessRequestAndStatusScreen(
+    uiState: OneHomeUiState,
+    onChangeLanguage: (AppLanguage) -> Unit,
+    onSubmitRequest: (String, String, String, String, String, String, String, String) -> Unit,
+    onRefreshStatus: () -> Unit,
+    onOpenCredentialsLogin: () -> Unit,
+    onSignOut: () -> Unit,
+    onDismissBanner: () -> Unit
+) {
+    val strings = LocalAppStrings.current
+    val existingReq = uiState.myAccessRequest
+    val existingGrant = uiState.myAccessGrant
+    val statusLabel = existingGrant?.status ?: existingReq?.status ?: SuperAdminConfig.GRANT_PENDING
+
+    var fullName by remember(existingReq?.uid) {
+        mutableStateOf(existingReq?.fullName ?: uiState.centralIdentity?.displayName.orEmpty())
+    }
+    var phone by remember(existingReq?.uid) { mutableStateOf(existingReq?.phone.orEmpty()) }
+    var requestedRole by remember(existingReq?.uid) {
+        mutableStateOf(
+            existingReq?.requestedRole?.takeIf { it in SuperAdminConfig.PUBLIC_REQUESTABLE_ROLES } ?: "OWNER"
+        )
+    }
+    var requestedBusiness by remember(existingReq?.uid) { mutableStateOf(existingReq?.requestedBusinessName.orEmpty()) }
+    var requestedBranch by remember(existingReq?.uid) {
+        mutableStateOf(existingReq?.requestedBranchName?.ifBlank { "Doha HQ" } ?: "Doha HQ")
+    }
+    var qidNumber by remember(existingReq?.uid) { mutableStateOf(existingReq?.qidNumber.orEmpty()) }
+    var passportNumber by remember(existingReq?.uid) { mutableStateOf(existingReq?.passportNumber.orEmpty()) }
+    var idDocSummary by remember(existingReq?.uid) { mutableStateOf(existingReq?.identityDocSummary.orEmpty()) }
+
+    val pickIdPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            idDocSummary = "Selected ID Photo (${uri.lastPathSegment ?: "document"})"
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp)
+            .testTag("access_request_screen"),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        AuthHeaderCard(
+            subtitle = "Central Super Admin Approval Portal",
+            language = uiState.language,
+            onChangeLanguage = onChangeLanguage
+        )
+        Spacer(Modifier.height(12.dp))
+        FeedbackBanner(uiState.bannerError, uiState.bannerSuccess, onDismissBanner)
+
+        ElevatedCard(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Authorization Status", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = uiState.centralIdentity?.email ?: "Pending account",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    StatusBadge(statusLabel, modifier = Modifier.testTag("access_status_badge"))
+                }
+
+                uiState.gateLockReason?.takeIf { it.isNotBlank() }?.let { reason ->
+                    Surface(color = CrimsonContainer.copy(alpha = 0.55f), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                        Text(reason, color = CrimsonError, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(10.dp))
+                    }
+                }
+
+                if (existingReq != null) {
+                    Text(
+                        text = "Submitted for '${existingReq.requestedBusinessName}' (${existingReq.requestedRole}). Note: ${existingReq.reviewNote ?: "Awaiting Super Admin review"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                val canEditSubmission = existingReq == null || existingReq.status == SuperAdminConfig.GRANT_PENDING
+                val regOpen = uiState.platformStatus?.registrationsEnabled != false
+                if (!regOpen && existingReq == null) {
+                    Surface(color = CrimsonContainer, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            "New access requests are currently paused by the Super Admin.",
+                            color = CrimsonError,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                } else if (canEditSubmission && existingGrant == null) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    Text("Submit Verification & Access Request", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+
+                    OutlinedTextField(
+                        value = fullName,
+                        onValueChange = { fullName = it },
+                        label = { Text("${strings.fullName}*") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("req_full_name_input")
+                    )
+                    OutlinedTextField(
+                        value = phone,
+                        onValueChange = { phone = it },
+                        label = { Text("Phone Number (+974...)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("req_phone_input")
+                    )
+                    DropdownSelector(
+                        label = "Requested Role*",
+                        items = SuperAdminConfig.PUBLIC_REQUESTABLE_ROLES,
+                        selectedItem = requestedRole,
+                        itemLabel = { it },
+                        onSelect = { requestedRole = it },
+                        testTag = "req_role_selector"
+                    )
+                    OutlinedTextField(
+                        value = requestedBusiness,
+                        onValueChange = { requestedBusiness = it },
+                        label = { Text("${strings.businessName}*") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("req_business_input")
+                    )
+                    OutlinedTextField(
+                        value = requestedBranch,
+                        onValueChange = { requestedBranch = it },
+                        label = { Text(strings.branchName) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("req_branch_input")
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = qidNumber,
+                            onValueChange = { qidNumber = it },
+                            label = { Text("QID Number") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f).testTag("req_qid_input")
+                        )
+                        OutlinedTextField(
+                            value = passportNumber,
+                            onValueChange = { passportNumber = it },
+                            label = { Text("Passport Number") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f).testTag("req_passport_input")
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            pickIdPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        },
+                        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp)
+                    ) {
+                        Icon(Icons.Default.Badge, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (idDocSummary.isBlank()) "Attach ID / Business Document (Optional)" else "$idDocSummary ✓")
+                    }
+                    Button(
+                        onClick = {
+                            onSubmitRequest(
+                                fullName, phone, requestedRole, requestedBusiness,
+                                requestedBranch, qidNumber, passportNumber, idDocSummary
+                            )
+                        },
+                        enabled = !uiState.isBusy && fullName.trim().length >= 2 && requestedBusiness.trim().length >= 2,
+                        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).testTag("req_submit_button")
+                    ) {
+                        Text(if (existingReq == null) "Submit Access Request" else "Update Pending Request")
+                    }
+                }
+
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    FilledTonalButton(
+                        onClick = onRefreshStatus,
+                        enabled = !uiState.isBusy,
+                        modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp).testTag("req_refresh_button")
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Check Approval")
+                    }
+                    OutlinedButton(
+                        onClick = onSignOut,
+                        modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp).testTag("req_signout_button")
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(strings.logout)
+                    }
+                }
+                if (uiState.hasExistingUsers) {
+                    TextButton(
+                        onClick = onOpenCredentialsLogin,
+                        modifier = Modifier.align(Alignment.CenterHorizontally).defaultMinSize(minHeight = 48.dp)
+                    ) {
+                        Text("Portal Password Login")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EmergencyLockedScreen(
+    uiState: OneHomeUiState,
+    onRefreshStatus: () -> Unit,
+    onSignOut: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .testTag("emergency_locked_screen"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        ElevatedCard(
+            colors = CardDefaults.elevatedCardColors(containerColor = CrimsonContainer.copy(alpha = 0.45f)),
+            modifier = Modifier.widthIn(max = 500.dp).fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(Icons.Default.GppMaybe, contentDescription = null, tint = CrimsonError, modifier = Modifier.size(56.dp))
+                Text(
+                    text = "Global Emergency Lock Active",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = CrimsonError
+                )
+                Text(
+                    text = uiState.gateLockReason
+                        ?: uiState.platformStatus?.lockMessage
+                        ?: "All non-Super-Admin access has been temporarily suspended by the Super Admin.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    Button(
+                        onClick = onRefreshStatus,
+                        modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp).testTag("emergency_refresh_button")
+                    ) {
+                        Text("Recheck")
+                    }
+                    OutlinedButton(
+                        onClick = onSignOut,
+                        modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp).testTag("emergency_signout_button")
+                    ) {
+                        Text("Sign Out")
                     }
                 }
             }
@@ -289,8 +975,10 @@ fun LoginScreen(
     onChangeLanguage: (AppLanguage) -> Unit,
     onSignIn: (String, String, Boolean) -> Unit,
     onGoForgotPassword: () -> Unit,
+    onBackToGate: () -> Unit,
     onDismissBanner: () -> Unit
 ) {
+    BackHandler { onBackToGate() }
     val strings = LocalAppStrings.current
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -319,6 +1007,11 @@ fun LoginScreen(
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(strings.signIn, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(
+                    text = "Valid password alone never grants entry without active Super Admin server authorization.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(Modifier.height(14.dp))
                 OutlinedTextField(
                     value = email,
@@ -372,14 +1065,21 @@ fun LoginScreen(
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                TextButton(
-                    onClick = onGoForgotPassword,
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .defaultMinSize(minHeight = 48.dp)
-                        .testTag("forgot_password_button")
-                ) {
-                    Text(strings.forgotPassword)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(
+                        onClick = onBackToGate,
+                        modifier = Modifier.defaultMinSize(minHeight = 48.dp).testTag("back_to_gate_button")
+                    ) {
+                        Text("Google Gate")
+                    }
+                    TextButton(
+                        onClick = onGoForgotPassword,
+                        modifier = Modifier
+                            .defaultMinSize(minHeight = 48.dp)
+                            .testTag("forgot_password_button")
+                    ) {
+                        Text(strings.forgotPassword)
+                    }
                 }
             }
         }
@@ -493,7 +1193,7 @@ fun DeviceChallengeScreen(
                 Spacer(Modifier.height(6.dp))
                 if (challenge != null) {
                     Text(
-                        text = "Unrecognized device detected for ${challenge.email}. Enter local verification code: ${challenge.verificationCode}",
+                        text = "Unrecognized device detected for ${challenge.email}. Enter verification code: ${challenge.verificationCode}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -620,7 +1320,7 @@ fun AccountSecurityScreen(
                             Text(ctx.fullName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             Text(ctx.email, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        StatusBadge(ctx.userType)
+                        StatusBadge(if (ctx.isSuperAdmin) "SUPER ADMIN" else ctx.userType)
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import com.example.data.db.entities.*
 import kotlinx.coroutines.flow.Flow
 
@@ -234,4 +235,67 @@ interface OperationsDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertIntegration(entity: IntegrationConfigEntity)
+
+    // --- Cloud Sync / Multi-Device Restore Helpers ---
+    @Query("SELECT * FROM complaints WHERE businessId = :businessId")
+    suspend fun getComplaintsByBusiness(businessId: String): List<ComplaintEntity>
+
+    @Query("SELECT * FROM job_assignments WHERE businessId = :businessId")
+    suspend fun getJobAssignmentsByBusiness(businessId: String): List<JobAssignmentEntity>
+
+    @Query("SELECT * FROM work_reports WHERE businessId = :businessId")
+    suspend fun getWorkReportsByBusiness(businessId: String): List<WorkReportEntity>
+
+    @Query("SELECT * FROM material_usage WHERE businessId = :businessId")
+    suspend fun getMaterialUsageByBusiness(businessId: String): List<MaterialUsageEntity>
+
+    @Query("SELECT * FROM suppliers WHERE businessId = :businessId")
+    suspend fun getSuppliersByBusiness(businessId: String): List<SupplierEntity>
+
+    @Query("SELECT * FROM item_categories WHERE businessId = :businessId")
+    suspend fun getItemCategoriesByBusiness(businessId: String): List<ItemCategoryEntity>
+
+    @Query("SELECT * FROM stock_locations WHERE businessId = :businessId")
+    suspend fun getStockLocationsByBusiness(businessId: String): List<StockLocationEntity>
+
+    @Query("SELECT * FROM purchases WHERE businessId = :businessId")
+    suspend fun getPurchasesByBusiness(businessId: String): List<PurchaseEntity>
+
+    @Query("SELECT * FROM purchase_items WHERE businessId = :businessId")
+    suspend fun getPurchaseItemsByBusiness(businessId: String): List<PurchaseItemEntity>
+
+    @Query("SELECT * FROM stock_movements WHERE businessId = :businessId")
+    suspend fun getStockMovementsByBusiness(businessId: String): List<StockMovementEntity>
+
+    @Query("SELECT * FROM supplier_payments WHERE businessId = :businessId")
+    suspend fun getSupplierPaymentsByBusiness(businessId: String): List<SupplierPaymentEntity>
+
+    @Query("SELECT * FROM documents WHERE businessId = :businessId")
+    suspend fun getDocumentsByBusiness(businessId: String): List<DocumentEntity>
+
+    @Query("SELECT * FROM notifications WHERE businessId = :businessId")
+    suspend fun getNotificationsByBusiness(businessId: String): List<NotificationEntity>
+
+    @Query("SELECT * FROM audit_logs WHERE businessId = :businessId")
+    suspend fun getAuditLogsByBusiness(businessId: String): List<AuditLogEntity>
+
+    @Query("SELECT * FROM integration_configs WHERE businessId = :businessId")
+    suspend fun getIntegrationsByBusiness(businessId: String): List<IntegrationConfigEntity>
+
+    @Upsert suspend fun upsertComplaints(items: List<ComplaintEntity>)
+    @Upsert suspend fun upsertJobAssignments(items: List<JobAssignmentEntity>)
+    @Upsert suspend fun upsertWorkReports(items: List<WorkReportEntity>)
+    @Upsert suspend fun upsertMaterialUsage(items: List<MaterialUsageEntity>)
+    @Upsert suspend fun upsertSuppliers(items: List<SupplierEntity>)
+    @Upsert suspend fun upsertItemCategories(items: List<ItemCategoryEntity>)
+    @Upsert suspend fun upsertItems(items: List<ItemEntity>)
+    @Upsert suspend fun upsertStockLocations(items: List<StockLocationEntity>)
+    @Upsert suspend fun upsertPurchases(items: List<PurchaseEntity>)
+    @Upsert suspend fun upsertPurchaseItems(items: List<PurchaseItemEntity>)
+    @Upsert suspend fun upsertStockMovements(items: List<StockMovementEntity>)
+    @Upsert suspend fun upsertSupplierPayments(items: List<SupplierPaymentEntity>)
+    @Upsert suspend fun upsertDocuments(items: List<DocumentEntity>)
+    @Upsert suspend fun upsertNotifications(items: List<NotificationEntity>)
+    @Upsert suspend fun upsertAuditLogs(items: List<AuditLogEntity>)
+    @Upsert suspend fun upsertIntegrations(items: List<IntegrationConfigEntity>)
 }

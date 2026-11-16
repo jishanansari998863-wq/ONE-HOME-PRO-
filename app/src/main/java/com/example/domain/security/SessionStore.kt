@@ -14,12 +14,16 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.util.concurrent.ConcurrentHashMap
 
-class SessionStore(context: Context) {
+class SessionStore(
+    context: Context,
+    private val storeName: String = "one_home_pro_secure_prefs"
+) {
     private val appContext: Context = context.applicationContext ?: context
-    private val dataStore: DataStore<Preferences> = getOrCreateDataStore(appContext)
+    private val dataStore: DataStore<Preferences> = getOrCreateDataStore(appContext, storeName)
 
     private object Keys {
         val SESSION_TOKEN = stringPreferencesKey("session_token")
+        val SERVER_SESSION_ID = stringPreferencesKey("server_session_id")
         val DEVICE_ID = stringPreferencesKey("device_id")
         val LANGUAGE = stringPreferencesKey("app_language")
         val DARK_MODE = booleanPreferencesKey("dark_mode")
@@ -49,8 +53,18 @@ class SessionStore(context: Context) {
     suspend fun getSessionToken(): String? =
         dataStore.data.first()[Keys.SESSION_TOKEN]
 
+    suspend fun saveServerSessionId(serverSessionId: String) {
+        dataStore.edit { it[Keys.SERVER_SESSION_ID] = serverSessionId }
+    }
+
+    suspend fun getServerSessionId(): String? =
+        dataStore.data.first()[Keys.SERVER_SESSION_ID]
+
     suspend fun clearSessionToken() {
-        dataStore.edit { it.remove(Keys.SESSION_TOKEN) }
+        dataStore.edit {
+            it.remove(Keys.SESSION_TOKEN)
+            it.remove(Keys.SERVER_SESSION_ID)
+        }
     }
 
     suspend fun setLanguage(language: AppLanguage) {
@@ -64,8 +78,8 @@ class SessionStore(context: Context) {
     companion object {
         private val storesByPath = ConcurrentHashMap<String, DataStore<Preferences>>()
 
-        private fun getOrCreateDataStore(context: Context): DataStore<Preferences> {
-            val targetFile = context.preferencesDataStoreFile("one_home_pro_secure_prefs")
+        private fun getOrCreateDataStore(context: Context, storeName: String): DataStore<Preferences> {
+            val targetFile = context.preferencesDataStoreFile(storeName)
             val key = runCatching { targetFile.canonicalPath }.getOrElse { targetFile.absolutePath }
             return storesByPath[key] ?: synchronized(storesByPath) {
                 storesByPath.getOrPut(key) {

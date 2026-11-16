@@ -1,0 +1,427 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Hardened Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidServerTimestampsOnCreate(data) {
+      return data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidServerTimestampsOnUpdate(data, prev) {
+      return data.createdAt == prev.createdAt &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // Exclusive pre-authorized Super Admin identity
+    function isVerifiedSuperAdminEmail() {
+      return isSignedIn() &&
+             request.auth.token.email_verified == true &&
+             request.auth.token.email == 'jishanansari998863@gmail.com';
+    }
+
+    function platformConfigExists() {
+      return exists(/databases/$(database)/documents/platform_config/global);
+    }
+
+    function isSuperAdmin() {
+      return isVerifiedSuperAdminEmail() && (
+        !platformConfigExists() ||
+        get(/databases/$(database)/documents/platform_config/global).data.superAdminUid == request.auth.uid
+      );
+    }
+
+    function platformStatusExists() {
+      return exists(/databases/$(database)/documents/platform_status/public);
+    }
+
+    function isEmergencyLocked() {
+      return platformStatusExists() &&
+             get(/databases/$(database)/documents/platform_status/public).data.emergencyLockAllNonSuperAdmin == true;
+    }
+
+    function isRegistrationsEnabled() {
+      return !platformStatusExists() ||
+             get(/databases/$(database)/documents/platform_status/public).data.registrationsEnabled == true;
+    }
+
+    function hasActiveGrant(uid) {
+      return exists(/databases/$(database)/documents/access_grants/$(uid)) &&
+             get(/databases/$(database)/documents/access_grants/$(uid)).data.status == 'ACTIVE';
+    }
+
+    function isBusinessActive(bizId) {
+      return exists(/databases/$(database)/documents/businesses/$(bizId)) &&
+             get(/databases/$(database)/documents/businesses/$(bizId)).data.status == 'ACTIVE';
+    }
+
+    function isApprovedUserForBusiness(bizId) {
+      return isSignedIn() &&
+             !isEmergencyLocked() &&
+             hasActiveGrant(request.auth.uid) &&
+             (bizId in get(/databases/$(database)/documents/access_grants/$(request.auth.uid)).data.allowedBusinessIds) &&
+             isBusinessActive(bizId);
+    }
+
+    function isAdminDeviceRevoked(uid, deviceId) {
+      return exists(/databases/$(database)/documents/admin_devices/$(uid + '_' + deviceId)) &&
+             get(/databases/$(database)/documents/admin_devices/$(uid + '_' + deviceId)).data.status == 'REVOKED_LOST';
+    }
+
+    // 3. Entity Validation Blueprints
+    function isValidPlatformConfig(data) {
+      return data.superAdminUid is string && data.superAdminUid.size() >= 3 && data.superAdminUid.size() <= 128 &&
+             data.superAdminEmail == 'jishanansari998863@gmail.com' &&
+             data.mfaEnabled == true &&
+             data.passwordSalt is string && data.passwordSalt.size() >= 8 && data.passwordSalt.size() <= 128 &&
+             data.passwordHash is string && data.passwordHash.size() >= 16 && data.passwordHash.size() <= 256 &&
+             data.totpSecret is string && data.totpSecret.size() >= 16 && data.totpSecret.size() <= 128 &&
+             data.recoveryCodeHashes is list && data.recoveryCodeHashes.size() >= 1 && data.recoveryCodeHashes.size() <= 10 &&
+             (data.recoveryCodeHashes.size() == 0 || data.recoveryCodeHashes[0] is string) &&
+             (!('backupKeySalt' in data) || (data.backupKeySalt is string && data.backupKeySalt.size() <= 128)) &&
+             (!('backupKeyHash' in data) || (data.backupKeyHash is string && data.backupKeyHash.size() <= 256)) &&
+             (!('securityQuestion' in data) || (data.securityQuestion is string && data.securityQuestion.size() <= 250)) &&
+             (!('securityAnswerSalt' in data) || (data.securityAnswerSalt is string && data.securityAnswerSalt.size() <= 128)) &&
+             (!('securityAnswerHash' in data) || (data.securityAnswerHash is string && data.securityAnswerHash.size() <= 256)) &&
+             (!('minAdminSessionValidAfterEpoch' in data) || (data.minAdminSessionValidAfterEpoch is int && data.minAdminSessionValidAfterEpoch >= 0));
+    }
+
+    function isValidPlatformStatus(data) {
+      return data.isBootstrapped is bool &&
+             data.registrationsEnabled is bool &&
+             data.emergencyLockAllNonSuperAdmin is bool &&
+             (!('lockMessage' in data) || data.lockMessage == null || (data.lockMessage is string && data.lockMessage.size() <= 300));
+    }
+
+    function isValidAccessRequest(data) {
+      return data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+             data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 100 &&
+             data.phone is string && data.phone.size() <= 30 &&
+             data.requestedRole in ['OWNER', 'EMPLOYEE', 'CUSTOMER'] &&
+             data.requestedBusinessName is string && data.requestedBusinessName.size() >= 2 && data.requestedBusinessName.size() <= 120 &&
+             data.requestedBranchName is string && data.requestedBranchName.size() <= 120 &&
+             (!('qidNumber' in data) || data.qidNumber == null || (data.qidNumber is string && data.qidNumber.size() <= 40)) &&
+             (!('passportNumber' in data) || data.passportNumber == null || (data.passportNumber is string && data.passportNumber.size() <= 40)) &&
+             (!('identityDocSummary' in data) || data.identityDocSummary == null || (data.identityDocSummary is string && data.identityDocSummary.size() <= 250)) &&
+             data.deviceId is string && data.deviceId.size() >= 3 && data.deviceId.size() <= 128 &&
+             data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 120 &&
+             data.status in ['PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'REVOKED'] &&
+             (!('reviewedByUid' in data) || data.reviewedByUid == null || (data.reviewedByUid is string && data.reviewedByUid.size() <= 128)) &&
+             (!('reviewNote' in data) || data.reviewNote == null || (data.reviewNote is string && data.reviewNote.size() <= 300));
+    }
+
+    function isValidAccessGrant(data) {
+      return data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+             data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 100 &&
+             data.authorityRole in ['OWNER', 'EMPLOYEE', 'CUSTOMER'] &&
+             data.status in ['ACTIVE', 'SUSPENDED', 'REVOKED'] &&
+             data.activeBusinessId is string && data.activeBusinessId.size() >= 1 && data.activeBusinessId.size() <= 128 &&
+             data.allowedBusinessIds is list && data.allowedBusinessIds.size() >= 1 && data.allowedBusinessIds.size() <= 50 &&
+             (data.allowedBusinessIds.size() == 0 || data.allowedBusinessIds[0] is string) &&
+             data.allowedPropertyIds is list && data.allowedPropertyIds.size() <= 100 &&
+             (data.allowedPropertyIds.size() == 0 || data.allowedPropertyIds[0] is string) &&
+             data.restrictToAssignedProperties is bool &&
+             data.permissionKeys is list && data.permissionKeys.size() <= 250 &&
+             (data.permissionKeys.size() == 0 || data.permissionKeys[0] is string) &&
+             data.approvedByUid is string && data.approvedByUid.size() >= 1 && data.approvedByUid.size() <= 128 &&
+             data.minSessionValidAfterEpoch is int && data.minSessionValidAfterEpoch >= 0;
+    }
+
+    function isValidBusiness(data) {
+      return data.name is string && data.name.size() >= 2 && data.name.size() <= 120 &&
+             data.code is string && data.code.size() >= 2 && data.code.size() <= 32 &&
+             data.branchName is string && data.branchName.size() >= 1 && data.branchName.size() <= 120 &&
+             data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128 &&
+             data.ownerEmail is string && data.ownerEmail.size() >= 3 && data.ownerEmail.size() <= 160 &&
+             data.status in ['ACTIVE', 'SUSPENDED', 'REVOKED'] &&
+             data.approvedByUid is string && data.approvedByUid.size() >= 1 && data.approvedByUid.size() <= 128 &&
+             data.currency is string && data.currency.size() <= 12 &&
+             data.timezone is string && data.timezone.size() <= 60;
+    }
+
+    function isValidSession(data) {
+      return data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+             data.businessId is string && data.businessId.size() >= 1 && data.businessId.size() <= 128 &&
+             data.deviceId is string && data.deviceId.size() >= 3 && data.deviceId.size() <= 128 &&
+             data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 120 &&
+             data.isRevoked is bool &&
+             (!('revokedReason' in data) || data.revokedReason == null || (data.revokedReason is string && data.revokedReason.size() <= 120)) &&
+             data.rememberMe is bool &&
+             data.expiresAtEpoch is int && data.expiresAtEpoch > 0;
+    }
+
+    function isValidAuditLog(data) {
+      return data.actorUid is string && data.actorUid.size() >= 1 && data.actorUid.size() <= 128 &&
+             data.actorEmail is string && data.actorEmail.size() >= 3 && data.actorEmail.size() <= 160 &&
+             data.action is string && data.action.size() >= 2 && data.action.size() <= 64 &&
+             (!('targetUid' in data) || data.targetUid == null || (data.targetUid is string && data.targetUid.size() <= 128)) &&
+             (!('targetEmail' in data) || data.targetEmail == null || (data.targetEmail is string && data.targetEmail.size() <= 160)) &&
+             (!('businessId' in data) || data.businessId == null || (data.businessId is string && data.businessId.size() <= 128)) &&
+             data.details is string && data.details.size() >= 1 && data.details.size() <= 500 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    // 4. Collection Security Rules
+
+    // Super Admin exclusive authority document: immutable once bound to Super Admin UID
+    match /platform_config/{configId} {
+      allow get: if isValidId(configId) && configId == 'global' && isSuperAdmin();
+      allow list, delete: if false;
+      allow create: if isValidId(configId) && configId == 'global' &&
+                       isVerifiedSuperAdminEmail() &&
+                       !platformConfigExists() &&
+                       incoming().superAdminUid == request.auth.uid &&
+                       incoming().keys().hasAll(['superAdminUid', 'superAdminEmail', 'mfaEnabled', 'passwordSalt', 'passwordHash', 'totpSecret', 'recoveryCodeHashes', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['superAdminUid', 'superAdminEmail', 'mfaEnabled', 'passwordSalt', 'passwordHash', 'totpSecret', 'recoveryCodeHashes', 'backupKeySalt', 'backupKeyHash', 'securityQuestion', 'securityAnswerSalt', 'securityAnswerHash', 'minAdminSessionValidAfterEpoch', 'createdAt', 'updatedAt']) &&
+                       isValidServerTimestampsOnCreate(incoming()) &&
+                       isValidPlatformConfig(incoming());
+      allow update: if isValidId(configId) && configId == 'global' &&
+                       isSuperAdmin() &&
+                       incoming().superAdminUid == existing().superAdminUid &&
+                       incoming().superAdminEmail == existing().superAdminEmail &&
+                       isValidServerTimestampsOnUpdate(incoming(), existing()) &&
+                       isValidPlatformConfig(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['mfaEnabled', 'passwordSalt', 'passwordHash', 'totpSecret', 'recoveryCodeHashes', 'backupKeySalt', 'backupKeyHash', 'securityQuestion', 'securityAnswerSalt', 'securityAnswerHash', 'minAdminSessionValidAfterEpoch', 'updatedAt']);
+    }
+
+    // Non-PII global flags (registration availability & emergency lock)
+    match /platform_status/{statusId} {
+      allow get: if isValidId(statusId) && statusId == 'public' && isSignedIn();
+      allow list, delete: if false;
+      allow create: if isValidId(statusId) && statusId == 'public' &&
+                       isSuperAdmin() &&
+                       incoming().keys().hasAll(['isBootstrapped', 'registrationsEnabled', 'emergencyLockAllNonSuperAdmin', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['isBootstrapped', 'registrationsEnabled', 'emergencyLockAllNonSuperAdmin', 'lockMessage', 'updatedAt']) &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidPlatformStatus(incoming());
+      allow update: if isValidId(statusId) && statusId == 'public' &&
+                       isSuperAdmin() &&
+                       incoming().isBootstrapped == true &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidPlatformStatus(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['isBootstrapped', 'registrationsEnabled', 'emergencyLockAllNonSuperAdmin', 'lockMessage', 'updatedAt']);
+    }
+
+    // Applicant Access Requests: applicants may submit PENDING_APPROVAL only, NEVER self-approve
+    match /access_requests/{requestUid} {
+      allow get: if isValidId(requestUid) && (isSuperAdmin() || (isSignedIn() && request.auth.uid == requestUid));
+      allow list: if isSuperAdmin();
+      allow create: if isValidId(requestUid) &&
+                       isSignedIn() &&
+                       request.auth.uid == requestUid &&
+                       isRegistrationsEnabled() &&
+                       !isEmergencyLocked() &&
+                       incoming().uid == request.auth.uid &&
+                       incoming().status == 'PENDING_APPROVAL' &&
+                       !('reviewedByUid' in incoming()) &&
+                       !('reviewNote' in incoming()) &&
+                       incoming().keys().hasAll(['uid', 'email', 'fullName', 'phone', 'requestedRole', 'requestedBusinessName', 'requestedBranchName', 'deviceId', 'deviceName', 'status', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['uid', 'email', 'fullName', 'phone', 'requestedRole', 'requestedBusinessName', 'requestedBranchName', 'qidNumber', 'passportNumber', 'identityDocSummary', 'deviceId', 'deviceName', 'status', 'reviewedByUid', 'reviewNote', 'createdAt', 'updatedAt']) &&
+                       isValidServerTimestampsOnCreate(incoming()) &&
+                       isValidAccessRequest(incoming());
+      allow update: if isValidId(requestUid) &&
+                       isValidServerTimestampsOnUpdate(incoming(), existing()) &&
+                       isValidAccessRequest(incoming()) &&
+                       incoming().uid == existing().uid && (
+                         isSuperAdmin() ||
+                         (
+                           isSignedIn() &&
+                           request.auth.uid == requestUid &&
+                           !isEmergencyLocked() &&
+                           existing().status == 'PENDING_APPROVAL' &&
+                           incoming().status == 'PENDING_APPROVAL' &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'phone', 'requestedBusinessName', 'requestedBranchName', 'qidNumber', 'passportNumber', 'identityDocSummary', 'deviceId', 'deviceName', 'updatedAt'])
+                         )
+                       );
+      allow delete: if isValidId(requestUid) && isSuperAdmin();
+    }
+
+    // Authoritative Access Grants: writable EXCLUSIVELY by Super Admin
+    match /access_grants/{grantUid} {
+      allow get: if isValidId(grantUid) && (isSuperAdmin() || (isSignedIn() && request.auth.uid == grantUid && !isEmergencyLocked()));
+      allow list: if isSuperAdmin();
+      allow create: if isValidId(grantUid) &&
+                       isSuperAdmin() &&
+                       incoming().uid == grantUid &&
+                       incoming().approvedByUid == request.auth.uid &&
+                       incoming().keys().hasAll(['uid', 'email', 'fullName', 'authorityRole', 'status', 'activeBusinessId', 'allowedBusinessIds', 'allowedPropertyIds', 'restrictToAssignedProperties', 'permissionKeys', 'approvedByUid', 'minSessionValidAfterEpoch', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['uid', 'email', 'fullName', 'authorityRole', 'status', 'activeBusinessId', 'allowedBusinessIds', 'allowedPropertyIds', 'restrictToAssignedProperties', 'permissionKeys', 'approvedByUid', 'minSessionValidAfterEpoch', 'createdAt', 'updatedAt']) &&
+                       isValidServerTimestampsOnCreate(incoming()) &&
+                       isValidAccessGrant(incoming());
+      allow update: if isValidId(grantUid) &&
+                       isSuperAdmin() &&
+                       incoming().uid == existing().uid &&
+                       isValidServerTimestampsOnUpdate(incoming(), existing()) &&
+                       isValidAccessGrant(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'authorityRole', 'status', 'activeBusinessId', 'allowedBusinessIds', 'allowedPropertyIds', 'restrictToAssignedProperties', 'permissionKeys', 'approvedByUid', 'minSessionValidAfterEpoch', 'updatedAt']);
+      allow delete: if isValidId(grantUid) && isSuperAdmin();
+    }
+
+    // Businesses: created and status-controlled EXCLUSIVELY by Super Admin
+    match /businesses/{businessId} {
+      allow get: if isValidId(businessId) && (isSuperAdmin() || isApprovedUserForBusiness(businessId));
+      allow list: if isSuperAdmin() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isValidId(businessId) &&
+                       isSuperAdmin() &&
+                       incoming().approvedByUid == request.auth.uid &&
+                       incoming().keys().hasAll(['name', 'code', 'branchName', 'ownerUid', 'ownerEmail', 'status', 'approvedByUid', 'currency', 'timezone', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['name', 'code', 'branchName', 'ownerUid', 'ownerEmail', 'status', 'approvedByUid', 'currency', 'timezone', 'createdAt', 'updatedAt']) &&
+                       isValidServerTimestampsOnCreate(incoming()) &&
+                       isValidBusiness(incoming());
+      allow update: if isValidId(businessId) &&
+                       isValidServerTimestampsOnUpdate(incoming(), existing()) &&
+                       isValidBusiness(incoming()) && (
+                         isSuperAdmin() ||
+                         (
+                           isApprovedUserForBusiness(businessId) &&
+                           existing().ownerUid == request.auth.uid &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['name', 'branchName', 'updatedAt'])
+                         )
+                       );
+      allow delete: if isValidId(businessId) && isSuperAdmin();
+
+      // Encrypted/checksummed cloud business snapshots for seamless multi-device recovery
+      match /cloud_snapshots/{snapshotId} {
+        allow get, list: if isValidId(businessId) && isValidId(snapshotId) &&
+                              (isSuperAdmin() || isApprovedUserForBusiness(businessId));
+        allow create: if isValidId(businessId) && isValidId(snapshotId) &&
+                         incoming().businessId == businessId &&
+                         incoming().syncedByUid == request.auth.uid &&
+                         incoming().payloadBase64 is string && incoming().payloadBase64.size() <= 900000 &&
+                         incoming().sha256Checksum is string && incoming().sha256Checksum.size() == 64 &&
+                         incoming().recordCount is int && incoming().recordCount >= 0 &&
+                         incoming().syncedByDeviceName is string && incoming().syncedByDeviceName.size() <= 120 &&
+                         incoming().appLanguageCode is string && incoming().appLanguageCode.size() <= 10 &&
+                         incoming().darkTheme is bool &&
+                         incoming().syncedAtEpoch is int && incoming().syncedAtEpoch >= 0 &&
+                         isValidServerTimestampsOnCreate(incoming()) &&
+                         (isSuperAdmin() || isApprovedUserForBusiness(businessId));
+        allow update: if isValidId(businessId) && isValidId(snapshotId) &&
+                         incoming().businessId == existing().businessId &&
+                         incoming().syncedByUid == request.auth.uid &&
+                         incoming().payloadBase64 is string && incoming().payloadBase64.size() <= 900000 &&
+                         incoming().sha256Checksum is string && incoming().sha256Checksum.size() == 64 &&
+                         incoming().recordCount is int && incoming().recordCount >= 0 &&
+                         incoming().syncedByDeviceName is string && incoming().syncedByDeviceName.size() <= 120 &&
+                         incoming().appLanguageCode is string && incoming().appLanguageCode.size() <= 10 &&
+                         incoming().darkTheme is bool &&
+                         incoming().syncedAtEpoch is int && incoming().syncedAtEpoch >= 0 &&
+                         isValidServerTimestampsOnUpdate(incoming(), existing()) &&
+                         (isSuperAdmin() || isApprovedUserForBusiness(businessId));
+        allow delete: if isValidId(businessId) && isValidId(snapshotId) && isSuperAdmin();
+      }
+    }
+
+    // Registered & Lost/Revoked Super Admin / User Devices (prevents stolen/returned devices from reusing app)
+    match /admin_devices/{deviceDocId} {
+      allow get: if isValidId(deviceDocId) && (isSuperAdmin() || (isSignedIn() && existing().uid == request.auth.uid && !isEmergencyLocked()));
+      allow list: if isSuperAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isValidId(deviceDocId) &&
+                       isSignedIn() &&
+                       deviceDocId == request.auth.uid + '_' + incoming().deviceId &&
+                       incoming().uid == request.auth.uid &&
+                       incoming().status == 'ACTIVE' &&
+                       incoming().deviceId is string && incoming().deviceId.size() >= 3 && incoming().deviceId.size() <= 128 &&
+                       incoming().deviceName is string && incoming().deviceName.size() >= 1 && incoming().deviceName.size() <= 120 &&
+                       incoming().lastSeenEpoch is int && incoming().lastSeenEpoch >= 0 &&
+                       incoming().keys().hasAll(['uid', 'email', 'deviceId', 'deviceName', 'status', 'lastSeenEpoch', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['uid', 'email', 'deviceId', 'deviceName', 'status', 'revokedReason', 'revokedByDeviceId', 'lastSeenEpoch', 'createdAt', 'updatedAt']) &&
+                       isValidServerTimestampsOnCreate(incoming()) &&
+                       (isSuperAdmin() || (hasActiveGrant(request.auth.uid) && !isEmergencyLocked()));
+      allow update: if isValidId(deviceDocId) &&
+                       incoming().uid == existing().uid &&
+                       incoming().deviceId == existing().deviceId &&
+                       incoming().status in ['ACTIVE', 'REVOKED_LOST'] &&
+                       isValidServerTimestampsOnUpdate(incoming(), existing()) && (
+                         (
+                           isSuperAdmin() && (
+                             existing().status == 'ACTIVE' ||
+                             (
+                               incoming().status == 'ACTIVE' &&
+                               incoming().revokedReason == null &&
+                               incoming().revokedByDeviceId == null &&
+                               incoming().diff(existing()).affectedKeys().hasOnly(['status', 'revokedReason', 'revokedByDeviceId', 'lastSeenEpoch', 'updatedAt'])
+                             )
+                           )
+                         ) ||
+                         (
+                           isSignedIn() &&
+                           existing().uid == request.auth.uid &&
+                           existing().status == 'ACTIVE' &&
+                           incoming().status == 'ACTIVE' &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['deviceName', 'lastSeenEpoch', 'updatedAt'])
+                         )
+                       );
+      allow delete: if isValidId(deviceDocId) && isSuperAdmin();
+    }
+
+    // Server-side Revocable Sessions: only approved users (or Super Admin) on NON-REVOKED devices can create active sessions
+    match /sessions/{sessionId} {
+      allow get: if isValidId(sessionId) && (isSuperAdmin() || (isSignedIn() && existing().uid == request.auth.uid && !isEmergencyLocked()));
+      allow list: if isSuperAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isValidId(sessionId) &&
+                       isSignedIn() &&
+                       incoming().uid == request.auth.uid &&
+                       incoming().isRevoked == false &&
+                       !isAdminDeviceRevoked(request.auth.uid, incoming().deviceId) &&
+                       incoming().keys().hasAll(['uid', 'businessId', 'deviceId', 'deviceName', 'isRevoked', 'rememberMe', 'expiresAtEpoch', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['uid', 'businessId', 'deviceId', 'deviceName', 'isRevoked', 'revokedReason', 'rememberMe', 'expiresAtEpoch', 'createdAt', 'updatedAt']) &&
+                       isValidServerTimestampsOnCreate(incoming()) &&
+                       isValidSession(incoming()) &&
+                       (isSuperAdmin() || isApprovedUserForBusiness(incoming().businessId));
+      allow update: if isValidId(sessionId) &&
+                       isValidServerTimestampsOnUpdate(incoming(), existing()) &&
+                       isValidSession(incoming()) &&
+                       incoming().uid == existing().uid &&
+                       incoming().businessId == existing().businessId &&
+                       incoming().deviceId == existing().deviceId && (
+                         isSuperAdmin() ||
+                         (
+                           isSignedIn() &&
+                           existing().uid == request.auth.uid &&
+                           incoming().isRevoked == true &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['isRevoked', 'revokedReason', 'updatedAt'])
+                         )
+                       );
+      allow delete: if isValidId(sessionId) && isSuperAdmin();
+    }
+
+    // Immutable Security & Super Admin Audit Log
+    match /admin_audit_logs/{logId} {
+      allow get, list: if isSuperAdmin();
+      allow create: if isValidId(logId) &&
+                       isSignedIn() &&
+                       incoming().actorUid == request.auth.uid &&
+                       incoming().keys().hasAll(['actorUid', 'actorEmail', 'action', 'details', 'createdAt']) &&
+                       incoming().keys().hasOnly(['actorUid', 'actorEmail', 'action', 'targetUid', 'targetEmail', 'businessId', 'details', 'createdAt']) &&
+                       isValidAuditLog(incoming()) && (
+                         isSuperAdmin() ||
+                         incoming().action in ['ACCESS_REQUEST_SUBMITTED', 'ACCESS_DENIED_ATTEMPT']
+                       );
+      allow update, delete: if false;
+    }
+  }
+}

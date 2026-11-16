@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import com.example.data.db.entities.*
 import kotlinx.coroutines.flow.Flow
 
@@ -279,4 +280,49 @@ interface CoreAndTenancyDao {
 
     @Update
     suspend fun updateAdvanceRent(entity: AdvanceRentEntity)
+
+    // --- Cloud Sync / Multi-Device Restore Helpers ---
+    @Query("SELECT * FROM room_reservations WHERE businessId = :businessId")
+    suspend fun getReservationsByBusiness(businessId: String): List<RoomReservationEntity>
+
+    @Query("SELECT * FROM property_inspections WHERE businessId = :businessId")
+    suspend fun getInspectionsByBusiness(businessId: String): List<PropertyInspectionEntity>
+
+    @Query("SELECT * FROM tenancy_history WHERE businessId = :businessId")
+    suspend fun getTenancyHistoryByBusiness(businessId: String): List<TenancyHistoryEntity>
+
+    @Query("SELECT * FROM payment_allocations WHERE businessId = :businessId")
+    suspend fun getPaymentAllocationsByBusiness(businessId: String): List<PaymentAllocationEntity>
+
+    @Query("SELECT * FROM receipts WHERE businessId = :businessId")
+    suspend fun getReceiptsByBusiness(businessId: String): List<ReceiptEntity>
+
+    @Query("SELECT * FROM security_deposits WHERE businessId = :businessId")
+    suspend fun getSecurityDepositsByBusiness(businessId: String): List<SecurityDepositEntity>
+
+    @Query("SELECT * FROM deposit_transactions WHERE businessId = :businessId")
+    suspend fun getDepositTransactionsByBusiness(businessId: String): List<DepositTransactionEntity>
+
+    @Query("SELECT * FROM advance_rents WHERE businessId = :businessId")
+    suspend fun getAdvanceRentsByBusiness(businessId: String): List<AdvanceRentEntity>
+
+    @Upsert suspend fun upsertBusinesses(items: List<BusinessEntity>)
+    @Upsert suspend fun upsertProperties(items: List<PropertyEntity>)
+    @Upsert suspend fun upsertBuildings(items: List<BuildingEntity>)
+    @Upsert suspend fun upsertFloors(items: List<FloorEntity>)
+    @Upsert suspend fun upsertRooms(items: List<RoomEntity>)
+    @Upsert suspend fun upsertReservations(items: List<RoomReservationEntity>)
+    @Upsert suspend fun upsertInspections(items: List<PropertyInspectionEntity>)
+    @Upsert suspend fun upsertCustomers(items: List<CustomerEntity>)
+    @Upsert suspend fun upsertFamilyMembers(items: List<FamilyMemberEntity>)
+    @Upsert suspend fun upsertAgreements(items: List<AgreementEntity>)
+    @Upsert suspend fun upsertTenancyHistory(items: List<TenancyHistoryEntity>)
+    @Upsert suspend fun upsertMonthlyRents(items: List<MonthlyRentEntity>)
+    @Upsert suspend fun upsertPayments(items: List<PaymentEntity>)
+    @Upsert suspend fun upsertPaymentAllocations(items: List<PaymentAllocationEntity>)
+    @Upsert suspend fun upsertReceipts(items: List<ReceiptEntity>)
+    @Upsert suspend fun upsertSecurityDeposits(items: List<SecurityDepositEntity>)
+    @Upsert suspend fun upsertDepositTransactions(items: List<DepositTransactionEntity>)
+    @Upsert suspend fun upsertCheques(items: List<ChequeEntity>)
+    @Upsert suspend fun upsertAdvanceRents(items: List<AdvanceRentEntity>)
 }

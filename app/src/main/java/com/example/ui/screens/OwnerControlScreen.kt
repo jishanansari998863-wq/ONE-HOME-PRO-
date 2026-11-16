@@ -224,7 +224,7 @@ fun OwnerControlScreen(
                                 Text("• Database Engine: Room SQLite (83 Relational Entities)")
                                 Text("• Monetary Arithmetic: Integer Fils (1/100 QAR) — zero float drift")
                                 Text("• Trial Balance / Balance Sheet Balanced: $bsBal")
-                                Text("• Cloud Firestore Sync: BLOCKED (User declined Firebase setup in UI)")
+                                Text("• Cloud Firestore Central Authority: ACTIVE (Exclusive Super Admin Gate)")
                                 Text("• Native iOS / macOS / Windows / Web Builds: BLOCKED in Android container")
                             }
                         }

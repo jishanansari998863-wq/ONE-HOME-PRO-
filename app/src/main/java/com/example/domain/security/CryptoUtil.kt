@@ -98,6 +98,23 @@ object CryptoUtil {
             "OHP-$part1-$part2"
         }
 
+    fun generateMasterRecoveryKey(): String {
+        val parts = (1..4).map { "%04X".format(secureRandom.nextInt(65536)) }
+        return "OHP-KEY-${parts.joinToString("-")}"
+    }
+
+    fun gzipCompress(plainBytes: ByteArray): ByteArray {
+        val baos = java.io.ByteArrayOutputStream()
+        java.util.zip.GZIPOutputStream(baos).use { it.write(plainBytes) }
+        return baos.toByteArray()
+    }
+
+    fun gzipDecompress(compressedBytes: ByteArray): ByteArray {
+        return java.util.zip.GZIPInputStream(java.io.ByteArrayInputStream(compressedBytes)).use {
+            it.readBytes()
+        }
+    }
+
     fun encryptAesGcm(plainBytes: ByteArray, passphrase: String): ByteArray {
         val salt = ByteArray(16).also { secureRandom.nextBytes(it) }
         val iv = ByteArray(12).also { secureRandom.nextBytes(it) }

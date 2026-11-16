@@ -59,17 +59,61 @@ fun OneHomeProAppRoot(vm: OneHomeProViewModel) {
                 Surface(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
                     when (uiState.authStep) {
                         AuthScreenStep.SPLASH -> BrandedSplashScreen()
-                        AuthScreenStep.WELCOME_SETUP -> WelcomeSetupScreen(
+                        AuthScreenStep.RESTRICTED_GATE -> RestrictedWelcomeGateScreen(
                             uiState = uiState,
                             onChangeLanguage = vm::setLanguage,
-                            onSetupOwner = vm::setupOwnerAndBusiness,
+                            onGoogleSignIn = vm::onGoogleSignInClicked,
+                            onOpenCredentialsLogin = { vm.setAuthStep(AuthScreenStep.LOGIN) },
                             onDismissBanner = vm::clearBanners
+                        )
+                        AuthScreenStep.SUPER_ADMIN_BOOTSTRAP -> SuperAdminBootstrapScreen(
+                            uiState = uiState,
+                            onChangeLanguage = vm::setLanguage,
+                            onBootstrap = vm::bootstrapSuperAdmin,
+                            onSignOut = vm::signOutCentral,
+                            onDismissBanner = vm::clearBanners
+                        )
+                        AuthScreenStep.SUPER_ADMIN_VERIFY -> SuperAdminVerifyScreen(
+                            uiState = uiState,
+                            onChangeLanguage = vm::setLanguage,
+                            onVerify = vm::verifySuperAdminChallenge,
+                            onOpenRecovery = vm::openSuperAdminRecovery,
+                            onSignOut = vm::signOutCentral,
+                            onDismissBanner = vm::clearBanners
+                        )
+                        AuthScreenStep.SUPER_ADMIN_RECOVERY -> SuperAdminRecoveryScreen(
+                            uiState = uiState,
+                            onChangeLanguage = vm::setLanguage,
+                            onRecover = vm::recoverSuperAdminAccount,
+                            onBack = { vm.setAuthStep(AuthScreenStep.SUPER_ADMIN_VERIFY) },
+                            onSignOut = vm::signOutCentral,
+                            onDismissBanner = vm::clearBanners
+                        )
+                        AuthScreenStep.DEVICE_REVOKED_LOCKED -> DeviceRevokedLockedScreen(
+                            uiState = uiState,
+                            onRefreshStatus = vm::refreshCentralGateStatus,
+                            onSignOut = vm::signOutCentral
+                        )
+                        AuthScreenStep.ACCESS_REQUEST -> AccessRequestAndStatusScreen(
+                            uiState = uiState,
+                            onChangeLanguage = vm::setLanguage,
+                            onSubmitRequest = vm::submitAccessRequest,
+                            onRefreshStatus = vm::refreshCentralGateStatus,
+                            onOpenCredentialsLogin = { vm.setAuthStep(AuthScreenStep.LOGIN) },
+                            onSignOut = vm::signOutCentral,
+                            onDismissBanner = vm::clearBanners
+                        )
+                        AuthScreenStep.EMERGENCY_LOCKED -> EmergencyLockedScreen(
+                            uiState = uiState,
+                            onRefreshStatus = vm::refreshCentralGateStatus,
+                            onSignOut = vm::signOutCentral
                         )
                         AuthScreenStep.LOGIN -> LoginScreen(
                             uiState = uiState,
                             onChangeLanguage = vm::setLanguage,
                             onSignIn = vm::signIn,
                             onGoForgotPassword = { vm.setAuthStep(AuthScreenStep.FORGOT_PASSWORD) },
+                            onBackToGate = { vm.setAuthStep(AuthScreenStep.RESTRICTED_GATE) },
                             onDismissBanner = vm::clearBanners
                         )
                         AuthScreenStep.FORGOT_PASSWORD -> ForgotPasswordScreen(
@@ -132,6 +176,7 @@ private fun AuthenticatedWorkspaceScaffold(
         AppDestination.NOTIFICATIONS -> strings.notifications
         AppDestination.REPORTS -> strings.reportsAnalytics
         AppDestination.OWNER_CONTROL -> strings.ownerControlCenter
+        AppDestination.SUPER_ADMIN_CONSOLE -> "Super Admin Authority"
         AppDestination.ACCOUNT_SECURITY -> "Account & Security"
         AppDestination.CUSTOMER_PORTAL -> strings.customerPortal
     }
@@ -235,6 +280,7 @@ private fun AuthenticatedWorkspaceScaffold(
                             AppDestination.NOTIFICATIONS -> NotificationsScreen(uiState, vm)
                             AppDestination.REPORTS -> ReportsScreen(uiState)
                             AppDestination.OWNER_CONTROL -> OwnerControlScreen(uiState, vm)
+                            AppDestination.SUPER_ADMIN_CONSOLE -> SuperAdminPanelScreen(uiState, vm)
                             AppDestination.ACCOUNT_SECURITY -> AccountSecurityScreen(
                                 uiState = uiState,
                                 onEnableMfa = vm::enableMfa,

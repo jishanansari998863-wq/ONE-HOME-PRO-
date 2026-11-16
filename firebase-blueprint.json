@@ -1,0 +1,215 @@
+{
+  "entities": {
+    "PlatformConfig": {
+      "title": "PlatformConfig",
+      "description": "Immutable Super Admin authority binding and security settings.",
+      "type": "object",
+      "properties": {
+        "superAdminUid": { "type": "string", "description": "Firebase UID of the exclusive Super Admin bound at bootstrap" },
+        "superAdminEmail": { "type": "string", "description": "Verified Google email of the Super Admin" },
+        "mfaEnabled": { "type": "boolean", "description": "Mandatory 2-step MFA flag for Super Admin" },
+        "passwordSalt": { "type": "string", "description": "PBKDF2 salt for Super Admin vault passphrase" },
+        "passwordHash": { "type": "string", "description": "PBKDF2 hash for Super Admin vault passphrase" },
+        "totpSecret": { "type": "string", "description": "AES-GCM wrapped or Super Admin-only TOTP secret" },
+        "recoveryCodeHashes": { "type": "array", "description": "Bounded SHA-256 hashes of single-use recovery codes" },
+        "backupKeySalt": { "type": "string", "description": "Salt for dual-loss Master Recovery Key" },
+        "backupKeyHash": { "type": "string", "description": "PBKDF2 hash for dual-loss Master Recovery Key" },
+        "securityQuestion": { "type": "string", "description": "Super Admin secret recovery verification question" },
+        "securityAnswerSalt": { "type": "string", "description": "Salt for Super Admin recovery answer" },
+        "securityAnswerHash": { "type": "string", "description": "PBKDF2 hash for Super Admin recovery answer" },
+        "minAdminSessionValidAfterEpoch": { "type": "integer", "description": "Epoch floor invalidating older Super Admin sessions" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["superAdminUid", "superAdminEmail", "mfaEnabled", "passwordSalt", "passwordHash", "totpSecret", "recoveryCodeHashes", "createdAt", "updatedAt"]
+    },
+    "PlatformStatus": {
+      "title": "PlatformStatus",
+      "description": "Non-PII global gate flags controlling registration availability and emergency access lock.",
+      "type": "object",
+      "properties": {
+        "isBootstrapped": { "type": "boolean" },
+        "registrationsEnabled": { "type": "boolean" },
+        "emergencyLockAllNonSuperAdmin": { "type": "boolean" },
+        "lockMessage": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["isBootstrapped", "registrationsEnabled", "emergencyLockAllNonSuperAdmin", "updatedAt"]
+    },
+    "AccessRequest": {
+      "title": "AccessRequest",
+      "description": "Applicant request awaiting exclusive Super Admin approval. Cannot self-approve.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "fullName": { "type": "string" },
+        "phone": { "type": "string" },
+        "requestedRole": { "type": "string", "enum": ["OWNER", "EMPLOYEE", "CUSTOMER"] },
+        "requestedBusinessName": { "type": "string" },
+        "requestedBranchName": { "type": "string" },
+        "qidNumber": { "type": "string" },
+        "passportNumber": { "type": "string" },
+        "identityDocSummary": { "type": "string" },
+        "deviceId": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING_APPROVAL", "APPROVED", "REJECTED", "REVOKED"] },
+        "reviewedByUid": { "type": "string" },
+        "reviewNote": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "fullName", "phone", "requestedRole", "requestedBusinessName", "requestedBranchName", "deviceId", "deviceName", "status", "createdAt", "updatedAt"]
+    },
+    "AccessGrant": {
+      "title": "AccessGrant",
+      "description": "Server-side authoritative grant created exclusively by Super Admin.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "fullName": { "type": "string" },
+        "authorityRole": { "type": "string", "enum": ["OWNER", "EMPLOYEE", "CUSTOMER"] },
+        "status": { "type": "string", "enum": ["ACTIVE", "SUSPENDED", "REVOKED"] },
+        "activeBusinessId": { "type": "string" },
+        "allowedBusinessIds": { "type": "array" },
+        "allowedPropertyIds": { "type": "array" },
+        "restrictToAssignedProperties": { "type": "boolean" },
+        "permissionKeys": { "type": "array" },
+        "approvedByUid": { "type": "string" },
+        "minSessionValidAfterEpoch": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "fullName", "authorityRole", "status", "activeBusinessId", "allowedBusinessIds", "allowedPropertyIds", "restrictToAssignedProperties", "permissionKeys", "approvedByUid", "minSessionValidAfterEpoch", "createdAt", "updatedAt"]
+    },
+    "Business": {
+      "title": "Business",
+      "description": "Approved ONE HOME PRO business entity.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "branchName": { "type": "string" },
+        "ownerUid": { "type": "string" },
+        "ownerEmail": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "SUSPENDED", "REVOKED"] },
+        "approvedByUid": { "type": "string" },
+        "currency": { "type": "string" },
+        "timezone": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "code", "branchName", "ownerUid", "ownerEmail", "status", "approvedByUid", "currency", "timezone", "createdAt", "updatedAt"]
+    },
+    "UserSession": {
+      "title": "UserSession",
+      "description": "Central server session record revocable by user or Super Admin.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "businessId": { "type": "string" },
+        "deviceId": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "isRevoked": { "type": "boolean" },
+        "revokedReason": { "type": "string" },
+        "rememberMe": { "type": "boolean" },
+        "expiresAtEpoch": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "businessId", "deviceId", "deviceName", "isRevoked", "rememberMe", "expiresAtEpoch", "createdAt", "updatedAt"]
+    },
+    "AdminDevice": {
+      "title": "AdminDevice",
+      "description": "Device trust & lost-device lock registry preventing stolen/lost phones from resuming access.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "deviceId": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "REVOKED_LOST"] },
+        "revokedReason": { "type": "string" },
+        "revokedByDeviceId": { "type": "string" },
+        "lastSeenEpoch": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "deviceId", "deviceName", "status", "lastSeenEpoch", "createdAt", "updatedAt"]
+    },
+    "CloudBusinessSnapshot": {
+      "title": "CloudBusinessSnapshot",
+      "description": "GZIP-compressed SHA-256-verified business, customer, room, accounting, and settings cloud snapshot.",
+      "type": "object",
+      "properties": {
+        "businessId": { "type": "string" },
+        "payloadBase64": { "type": "string" },
+        "sha256Checksum": { "type": "string" },
+        "recordCount": { "type": "integer" },
+        "syncedByUid": { "type": "string" },
+        "syncedByDeviceName": { "type": "string" },
+        "appLanguageCode": { "type": "string" },
+        "darkTheme": { "type": "boolean" },
+        "syncedAtEpoch": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["businessId", "payloadBase64", "sha256Checksum", "recordCount", "syncedByUid", "syncedByDeviceName", "appLanguageCode", "darkTheme", "syncedAtEpoch", "createdAt", "updatedAt"]
+    },
+    "AdminAuditLog": {
+      "title": "AdminAuditLog",
+      "description": "Immutable append-only Super Admin and security gate audit log.",
+      "type": "object",
+      "properties": {
+        "actorUid": { "type": "string" },
+        "actorEmail": { "type": "string" },
+        "action": { "type": "string" },
+        "targetUid": { "type": "string" },
+        "targetEmail": { "type": "string" },
+        "businessId": { "type": "string" },
+        "details": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["actorUid", "actorEmail", "action", "details", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/platform_config/{configId}": {
+      "schema": { "$ref": "#/entities/PlatformConfig" },
+      "description": "Exclusive Super Admin bootstrap and security config"
+    },
+    "/platform_status/{statusId}": {
+      "schema": { "$ref": "#/entities/PlatformStatus" },
+      "description": "Global registration toggle and emergency lock status"
+    },
+    "/access_requests/{requestUid}": {
+      "schema": { "$ref": "#/entities/AccessRequest" },
+      "description": "Applicant requests awaiting Super Admin approval"
+    },
+    "/access_grants/{grantUid}": {
+      "schema": { "$ref": "#/entities/AccessGrant" },
+      "description": "Server-authoritative approved grants written exclusively by Super Admin"
+    },
+    "/businesses/{businessId}": {
+      "schema": { "$ref": "#/entities/Business" },
+      "description": "Super-Admin-approved businesses"
+    },
+    "/businesses/{businessId}/cloud_snapshots/{snapshotId}": {
+      "schema": { "$ref": "#/entities/CloudBusinessSnapshot" },
+      "description": "Cloud-synced full business data & settings snapshot for seamless device migration"
+    },
+    "/admin_devices/{deviceDocId}": {
+      "schema": { "$ref": "#/entities/AdminDevice" },
+      "description": "Per-device trust & lost-device lock status"
+    },
+    "/sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/UserSession" },
+      "description": "Revocable server-enforced sessions per device"
+    },
+    "/admin_audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AdminAuditLog" },
+      "description": "Append-only security & approval audit log"
+    }
+  }
+}

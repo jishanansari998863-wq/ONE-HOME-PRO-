@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import com.example.data.db.entities.*
 import kotlinx.coroutines.flow.Flow
 
@@ -225,4 +226,23 @@ interface SecurityAndHrDao {
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertEmployeeWorkHistory(entity: EmployeeWorkHistoryEntity)
+
+    // --- Cloud Sync / Multi-Device Restore Helpers ---
+    @Query("SELECT * FROM departments WHERE businessId = :businessId")
+    suspend fun getDepartmentsByBusiness(businessId: String): List<DepartmentEntity>
+
+    @Query("SELECT * FROM teams WHERE businessId = :businessId")
+    suspend fun getTeamsByBusiness(businessId: String): List<TeamEntity>
+
+    @Query("SELECT * FROM attendance WHERE businessId = :businessId")
+    suspend fun getAttendanceByBusiness(businessId: String): List<AttendanceEntity>
+
+    @Query("SELECT * FROM roles WHERE businessId = :businessId")
+    suspend fun getRolesByBusiness(businessId: String): List<RoleEntity>
+
+    @Upsert suspend fun upsertDepartments(items: List<DepartmentEntity>)
+    @Upsert suspend fun upsertEmployees(items: List<EmployeeEntity>)
+    @Upsert suspend fun upsertTeams(items: List<TeamEntity>)
+    @Upsert suspend fun upsertAttendance(items: List<AttendanceEntity>)
+    @Upsert suspend fun upsertRoles(items: List<RoleEntity>)
 }

@@ -39,7 +39,10 @@ class AdaptiveLayoutAndCameraRobolectricTest {
         db = Room.inMemoryDatabaseBuilder(app, OneHomeProDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        container = AppContainer(app, db)
+        val central = com.example.base.InMemoryCentralAuthorityTestDouble().apply {
+            preApproveUserForTest("uid_hamad", "hamad@onehome.qa", "Hamad Al-Kuwari", "OWNER")
+        }
+        container = AppContainer(app, db, central)
         runBlocking(Dispatchers.IO) {
             container.sessionStore.clearSessionToken()
             container.sessionStore.setLanguage(AppLanguage.EN)

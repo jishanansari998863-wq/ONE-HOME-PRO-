@@ -2,7 +2,7 @@ package com.example.ui
 
 import com.example.data.db.entities.*
 import com.example.domain.document.DocumentUploadProgress
-import com.example.domain.security.AuthContext
+import com.example.domain.security.*
 import com.example.domain.service.AuthResult
 import com.example.domain.service.BackupVerificationResult
 import com.example.domain.service.BalanceSheetReport
@@ -12,7 +12,13 @@ import com.example.localization.AppLanguage
 
 enum class AuthScreenStep {
     SPLASH,
-    WELCOME_SETUP,
+    RESTRICTED_GATE,
+    SUPER_ADMIN_BOOTSTRAP,
+    SUPER_ADMIN_VERIFY,
+    SUPER_ADMIN_RECOVERY,
+    DEVICE_REVOKED_LOCKED,
+    ACCESS_REQUEST,
+    EMERGENCY_LOCKED,
     LOGIN,
     FORGOT_PASSWORD,
     MFA_CHALLENGE,
@@ -36,6 +42,7 @@ enum class AppDestination {
     NOTIFICATIONS,
     REPORTS,
     OWNER_CONTROL,
+    SUPER_ADMIN_CONSOLE,
     ACCOUNT_SECURITY,
     CUSTOMER_PORTAL
 }
@@ -112,6 +119,21 @@ data class OneHomeUiState(
     val isInitializing: Boolean = true,
     val hasExistingUsers: Boolean = false,
     val authStep: AuthScreenStep = AuthScreenStep.SPLASH,
+    val centralIdentity: CentralIdentity? = null,
+    val platformStatus: PlatformStatus? = null,
+    val myAccessRequest: AccessRequestRecord? = null,
+    val myAccessGrant: AccessGrantRecord? = null,
+    val gateLockReason: String? = null,
+    val superAdminMfaProvision: Pair<String, List<String>>? = null,
+    val lastRecoveryKit: SuperAdminProvisionKit? = null,
+    val superAdminSecurityQuestion: String? = null,
+    val adminDevices: List<AdminDeviceRecord> = emptyList(),
+    val lastCloudSyncEpoch: Long? = null,
+    val lastCloudSyncCount: Int? = null,
+    val centralAccessRequests: List<AccessRequestRecord> = emptyList(),
+    val centralAccessGrants: List<AccessGrantRecord> = emptyList(),
+    val centralBusinesses: List<CentralBusinessRecord> = emptyList(),
+    val centralAuditLogs: List<AdminAuditRecord> = emptyList(),
     val pendingMfaChallenge: AuthResult.MfaRequired? = null,
     val pendingDeviceChallenge: AuthResult.NewDeviceVerificationRequired? = null,
     val pendingResetOtpNotice: String? = null,

@@ -7,6 +7,7 @@ import com.example.domain.security.*
 
 sealed interface AuthResult {
     data class Authenticated(val context: AuthContext, val rawSessionToken: String) : AuthResult
+    data class PendingApproval(val message: String, val status: String) : AuthResult
     data class MfaRequired(
         val userId: String,
         val email: String,
@@ -28,7 +29,8 @@ sealed interface AuthResult {
 class AuthService(
     private val db: OneHomeProDatabase,
     private val sessionStore: SessionStore,
-    private val accountingService: AccountingService
+    private val accountingService: AccountingService,
+    private val centralAuthority: CentralAuthorityGateway
 ) {
     private val dao = db.securityAndHrDao()
     private val coreDao = db.coreAndTenancyDao()
@@ -54,8 +56,29 @@ class AuthService(
         require(businessName.isNotBlank()) { "Business name is required" }
 
         val cleanEmail = email.trim().lowercase()
+        val centralAdmin = centralAuthority.isVerifiedSuperAdminCurrent()
+        val centralGrant = centralAuthority.getMyAccessGrant()
+        val centralAuthorized = centralAdmin ||
+            (centralGrant != null && centralGrant.isActiveGrant() && centralGrant.authorityRole == "OWNER" &&
+                centralGrant.email.equals(cleanEmail, ignoreCase = true))
+        if (!centralAuthorized) {
+            throw AuthorizationException("Public registration blocked: central Super Admin approval is required before initializing an Owner or Business.")
+        }
+
         val now = System.currentTimeMillis()
         val deviceId = sessionStore.getOrCreateDeviceId()
+        val centralCheck = centralAuthority.verifyAndOpenApprovedSession(
+            uid = centralAuthority.currentIdentity()?.uid ?: "",
+            email = cleanEmail,
+            businessId = null,
+            deviceId = deviceId,
+            deviceName = deviceName,
+            rememberMe = rememberMe
+        )
+        if (centralCheck is CentralVerificationResult.Denied) {
+            throw AuthorizationException(centralCheck.reason)
+        }
+        val approvedCentral = centralCheck as CentralVerificationResult.Approved
 
         val (authContext, rawToken) = db.withTransaction {
             require(dao.countUsers() == 0) { "Owner already initialized. Please sign in." }
@@ -172,11 +195,174 @@ class AuthService(
             )
         }
 
+        val finalCtx = authContext.copy(
+            isSuperAdmin = centralAdmin,
+            serverSessionId = approvedCentral.serverSessionId
+        )
+        if (rememberMe) {
+            sessionStore.saveSessionToken(rawToken)
+            sessionStore.saveServerSessionId(approvedCentral.serverSessionId)
+        } else {
+            sessionStore.clearSessionToken()
+        }
+        return AuthResult.Authenticated(finalCtx, rawToken)
+    }
+
+    suspend fun activateApprovedCentralSession(
+        grant: AccessGrantRecord,
+        business: CentralBusinessRecord,
+        serverSessionId: String,
+        rememberMe: Boolean,
+        deviceName: String,
+        isSuperAdmin: Boolean
+    ): AuthResult.Authenticated {
+        val now = System.currentTimeMillis()
+        val deviceId = sessionStore.getOrCreateDeviceId()
+        val cleanEmail = grant.email.trim().lowercase()
+        val localUserType = when (grant.authorityRole.uppercase()) {
+            "OWNER" -> "OWNER"
+            "CUSTOMER", "CUSTOMER_PORTAL" -> "CUSTOMER"
+            else -> "EMPLOYEE"
+        }
+
+        val (authContext, rawToken) = db.withTransaction {
+            ensurePermissionCatalogSeeded()
+
+            if (coreDao.getBusinessById(business.id) == null) {
+                coreDao.insertBusiness(
+                    BusinessEntity(
+                        id = business.id,
+                        name = business.name,
+                        code = business.code,
+                        branchName = business.branchName.ifBlank { "Doha HQ" },
+                        currency = business.currency.ifBlank { "QAR" },
+                        timezone = business.timezone.ifBlank { "Asia/Qatar" },
+                        createdAtEpoch = now,
+                        updatedAtEpoch = now
+                    )
+                )
+                accountingService.seedDefaultChartOfAccounts(business.id, now)
+                seedDefaultRolesForBusiness(business.id, now)
+                opsDao.insertStockLocation(
+                    StockLocationEntity(
+                        id = CryptoUtil.newUuid(),
+                        businessId = business.id,
+                        name = "Central Store (${business.branchName.ifBlank { "Doha HQ" }})",
+                        locationType = "WAREHOUSE",
+                        createdAtEpoch = now
+                    )
+                )
+            }
+
+            val existingUser = dao.getUserById(grant.uid) ?: dao.getUserByEmail(cleanEmail)
+            val userId = existingUser?.id ?: grant.uid
+            if (existingUser == null) {
+                val salt = CryptoUtil.generateSaltBase64()
+                val randomSecret = CryptoUtil.generateSecureToken()
+                dao.insertUser(
+                    UserEntity(
+                        id = userId,
+                        email = cleanEmail,
+                        fullName = grant.fullName.ifBlank { cleanEmail },
+                        passwordHash = CryptoUtil.hashPassword(randomSecret, salt),
+                        passwordSalt = salt,
+                        userType = localUserType,
+                        status = "ACTIVE",
+                        mfaEnabled = isSuperAdmin,
+                        createdAtEpoch = now,
+                        updatedAtEpoch = now
+                    )
+                )
+            } else {
+                dao.updateUser(
+                    existingUser.copy(
+                        fullName = grant.fullName.ifBlank { existingUser.fullName },
+                        userType = localUserType,
+                        status = "ACTIVE",
+                        updatedAtEpoch = now
+                    )
+                )
+            }
+
+            val existingAccesses = dao.getBusinessAccessForUser(userId).map { it.businessId }.toSet()
+            if (!existingAccesses.contains(business.id)) {
+                dao.insertUserBusinessAccess(
+                    UserBusinessAccessEntity(
+                        id = CryptoUtil.newUuid(),
+                        userId = userId,
+                        businessId = business.id,
+                        isActive = true,
+                        grantedByUserId = grant.approvedByUid.ifBlank { userId },
+                        grantedAtEpoch = now
+                    )
+                )
+            }
+
+            val existingDev = dao.getUserDevice(userId, deviceId)
+            if (existingDev == null) {
+                dao.insertUserDevice(
+                    UserDeviceEntity(
+                        id = CryptoUtil.newUuid(),
+                        userId = userId,
+                        deviceId = deviceId,
+                        deviceName = deviceName,
+                        isTrusted = true,
+                        firstSeenAtEpoch = now,
+                        lastSeenAtEpoch = now
+                    )
+                )
+            } else {
+                dao.updateUserDevice(existingDev.copy(isTrusted = true, lastSeenAtEpoch = now))
+            }
+
+            // Apply Super Admin's exact server-side role and scoped permission matrix
+            val roleName = when (grant.authorityRole.uppercase()) {
+                "OWNER" -> "OWNER"
+                "CUSTOMER", "CUSTOMER_PORTAL" -> "CUSTOMER_PORTAL"
+                "PROPERTY_MANAGER" -> "PROPERTY_MANAGER"
+                "ACCOUNTANT" -> "ACCOUNTANT"
+                else -> "TECHNICIAN"
+            }
+            val role = dao.getRoleByName(business.id, roleName) ?: dao.getRoleByName(business.id, "TECHNICIAN")
+            if (role != null) {
+                dao.insertUserRole(
+                    UserRoleEntity(
+                        id = CryptoUtil.newUuid(),
+                        businessId = business.id,
+                        userId = userId,
+                        roleId = role.id,
+                        assignedByUserId = grant.approvedByUid.ifBlank { userId },
+                        assignedAtEpoch = now
+                    )
+                )
+            }
+
+            val (ctx, token) = createSessionAndContext(
+                userId = userId,
+                activeBusinessId = business.id,
+                deviceId = deviceId,
+                deviceName = deviceName,
+                rememberMe = rememberMe,
+                now = now
+            )
+            val resolvedPerms = if (grant.permissionKeys.isNotEmpty()) grant.permissionKeys.toSet() else ctx.permissionKeys
+            val resolvedCtx = ctx.copy(
+                permissionKeys = resolvedPerms,
+                allowedPropertyIds = grant.allowedPropertyIds.toSet(),
+                restrictToAssignedProperties = grant.restrictToAssignedProperties,
+                allowedBusinessIds = grant.allowedBusinessIds.toSet().ifEmpty { setOf(business.id) },
+                isSuperAdmin = isSuperAdmin,
+                serverSessionId = serverSessionId
+            )
+            resolvedCtx to token
+        }
+
         if (rememberMe) {
             sessionStore.saveSessionToken(rawToken)
         } else {
             sessionStore.clearSessionToken()
         }
+        sessionStore.saveServerSessionId(serverSessionId)
         return AuthResult.Authenticated(authContext, rawToken)
     }
 
@@ -189,6 +375,14 @@ class AuthService(
         val cleanEmail = email.trim().lowercase()
         val now = System.currentTimeMillis()
         val deviceId = sessionStore.getOrCreateDeviceId()
+
+        // Global Emergency Lock check first: non-Super-Admin cannot log in under emergency lock
+        val platformStatus = runCatching { centralAuthority.getPlatformStatus() }.getOrNull()
+        if (platformStatus?.emergencyLockAllNonSuperAdmin == true &&
+            !SuperAdminConfig.isSuperAdminEmail(cleanEmail)
+        ) {
+            return AuthResult.Failed(platformStatus.lockMessage ?: "Global Emergency Lock enabled by Super Admin.")
+        }
 
         val user = dao.getUserByEmail(cleanEmail)
         if (user == null) {
@@ -316,12 +510,48 @@ class AuthService(
             )
         }
 
+        // Enforce central server-side approval BEFORE granting authenticated access, even with a valid password
+        val centralCheck = centralAuthority.verifyAndOpenApprovedSession(
+            uid = centralAuthority.currentIdentity()?.uid ?: user.id,
+            email = cleanEmail,
+            businessId = primaryBizId,
+            deviceId = deviceId,
+            deviceName = deviceName,
+            rememberMe = rememberMe
+        )
+        if (centralCheck is CentralVerificationResult.Denied) {
+            dao.insertSecurityEvent(
+                SecurityEventEntity(
+                    id = CryptoUtil.newUuid(),
+                    businessId = primaryBizId,
+                    userId = user.id,
+                    eventType = "LOGIN_BLOCKED_CENTRAL_APPROVAL",
+                    severity = "CRITICAL",
+                    description = "Central backend denied login (${centralCheck.status}): ${centralCheck.reason}",
+                    deviceId = deviceId,
+                    occurredAtEpoch = now
+                )
+            )
+            return AuthResult.PendingApproval(centralCheck.reason, centralCheck.status)
+        }
+        val approved = centralCheck as CentralVerificationResult.Approved
+        val isSuperAdmin = centralAuthority.isVerifiedSuperAdminCurrent()
+
         val (ctx, token) = db.withTransaction {
             dao.updateUserDevice(existingDevice.copy(lastSeenAtEpoch = now))
             createSessionAndContext(user.id, primaryBizId, deviceId, deviceName, rememberMe, now)
         }
-        if (rememberMe) sessionStore.saveSessionToken(token) else sessionStore.clearSessionToken()
-        return AuthResult.Authenticated(ctx, token)
+        val finalCtx = ctx.copy(
+            isSuperAdmin = isSuperAdmin,
+            serverSessionId = approved.serverSessionId
+        )
+        if (rememberMe) {
+            sessionStore.saveSessionToken(token)
+            sessionStore.saveServerSessionId(approved.serverSessionId)
+        } else {
+            sessionStore.clearSessionToken()
+        }
+        return AuthResult.Authenticated(finalCtx, token)
     }
 
     suspend fun verifyNewDeviceChallenge(
@@ -374,11 +604,31 @@ class AuthService(
             )
         }
 
+        val centralCheck = centralAuthority.verifyAndOpenApprovedSession(
+            uid = centralAuthority.currentIdentity()?.uid ?: user.id,
+            email = user.email,
+            businessId = primaryBizId,
+            deviceId = deviceId,
+            deviceName = deviceName,
+            rememberMe = rememberMe
+        )
+        if (centralCheck is CentralVerificationResult.Denied) {
+            return AuthResult.PendingApproval(centralCheck.reason, centralCheck.status)
+        }
+        val approved = centralCheck as CentralVerificationResult.Approved
+        val isSuperAdmin = centralAuthority.isVerifiedSuperAdminCurrent()
+
         val (ctx, token) = db.withTransaction {
             createSessionAndContext(userId, primaryBizId, deviceId, deviceName, rememberMe, now)
         }
-        if (rememberMe) sessionStore.saveSessionToken(token) else sessionStore.clearSessionToken()
-        return AuthResult.Authenticated(ctx, token)
+        val finalCtx = ctx.copy(isSuperAdmin = isSuperAdmin, serverSessionId = approved.serverSessionId)
+        if (rememberMe) {
+            sessionStore.saveSessionToken(token)
+            sessionStore.saveServerSessionId(approved.serverSessionId)
+        } else {
+            sessionStore.clearSessionToken()
+        }
+        return AuthResult.Authenticated(finalCtx, token)
     }
 
     suspend fun verifyMfaAndCompleteLogin(
@@ -419,11 +669,31 @@ class AuthService(
         val primaryBizId = dao.getBusinessAccessForUser(userId).firstOrNull()?.businessId
             ?: return AuthResult.Failed("No business access")
 
+        val centralCheck = centralAuthority.verifyAndOpenApprovedSession(
+            uid = centralAuthority.currentIdentity()?.uid ?: user.id,
+            email = user.email,
+            businessId = primaryBizId,
+            deviceId = deviceId,
+            deviceName = deviceName,
+            rememberMe = rememberMe
+        )
+        if (centralCheck is CentralVerificationResult.Denied) {
+            return AuthResult.PendingApproval(centralCheck.reason, centralCheck.status)
+        }
+        val approved = centralCheck as CentralVerificationResult.Approved
+        val isSuperAdmin = centralAuthority.isVerifiedSuperAdminCurrent()
+
         val (ctx, token) = db.withTransaction {
             createSessionAndContext(userId, primaryBizId, deviceId, deviceName, rememberMe, now)
         }
-        if (rememberMe) sessionStore.saveSessionToken(token) else sessionStore.clearSessionToken()
-        return AuthResult.Authenticated(ctx, token)
+        val finalCtx = ctx.copy(isSuperAdmin = isSuperAdmin, serverSessionId = approved.serverSessionId)
+        if (rememberMe) {
+            sessionStore.saveSessionToken(token)
+            sessionStore.saveServerSessionId(approved.serverSessionId)
+        } else {
+            sessionStore.clearSessionToken()
+        }
+        return AuthResult.Authenticated(finalCtx, token)
     }
 
     suspend fun validateStoredSessionOrNull(): AuthContext? {
@@ -455,7 +725,10 @@ class AuthService(
         }
 
         val user = dao.getUserById(session.userId)
-        if (user == null || user.status != "ACTIVE") {
+        val currentCentral = centralAuthority.currentIdentity()
+        if (user == null || user.status != "ACTIVE" ||
+            (currentCentral != null && !currentCentral.email.equals(user.email, ignoreCase = true))
+        ) {
             sessionStore.clearSessionToken()
             return null
         }
@@ -466,8 +739,41 @@ class AuthService(
             return null
         }
 
+        val serverSessionId = sessionStore.getServerSessionId()
+        if (serverSessionId.isNullOrBlank()) {
+            sessionStore.clearSessionToken()
+            return null
+        }
+        val centralValidation = centralAuthority.validateExistingCentralSession(
+            serverSessionId = serverSessionId,
+            uid = centralAuthority.currentIdentity()?.uid ?: user.id,
+            email = user.email
+        )
+        if (centralValidation is CentralVerificationResult.Denied) {
+            dao.revokeSessionById(session.id, "CENTRAL_${centralValidation.status}")
+            if (centralValidation.status == SuperAdminConfig.DEVICE_REVOKED_LOST) {
+                dao.getUserDevice(user.id, deviceId)?.let { dev ->
+                    dao.updateUserDevice(dev.copy(isTrusted = false, lastSeenAtEpoch = now))
+                }
+            }
+            sessionStore.clearSessionToken()
+            sessionStore.saveServerSessionId("")
+            return null
+        }
+        val approved = centralValidation as CentralVerificationResult.Approved
+        val isSuperAdmin = centralAuthority.isVerifiedSuperAdminCurrent()
+
         dao.updateSession(session.copy(lastValidatedAtEpoch = now))
-        return buildAuthContext(user, session.activeBusinessId, session.id, deviceId)
+        return buildAuthContext(user, session.activeBusinessId, session.id, deviceId).copy(
+            allowedBusinessIds = approved.grant.allowedBusinessIds.toSet().ifEmpty { setOf(session.activeBusinessId) },
+            allowedPropertyIds = approved.grant.allowedPropertyIds.toSet(),
+            restrictToAssignedProperties = approved.grant.restrictToAssignedProperties,
+            permissionKeys = approved.grant.permissionKeys.toSet().ifEmpty {
+                dao.getPermissionsForUserInBusiness(user.id, session.activeBusinessId).map { "${it.module}:${it.action}" }.toSet()
+            },
+            isSuperAdmin = isSuperAdmin && SuperAdminConfig.isSuperAdminEmail(user.email),
+            serverSessionId = serverSessionId
+        )
     }
 
     suspend fun requestPasswordReset(email: String): String {
@@ -572,11 +878,16 @@ class AuthService(
 
     suspend fun logoutCurrentSession(ctx: AuthContext) {
         dao.revokeSessionById(ctx.sessionId, "USER_LOGOUT")
+        ctx.serverSessionId?.let { centralAuthority.revokeCentralSession(it, "USER_LOGOUT") }
         sessionStore.clearSessionToken()
     }
 
     suspend fun logoutAllDevices(ctx: AuthContext) {
         dao.revokeAllSessionsForUser(ctx.userId, "USER_LOGOUT_ALL_DEVICES")
+        centralAuthority.revokeAllUserSessionsCentral(
+            centralAuthority.currentIdentity()?.uid ?: ctx.userId,
+            "USER_LOGOUT_ALL_DEVICES"
+        )
         dao.insertSecurityEvent(
             SecurityEventEntity(
                 id = CryptoUtil.newUuid(),
@@ -627,6 +938,9 @@ class AuthService(
         assignedPropertyIds: List<String>
     ): UserEntity {
         AuthorizationGuard.requireOwner(ctx)
+        require(!roleName.equals(SuperAdminConfig.ROLE_SUPER_ADMIN, ignoreCase = true)) {
+            "Creating or promoting users to SUPER_ADMIN is strictly forbidden."
+        }
         require(password.length >= 8) { "Password must be at least 8 characters" }
         val cleanEmail = email.trim().lowercase()
         val now = System.currentTimeMillis()
