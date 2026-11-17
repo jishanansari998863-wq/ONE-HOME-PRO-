@@ -419,4 +419,41 @@ class SuperAdminSecurityRobolectricTest {
             phone2Db.close()
         }
     }
+
+    @Test
+    fun `switching or creating branches preserves Super Admin authority, serverSessionId, and resolves web client id safely`() = runBlocking {
+        central.signInAsTestIdentity("uid_jishan", SuperAdminConfig.SUPER_ADMIN_EMAIL, "Jishan Ansari")
+        val vmAdmin = OneHomeProViewModel(container, splashDelayMs = 0L).also { activeVm = it }
+        awaitState { it.authStep == AuthScreenStep.SUPER_ADMIN_BOOTSTRAP && !it.isInitializing }
+
+        vmAdmin.bootstrapSuperAdmin("BranchMaster#2026")
+        awaitState { it.authStep == AuthScreenStep.SUPER_ADMIN_VERIFY && it.superAdminMfaProvision != null }
+        val (secret, _) = vmAdmin.uiState.value.superAdminMfaProvision!!
+        vmAdmin.verifySuperAdminChallenge("BranchMaster#2026", CryptoUtil.currentTotpCode(secret))
+        awaitState { it.authContext?.isSuperAdmin == true }
+
+        val initialCtx = vmAdmin.uiState.value.authContext!!
+        assertNotNull(initialCtx.serverSessionId)
+
+        // Create a second branch and switch to it
+        val newBranch = container.propertyTenancyService.createBusinessBranch(
+            ctx = initialCtx,
+            name = "ONE HOME PRO Lusail",
+            branchName = "Lusail Branch",
+            phone = "+97444001122",
+            email = "lusail@onehome.qa",
+            address = "Marina District",
+            crNumber = "CR-99881"
+        )
+        val switchedCtx = container.authService.switchBusiness(initialCtx, newBranch.id)
+        assertTrue(switchedCtx.isSuperAdmin)
+        assertEquals(initialCtx.serverSessionId, switchedCtx.serverSessionId)
+        assertEquals(newBranch.id, switchedCtx.activeBusinessId)
+        assertTrue(switchedCtx.allowedBusinessIds.contains(initialCtx.activeBusinessId))
+        assertTrue(switchedCtx.allowedBusinessIds.contains(newBranch.id))
+
+        // Should never throw whether google-services.json is present or absent
+        val clientIdOrNull = com.example.data.remote.GoogleSignInHelper.resolveWebClientId(app)
+        assertTrue(clientIdOrNull == null || clientIdOrNull.isNotBlank())
+    }
 }

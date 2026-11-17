@@ -914,10 +914,17 @@ class AuthService(
     }
 
     suspend fun switchBusiness(ctx: AuthContext, targetBusinessId: String): AuthContext {
-        if (!ctx.allowedBusinessIds.contains(targetBusinessId)) {
+        val isSuperAdmin = ctx.isSuperAdmin && SuperAdminConfig.isSuperAdminEmail(ctx.email)
+        val user = dao.getUserById(ctx.userId) ?: error("User missing")
+        val dbBizAccess = dao.getBusinessAccessForUser(user.id).map { it.businessId }.toSet()
+        val combinedBizAccess = if (ctx.userType == "OWNER" || isSuperAdmin) {
+            ctx.allowedBusinessIds + dbBizAccess
+        } else {
+            ctx.allowedBusinessIds
+        }
+        if (!combinedBizAccess.contains(targetBusinessId)) {
             throw AuthorizationException("Cross-business switch blocked")
         }
-        val user = dao.getUserById(ctx.userId) ?: error("User missing")
         val raw = sessionStore.getSessionToken()
         if (raw != null) {
             val session = dao.getSessionByTokenHash(CryptoUtil.sha256Hex(raw))
@@ -925,7 +932,16 @@ class AuthService(
                 dao.updateSession(session.copy(activeBusinessId = targetBusinessId))
             }
         }
-        return buildAuthContext(user, targetBusinessId, ctx.sessionId, ctx.deviceId)
+        val rebuilt = buildAuthContext(user, targetBusinessId, ctx.sessionId, ctx.deviceId)
+        val resolvedPerms = if (rebuilt.permissionKeys.isNotEmpty()) rebuilt.permissionKeys else ctx.permissionKeys
+        return rebuilt.copy(
+            allowedBusinessIds = combinedBizAccess,
+            allowedPropertyIds = if (ctx.restrictToAssignedProperties) ctx.allowedPropertyIds else rebuilt.allowedPropertyIds,
+            restrictToAssignedProperties = ctx.restrictToAssignedProperties || rebuilt.restrictToAssignedProperties,
+            permissionKeys = resolvedPerms,
+            isSuperAdmin = isSuperAdmin,
+            serverSessionId = ctx.serverSessionId
+        )
     }
 
     suspend fun createStaffUser(

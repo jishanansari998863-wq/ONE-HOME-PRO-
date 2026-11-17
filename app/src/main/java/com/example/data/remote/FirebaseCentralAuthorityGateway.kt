@@ -52,7 +52,18 @@ class FirebaseCentralAuthorityGateway private constructor(
         }
     )
 
+    private fun isFirebaseConfigured(): Boolean = try {
+        FirebaseApp.getApps(context).isNotEmpty() || FirebaseApp.initializeApp(context) != null
+    } catch (_: Exception) {
+        false
+    }
+
     override val authIdentityFlow: Flow<CentralIdentity?> = callbackFlow {
+        if (!isFirebaseConfigured()) {
+            trySend(null)
+            awaitClose { }
+            return@callbackFlow
+        }
         val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
             val u = firebaseAuth.currentUser
             trySend(

@@ -8,7 +8,6 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
-import com.example.R
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -94,8 +93,10 @@ object GoogleSignInHelper {
         }
     }
 
-    private fun resolveWebClientId(context: Context): String? = try {
-        context.getString(R.string.default_web_client_id).takeIf { it.isNotBlank() }
+    @Suppress("DiscouragedApi")
+    internal fun resolveWebClientId(context: Context): String? = try {
+        val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
+        if (resId != 0) context.getString(resId).takeIf { it.isNotBlank() } else null
     } catch (_: Exception) {
         null
     }
