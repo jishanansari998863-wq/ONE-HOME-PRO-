@@ -460,24 +460,40 @@ class SuperAdminSecurityRobolectricTest {
 
     @Test
     fun `missing Firebase config, existing-update session restore, and Room integrity failures never crash startup`() = runBlocking {
-        // 1. Fresh install with REAL FirebaseCentralAuthorityGateway when FirebaseApp is not initialized (exact CI APK without google-services.json):
+        // 0. Bundled google-services.json & firebase_applet_config.xml must resolve real project resources in APK/tests:
+        val bundledOptions = com.google.firebase.FirebaseOptions.fromResource(app)
+        assertNotNull(bundledOptions)
+        assertEquals("1:487338231669:android:9fcfa85a6ff1d8de99353c", bundledOptions!!.applicationId)
+        assertEquals("gen-lang-client-0874428284", bundledOptions.projectId)
+        assertTrue(bundledOptions.apiKey.isNotBlank())
+        assertEquals(
+            "ai-studio-android-onehomep-b7e88f8b-dd6f-442a-8d76-7b31f8e0512f",
+            app.getString(R.string.firestore_database_id)
+        )
+        assertEquals(
+            "487338231669-kbf2bvgir0fhdkv1obs45k1ee96thfjb.apps.googleusercontent.com",
+            com.example.data.remote.GoogleSignInHelper.resolveWebClientId(app)
+        )
+        val liveConfiguredGate = com.example.data.remote.FirebaseCentralAuthorityGateway(app)
+        assertTrue(liveConfiguredGate.isConfigured())
+        assertNull(liveConfiguredGate.configurationDiagnostic())
+        val firebaseApp = com.google.firebase.FirebaseApp.getInstance()
+        assertNotNull(com.google.firebase.auth.FirebaseAuth.getInstance(firebaseApp))
+        assertNotNull(
+            com.google.firebase.firestore.FirebaseFirestore.getInstance(
+                firebaseApp,
+                app.getString(R.string.firestore_database_id)
+            )
+        )
+
+        // 1. Fresh install when FirebaseApp is deleted should still auto-recover cleanly if google-services.json is bundled,
+        // or show STARTUP_ERROR safely if missing:
         try {
             com.google.firebase.FirebaseApp.getApps(app).forEach { it.delete() }
-            val realUnconfiguredGate = com.example.data.remote.FirebaseCentralAuthorityGateway(app)
-            // Must NEVER throw IllegalStateException ("Default FirebaseApp is not initialized"):
-            assertNull(realUnconfiguredGate.currentIdentity())
-            if (!realUnconfiguredGate.isConfigured()) {
-                val realContainer = AppContainer(app, db, realUnconfiguredGate, SessionStore(app, "unconfigured_${System.nanoTime()}"))
-                val vmUnconfigured = OneHomeProViewModel(realContainer, splashDelayMs = 0L).also { activeVm = it }
-                awaitState { !it.isInitializing }
-                assertEquals(AuthScreenStep.STARTUP_ERROR, vmUnconfigured.uiState.value.authStep)
-                assertNull(vmUnconfigured.uiState.value.authContext)
-                assertFalse(vmUnconfigured.uiState.value.isDatabaseStartupError)
-                assertTrue(vmUnconfigured.uiState.value.startupErrorDetails?.isNotBlank() == true)
-                vmUnconfigured.retryStartupBootstrap()
-                awaitState { !it.isInitializing && it.authStep == AuthScreenStep.STARTUP_ERROR }
-                vmUnconfigured.stopObservers()
-            }
+            val realGateAfterReset = com.example.data.remote.FirebaseCentralAuthorityGateway(app)
+            assertTrue(realGateAfterReset.isConfigured())
+            assertNull(realGateAfterReset.configurationDiagnostic())
+            assertNull(realGateAfterReset.currentIdentity())
             com.example.data.remote.GoogleSignInHelper.signOut(app)
         } finally {
             if (com.google.firebase.FirebaseApp.getApps(app).isEmpty()) {

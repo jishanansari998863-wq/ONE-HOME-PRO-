@@ -204,6 +204,14 @@ jobs:
             gradle :app:testDebugUnitTest --no-daemon --no-configuration-cache -Dkotlin.compiler.execution.strategy=daemon -Dorg.gradle.parallel=false --stacktrace
           '
 
+      - name: Verify google-services.json is present
+        shell: bash
+        run: |
+          if [ ! -s app/google-services.json ]; then
+            echo "::error::app/google-services.json is missing. Commit app/google-services.json or set the GOOGLE_SERVICES_JSON GitHub Actions secret."
+            exit 1
+          fi
+
       - name: Build Android Debug APK
         run: >
           gradle :app:assembleDebug
@@ -213,10 +221,16 @@ jobs:
           -Dorg.gradle.parallel=false
           --stacktrace
 
-      - name: Verify Debug APK exists
+      - name: Verify Debug APK & bundled Firebase resources exist
+        shell: bash
         run: |
           test -s app/build/outputs/apk/debug/app-debug.apk
           ls -lh app/build/outputs/apk/debug/app-debug.apk
+          AAPT2="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/36.0.0/aapt2"
+          "$AAPT2" dump resources app/build/outputs/apk/debug/app-debug.apk | grep -q "string/google_app_id"
+          "$AAPT2" dump resources app/build/outputs/apk/debug/app-debug.apk | grep -q "string/default_web_client_id"
+          "$AAPT2" dump resources app/build/outputs/apk/debug/app-debug.apk | grep -q "string/firestore_database_id"
+          "$AAPT2" dump resources app/build/outputs/apk/debug/app-debug.apk | grep -q "string/project_id"
 
       - name: Upload Test Reports
         if: always()

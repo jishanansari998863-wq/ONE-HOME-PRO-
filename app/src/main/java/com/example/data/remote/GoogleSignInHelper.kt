@@ -26,7 +26,14 @@ object GoogleSignInHelper {
 
     private fun ensureFirebaseInitialized(context: Context): Boolean = try {
         val appCtx = context.applicationContext ?: context
-        FirebaseApp.getApps(appCtx).isNotEmpty() || FirebaseApp.initializeApp(appCtx) != null
+        if (FirebaseApp.getApps(appCtx).isNotEmpty()) {
+            true
+        } else {
+            val init = FirebaseApp.initializeApp(appCtx)
+                ?: com.google.firebase.FirebaseOptions.fromResource(appCtx)
+                    ?.let { FirebaseApp.initializeApp(appCtx, it) }
+            init != null
+        }
     } catch (e: Exception) {
         Log.e(TAG, "FirebaseApp initialization check failed", e)
         false
@@ -113,11 +120,26 @@ object GoogleSignInHelper {
     }
 
     @Suppress("DiscouragedApi")
-    internal fun resolveWebClientId(context: Context): String? = try {
-        val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
-        if (resId != 0) context.getString(resId).takeIf { it.isNotBlank() } else null
-    } catch (_: Exception) {
-        null
+    internal fun resolveWebClientId(context: Context): String? {
+        runCatching {
+            context.getString(com.example.R.string.default_web_client_id).takeIf { it.isNotBlank() }
+        }.getOrNull()?.let { return it }
+        val candidates = linkedSetOf<String>()
+        candidates.add(context.packageName)
+        runCatching {
+            candidates.add(context.resources.getResourcePackageName(com.example.R.string.firestore_database_id))
+        }
+        candidates.add("com.example")
+        for (pkg in candidates) {
+            val resolved = try {
+                val resId = context.resources.getIdentifier("default_web_client_id", "string", pkg)
+                if (resId != 0) context.getString(resId).takeIf { it.isNotBlank() } else null
+            } catch (_: Exception) {
+                null
+            }
+            if (resolved != null) return resolved
+        }
+        return null
     }
 
     private suspend fun signInWithGoogleCredential(credential: androidx.credentials.Credential): Boolean {

@@ -1603,19 +1603,37 @@ class FirebaseCentralAuthorityGateway private constructor(
         private const val COL_CLOUD_SNAPSHOTS = "cloud_snapshots"
 
         @Suppress("DiscouragedApi")
-        private fun resolveResourceString(context: Context, name: String): String? = try {
-            val resId = context.resources.getIdentifier(name, "string", context.packageName)
-            if (resId != 0) context.getString(resId).takeIf { it.isNotBlank() } else null
-        } catch (_: Exception) {
-            null
+        private fun resolveResourceString(context: Context, name: String): String? {
+            val candidates = linkedSetOf<String>()
+            candidates.add(context.packageName)
+            runCatching {
+                candidates.add(context.resources.getResourcePackageName(com.example.R.string.firestore_database_id))
+            }
+            candidates.add("com.example")
+            for (pkg in candidates) {
+                val value = try {
+                    val resId = context.resources.getIdentifier(name, "string", pkg)
+                    if (resId != 0) context.getString(resId).takeIf { it.isNotBlank() } else null
+                } catch (_: Exception) {
+                    null
+                }
+                if (value != null) return value
+            }
+            return null
         }
 
         private fun resolveFirestoreDatabaseId(context: Context): String? =
-            resolveResourceString(context, "firestore_database_id")
+            runCatching {
+                context.getString(com.example.R.string.firestore_database_id).takeIf { it.isNotBlank() }
+            }.getOrNull() ?: resolveResourceString(context, "firestore_database_id")
 
         private fun inspectFirebaseConfiguration(context: Context): String? {
             val appCtx = context.applicationContext ?: context
-            val googleAppId = resolveResourceString(appCtx, "google_app_id")
+            val optionsFromRes = runCatching {
+                com.google.firebase.FirebaseOptions.fromResource(appCtx)
+            }.getOrNull()
+            val googleAppId = optionsFromRes?.applicationId?.takeIf { it.isNotBlank() }
+                ?: resolveResourceString(appCtx, "google_app_id")
                 ?: return "Firebase configuration missing: app/google-services.json was not bundled in this APK (google_app_id resource not found)."
             if (googleAppId.startsWith("1:0000") || googleAppId.contains("placeholder", ignoreCase = true)) {
                 return "Firebase configuration contains placeholder google_app_id ($googleAppId). Bundle the real app/google-services.json."
@@ -1628,6 +1646,7 @@ class FirebaseCentralAuthorityGateway private constructor(
                     FirebaseApp.getInstance()
                 } else {
                     FirebaseApp.initializeApp(appCtx)
+                        ?: optionsFromRes?.let { FirebaseApp.initializeApp(appCtx, it) }
                 }
                 if (app == null) {
                     "FirebaseApp.initializeApp returned null. Verify app/google-services.json matches package ${appCtx.packageName}."
