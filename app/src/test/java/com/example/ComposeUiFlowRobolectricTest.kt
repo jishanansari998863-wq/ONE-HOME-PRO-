@@ -125,4 +125,45 @@ class ComposeUiFlowRobolectricTest {
         }
         composeRule.onNodeWithText("الرئيسية").assertExists()
     }
+
+    @Test
+    fun `missing Firebase config transitions from Splash to safe StartupErrorScreen instead of crashing`() {
+        val app = ApplicationProvider.getApplicationContext<OneHomeProApp>()
+        val unconfiguredGateway = object : com.example.domain.security.CentralAuthorityGateway by central {
+            override fun isConfigured(): Boolean = false
+            override fun configurationDiagnostic(): String =
+                "Firebase configuration missing: app/google-services.json was not bundled in this APK."
+        }
+        val brokenContainer = AppContainer(app, db, unconfiguredGateway, container.sessionStore)
+        val brokenVm = OneHomeProViewModel(brokenContainer, splashDelayMs = 0L)
+        try {
+            composeRule.setContent {
+                OneHomeProAppRoot(brokenVm)
+            }
+            composeRule.waitUntil(timeoutMillis = 5_000L) {
+                composeRule.onAllNodesWithTag("startup_error_screen").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithTag("startup_error_title").assertExists()
+            composeRule.onNodeWithTag("startup_error_details").assertExists()
+            composeRule.onNodeWithTag("startup_retry_button").assertExists().performClick()
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("startup_error_screen").assertExists()
+        } finally {
+            brokenVm.stopObservers()
+        }
+    }
+
+    @Test
+    fun `MainActivity and OneHomeProApp cold start completes without uncaught exceptions`() {
+        val controller = org.robolectric.Robolectric.buildActivity(MainActivity::class.java).setup()
+        try {
+            val activity = controller.get()
+            org.junit.Assert.assertNotNull(activity)
+            Thread.sleep(1100L)
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            org.junit.Assert.assertFalse(activity.isFinishing)
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
 }

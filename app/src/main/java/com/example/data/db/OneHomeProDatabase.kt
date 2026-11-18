@@ -110,6 +110,8 @@ abstract class OneHomeProDatabase : RoomDatabase() {
     abstract fun operationsDao(): OperationsDao
 
     companion object {
+        private const val DB_NAME = "one_home_pro_qatar.db"
+
         @Volatile
         private var INSTANCE: OneHomeProDatabase? = null
 
@@ -118,8 +120,20 @@ abstract class OneHomeProDatabase : RoomDatabase() {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     OneHomeProDatabase::class.java,
-                    "one_home_pro_qatar.db"
-                ).build().also { INSTANCE = it }
+                    DB_NAME
+                )
+                    .fallbackToDestructiveMigrationOnDowngrade(true)
+                    .build()
+                    .also { INSTANCE = it }
+            }
+        }
+
+        fun resetCorruptedDatabaseFiles(context: Context) {
+            synchronized(this) {
+                runCatching { INSTANCE?.close() }
+                INSTANCE = null
+                val appCtx = context.applicationContext
+                appCtx.deleteDatabase(DB_NAME)
             }
         }
     }

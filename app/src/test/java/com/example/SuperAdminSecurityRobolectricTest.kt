@@ -8,6 +8,7 @@ import com.example.data.db.OneHomeProDatabase
 import com.example.domain.security.*
 import com.example.domain.service.AuthResult
 import com.example.localization.AppLanguage
+import com.example.ui.AppDestination
 import com.example.ui.AuthScreenStep
 import com.example.ui.OneHomeProViewModel
 import kotlinx.coroutines.Dispatchers
@@ -455,5 +456,65 @@ class SuperAdminSecurityRobolectricTest {
         // Should never throw whether google-services.json is present or absent
         val clientIdOrNull = com.example.data.remote.GoogleSignInHelper.resolveWebClientId(app)
         assertTrue(clientIdOrNull == null || clientIdOrNull.isNotBlank())
+    }
+
+    @Test
+    fun `missing Firebase config, existing-update session restore, and Room integrity failures never crash startup`() = runBlocking {
+        // 1. Fresh install with REAL FirebaseCentralAuthorityGateway when FirebaseApp is not initialized (exact CI APK without google-services.json):
+        try {
+            com.google.firebase.FirebaseApp.getApps(app).forEach { it.delete() }
+            val realUnconfiguredGate = com.example.data.remote.FirebaseCentralAuthorityGateway(app)
+            // Must NEVER throw IllegalStateException ("Default FirebaseApp is not initialized"):
+            assertNull(realUnconfiguredGate.currentIdentity())
+            if (!realUnconfiguredGate.isConfigured()) {
+                val realContainer = AppContainer(app, db, realUnconfiguredGate, SessionStore(app, "unconfigured_${System.nanoTime()}"))
+                val vmUnconfigured = OneHomeProViewModel(realContainer, splashDelayMs = 0L).also { activeVm = it }
+                awaitState { !it.isInitializing }
+                assertEquals(AuthScreenStep.STARTUP_ERROR, vmUnconfigured.uiState.value.authStep)
+                assertNull(vmUnconfigured.uiState.value.authContext)
+                assertFalse(vmUnconfigured.uiState.value.isDatabaseStartupError)
+                assertTrue(vmUnconfigured.uiState.value.startupErrorDetails?.isNotBlank() == true)
+                vmUnconfigured.retryStartupBootstrap()
+                awaitState { !it.isInitializing && it.authStep == AuthScreenStep.STARTUP_ERROR }
+                vmUnconfigured.stopObservers()
+            }
+            com.example.data.remote.GoogleSignInHelper.signOut(app)
+        } finally {
+            if (com.google.firebase.FirebaseApp.getApps(app).isEmpty()) {
+                runCatching { com.google.firebase.FirebaseApp.initializeApp(app) }
+            }
+        }
+
+        // 2. Existing-app update with valid saved session & active grant restores cleanly to Dashboard:
+        val updateStore = SessionStore(app, "update_restore_${System.nanoTime()}")
+        val updateContainer = AppContainer(app, db, central, updateStore)
+        central.signInAsTestIdentity("uid_jishan", SuperAdminConfig.SUPER_ADMIN_EMAIL, "Jishan Ansari")
+        val vmFirstLaunch = OneHomeProViewModel(updateContainer, splashDelayMs = 0L).also { activeVm = it }
+        awaitState { it.authStep == AuthScreenStep.SUPER_ADMIN_BOOTSTRAP && !it.isInitializing }
+        vmFirstLaunch.bootstrapSuperAdmin("UpdateMaster#2026")
+        awaitState { it.authStep == AuthScreenStep.SUPER_ADMIN_VERIFY && it.superAdminMfaProvision != null }
+        val (secret, _) = vmFirstLaunch.uiState.value.superAdminMfaProvision!!
+        vmFirstLaunch.verifySuperAdminChallenge("UpdateMaster#2026", CryptoUtil.currentTotpCode(secret))
+        awaitState { it.authContext?.isSuperAdmin == true }
+        vmFirstLaunch.stopObservers()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+
+        val vmAfterUpdate = OneHomeProViewModel(updateContainer, splashDelayMs = 0L).also { activeVm = it }
+        awaitState { !it.isInitializing && it.authContext?.isSuperAdmin == true }
+        assertEquals(AppDestination.DASHBOARD, vmAfterUpdate.uiState.value.currentDestination)
+        vmAfterUpdate.stopObservers()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+
+        // 3. Existing-app update with corrupted/mismatched Room DB shows safe STARTUP_ERROR (never crashes):
+        val closedDb = Room.inMemoryDatabaseBuilder(app, OneHomeProDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        closedDb.close()
+        val brokenDbContainer = AppContainer(app, closedDb, central, SessionStore(app, "broken_db_${System.nanoTime()}"))
+        val vmBrokenDb = OneHomeProViewModel(brokenDbContainer, splashDelayMs = 0L).also { activeVm = it }
+        awaitState { !it.isInitializing }
+        assertEquals(AuthScreenStep.STARTUP_ERROR, vmBrokenDb.uiState.value.authStep)
+        assertNull(vmBrokenDb.uiState.value.authContext)
+        assertTrue(vmBrokenDb.uiState.value.isDatabaseStartupError)
     }
 }

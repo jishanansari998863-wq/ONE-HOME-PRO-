@@ -13,17 +13,28 @@ import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.Companion.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
 import com.google.firebase.Firebase
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 object GoogleSignInHelper {
     private const val TAG = "OneHomeGoogleAuth"
 
+    private fun ensureFirebaseInitialized(context: Context): Boolean = try {
+        val appCtx = context.applicationContext ?: context
+        FirebaseApp.getApps(appCtx).isNotEmpty() || FirebaseApp.initializeApp(appCtx) != null
+    } catch (e: Exception) {
+        Log.e(TAG, "FirebaseApp initialization check failed", e)
+        false
+    }
+
     suspend fun attemptAutoSignIn(context: Context): Boolean {
-        if (Firebase.auth.currentUser != null) return true
+        if (!ensureFirebaseInitialized(context)) return false
+        if (runCatching { Firebase.auth.currentUser }.getOrNull() != null) return true
         val clientId = resolveWebClientId(context) ?: return false
         val credentialManager = CredentialManager.create(context)
         val googleIdOption = GetGoogleIdOption.Builder()
@@ -50,6 +61,10 @@ object GoogleSignInHelper {
         onCancelled: () -> Unit = {},
         onError: (String) -> Unit
     ): Boolean {
+        if (!ensureFirebaseInitialized(activityContext)) {
+            onError("Firebase configuration (google-services.json) is missing in this build.")
+            return false
+        }
         val clientId = resolveWebClientId(activityContext)
         if (clientId == null) {
             onError("Google Sign-In configuration missing: default_web_client_id not found")
@@ -84,11 +99,15 @@ object GoogleSignInHelper {
     suspend fun signOut(context: Context) {
         withContext(NonCancellable) {
             try {
-                CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
+                withTimeoutOrNull(1_500L) {
+                    CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to clear credential state: ${e.message}")
             } finally {
-                Firebase.auth.signOut()
+                if (ensureFirebaseInitialized(context)) {
+                    runCatching { Firebase.auth.signOut() }
+                }
             }
         }
     }

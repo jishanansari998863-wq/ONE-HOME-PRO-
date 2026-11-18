@@ -1,11 +1,14 @@
 package com.example.ui
 
 import android.content.Context
+import android.database.sqlite.SQLiteException
 import android.net.Uri
 import android.os.Build
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.AppContainer
+import com.example.data.db.OneHomeProDatabase
 import com.example.data.db.entities.*
 import com.example.data.remote.GoogleSignInHelper
 import com.example.domain.document.DocumentImageProcessor
@@ -69,23 +72,142 @@ class OneHomeProViewModel(
 
     private fun bootstrap() {
         viewModelScope.launch {
-            container.sessionStore.languageFlow.collectLatest { lang ->
-                _uiState.update { it.copy(language = lang) }
-            }
+            container.sessionStore.languageFlow
+                .catch { e -> Log.e("OneHomeProVM", "Failed reading language preference", e) }
+                .collectLatest { lang ->
+                    _uiState.update { it.copy(language = lang) }
+                }
         }
         viewModelScope.launch {
-            container.sessionStore.darkModeFlow.collectLatest { dark ->
-                _uiState.update { it.copy(darkTheme = dark) }
-            }
+            container.sessionStore.darkModeFlow
+                .catch { e -> Log.e("OneHomeProVM", "Failed reading dark mode preference", e) }
+                .collectLatest { dark ->
+                    _uiState.update { it.copy(darkTheme = dark) }
+                }
         }
         viewModelScope.launch {
-            if (splashDelayMs > 0L) delay(splashDelayMs) // Brief branded splash display
-            val hasUsers = container.authService.hasAnyUsers()
-            val restoredCtx = if (hasUsers) container.authService.validateStoredSessionOrNull() else null
+            runStartupBootstrap(applySplashDelay = true)
+        }
+    }
+
+    fun retryStartupBootstrap() {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isInitializing = true,
+                    isBusy = true,
+                    startupErrorTitle = null,
+                    startupErrorMessage = null,
+                    startupErrorDetails = null,
+                    isDatabaseStartupError = false,
+                    bannerError = null,
+                    authStep = AuthScreenStep.SPLASH
+                )
+            }
+            runStartupBootstrap(applySplashDelay = false)
+        }
+    }
+
+    fun repairLocalDatabaseAndRetry(context: Context) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, bannerError = null) }
+            try {
+                withContext(Dispatchers.IO) {
+                    OneHomeProDatabase.resetCorruptedDatabaseFiles(context)
+                }
+                val app = context.applicationContext as? com.example.OneHomeProApp
+                app?.reinitializeContainer()
+                val activity = context as? android.app.Activity
+                if (activity != null) {
+                    val restartIntent = activity.intent?.let { android.content.Intent(it) }
+                        ?: activity.packageManager.getLaunchIntentForPackage(activity.packageName)
+                    if (restartIntent != null) {
+                        restartIntent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        activity.startActivity(restartIntent)
+                        activity.finish()
+                        return@launch
+                    }
+                }
+                _uiState.update {
+                    it.copy(
+                        isInitializing = true,
+                        startupErrorTitle = null,
+                        startupErrorMessage = null,
+                        startupErrorDetails = null,
+                        isDatabaseStartupError = false,
+                        authStep = AuthScreenStep.SPLASH
+                    )
+                }
+                runStartupBootstrap(applySplashDelay = false)
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                Log.e("OneHomeProVM", "Failed to repair local cache database", t)
+                _uiState.update {
+                    it.copy(
+                        isInitializing = false,
+                        isBusy = false,
+                        authStep = AuthScreenStep.STARTUP_ERROR,
+                        startupErrorTitle = "Local Cache Repair Failed",
+                        startupErrorMessage = t.message ?: "Unable to re-initialize local database.",
+                        startupErrorDetails = t.stackTraceToString().take(800),
+                        isDatabaseStartupError = true
+                    )
+                }
+            }
+        }
+    }
+
+    private suspend fun runStartupBootstrap(applySplashDelay: Boolean) {
+        try {
+            if (applySplashDelay && splashDelayMs > 0L) delay(splashDelayMs)
+
+            if (!container.centralAuthority.isConfigured()) {
+                val diagnostic = container.centralAuthority.configurationDiagnostic()
+                    ?: "Firebase configuration (google-services.json) is missing or incomplete in this APK."
+                val hasUsersSafe = runCatching {
+                    withContext(Dispatchers.IO) { container.authService.hasAnyUsers() }
+                }.getOrDefault(false)
+                Log.e("OneHomeProVM", "Startup blocked safely: $diagnostic")
+                _uiState.update {
+                    it.copy(
+                        isInitializing = false,
+                        isBusy = false,
+                        hasExistingUsers = hasUsersSafe,
+                        authContext = null,
+                        authStep = AuthScreenStep.STARTUP_ERROR,
+                        startupErrorTitle = "Firebase Configuration Missing",
+                        startupErrorMessage = "This APK cannot connect to Firebase Authentication or Firestore because Firebase app configuration is missing or invalid. Install the official AI Studio build or add the GOOGLE_SERVICES_JSON secret before building.",
+                        startupErrorDetails = diagnostic,
+                        isDatabaseStartupError = false
+                    )
+                }
+                return
+            }
+
+            val hasUsers = withContext(Dispatchers.IO) {
+                container.authService.hasAnyUsers()
+            }
+            val restoreAttempt = runCatching {
+                if (hasUsers) {
+                    withContext(Dispatchers.IO) { container.authService.validateStoredSessionOrNull() }
+                } else null
+            }
+            val restoredCtx = restoreAttempt.getOrNull()
+            val restoreError = restoreAttempt.exceptionOrNull()
+
             if (restoredCtx != null) {
                 val id = container.centralAuthority.currentIdentity()
                 val status = runCatching { container.centralAuthority.getPlatformStatus() }.getOrNull()
-                _uiState.update { it.copy(centralIdentity = id, platformStatus = status) }
+                _uiState.update {
+                    it.copy(
+                        centralIdentity = id,
+                        platformStatus = status,
+                        startupErrorTitle = null,
+                        startupErrorMessage = null,
+                        startupErrorDetails = null,
+                        isDatabaseStartupError = false
+                    )
+                }
                 onAuthenticated(restoredCtx)
                 if (restoredCtx.isSuperAdmin) {
                     refreshSuperAdminData()
@@ -98,11 +220,43 @@ class OneHomeProViewModel(
                     _uiState.update {
                         it.copy(
                             isInitializing = false,
+                            isBusy = false,
                             hasExistingUsers = hasUsers,
+                            bannerError = restoreError?.let { err ->
+                                "Session check skipped (${err.message ?: "offline"}). Please sign in again."
+                            },
+                            startupErrorTitle = null,
+                            startupErrorMessage = null,
+                            startupErrorDetails = null,
+                            isDatabaseStartupError = false,
                             authStep = AuthScreenStep.RESTRICTED_GATE
                         )
                     }
                 }
+            }
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            Log.e("OneHomeProVM", "Startup initialization failed safely", t)
+            val msg = t.message.orEmpty()
+            val isDbError = t is SQLiteException ||
+                msg.contains("Room cannot verify the data integrity", ignoreCase = true) ||
+                msg.contains("SQLite", ignoreCase = true) ||
+                msg.contains("database", ignoreCase = true)
+            _uiState.update {
+                it.copy(
+                    isInitializing = false,
+                    isBusy = false,
+                    authContext = null,
+                    authStep = AuthScreenStep.STARTUP_ERROR,
+                    startupErrorTitle = if (isDbError) "Database Initialization Error" else "Startup Initialization Error",
+                    startupErrorMessage = if (isDbError) {
+                        "Local database could not open after an app update or data corruption. You can retry or repair the local cache safely (cloud data remains protected on Firebase)."
+                    } else {
+                        t.message ?: "ONE HOME PRO encountered an unexpected error during startup initialization."
+                    },
+                    startupErrorDetails = "${t::class.java.simpleName}: ${t.message ?: "Unknown error"}\n${t.stackTraceToString().take(600)}",
+                    isDatabaseStartupError = isDbError
+                )
             }
         }
     }

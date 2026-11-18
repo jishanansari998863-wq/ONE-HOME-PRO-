@@ -35,4 +35,8 @@ class OneHomeProApp : Application() {
         super.onCreate()
         container = AppContainer(this)
     }
+
+    fun reinitializeContainer() {
+        container = AppContainer(this)
+    }
 }

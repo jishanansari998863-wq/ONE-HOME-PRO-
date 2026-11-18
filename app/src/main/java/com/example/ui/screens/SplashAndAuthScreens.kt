@@ -1475,3 +1475,122 @@ fun AccountSecurityScreen(
         )
     }
 }
+
+@Composable
+fun StartupErrorScreen(
+    uiState: OneHomeUiState,
+    onChangeLanguage: (AppLanguage) -> Unit,
+    onRetry: () -> Unit,
+    onRepairDatabase: (Context) -> Unit
+) {
+    val strings = LocalAppStrings.current
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp)
+            .testTag("startup_error_screen"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        AuthHeaderCard(
+            subtitle = strings.editionSubtitle,
+            language = uiState.language,
+            onChangeLanguage = onChangeLanguage
+        )
+        Spacer(Modifier.height(16.dp))
+        ElevatedCard(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier
+                .widthIn(max = 540.dp)
+                .fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(22.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.ErrorOutline,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(30.dp)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = uiState.startupErrorTitle ?: "Startup Initialization Error",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.testTag("startup_error_title")
+                        )
+                        Text(
+                            text = "Protected Safe Mode • Dashboard Locked",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Text(
+                    text = uiState.startupErrorMessage
+                        ?: "ONE HOME PRO could not complete startup initialization. Please review the details below and retry.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.testTag("startup_error_message")
+                )
+
+                val details = uiState.startupErrorDetails
+                if (!details.isNullOrBlank()) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = details,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = MonoFontFamily,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier
+                                .padding(12.dp)
+                                .testTag("startup_error_details")
+                        )
+                    }
+                }
+
+                Button(
+                    onClick = onRetry,
+                    enabled = !uiState.isBusy,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 48.dp)
+                        .testTag("startup_retry_button")
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Retry Startup")
+                }
+
+                if (uiState.isDatabaseStartupError) {
+                    OutlinedButton(
+                        onClick = { onRepairDatabase(context) },
+                        enabled = !uiState.isBusy,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 48.dp)
+                            .testTag("startup_repair_db_button")
+                    ) {
+                        Icon(Icons.Default.Build, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Repair Local Cache & Restart")
+                    }
+                }
+            }
+        }
+    }
+}
+

@@ -1,7 +1,7 @@
 package com.example.data.remote
 
 import android.content.Context
-import com.example.R
+import android.util.Log
 import com.example.domain.security.*
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.*
 
 class FirebaseCentralAuthorityGateway private constructor(
     private val context: Context,
+    private val usesInjectedInstances: Boolean,
     private val dbLazy: Lazy<FirebaseFirestore>,
     private val authLazy: Lazy<FirebaseAuth>
 ) : CentralAuthorityGateway {
@@ -30,42 +31,53 @@ class FirebaseCentralAuthorityGateway private constructor(
         context: Context,
         db: FirebaseFirestore,
         auth: FirebaseAuth = Firebase.auth
-    ) : this(context.applicationContext, lazyOf(db), lazyOf(auth))
+    ) : this(context.applicationContext ?: context, true, lazyOf(db), lazyOf(auth))
 
     constructor(context: Context) : this(
-        context = context.applicationContext,
+        context = context.applicationContext ?: context,
+        usesInjectedInstances = false,
         dbLazy = lazy {
-            val appCtx = context.applicationContext
-            if (FirebaseApp.getApps(appCtx).isEmpty()) {
-                FirebaseApp.initializeApp(appCtx)
-            }
-            FirebaseFirestore.getInstance(
-                appCtx.getString(R.string.firestore_database_id)
-            )
+            val appCtx = context.applicationContext ?: context
+            val diag = inspectFirebaseConfiguration(appCtx)
+            if (diag != null) throw IllegalStateException(diag)
+            val dbId = resolveFirestoreDatabaseId(appCtx)
+                ?: throw IllegalStateException("Missing string resource firestore_database_id.")
+            FirebaseFirestore.getInstance(dbId)
         },
         authLazy = lazy {
-            val appCtx = context.applicationContext
-            if (FirebaseApp.getApps(appCtx).isEmpty()) {
-                FirebaseApp.initializeApp(appCtx)
-            }
+            val appCtx = context.applicationContext ?: context
+            val diag = inspectFirebaseConfiguration(appCtx)
+            if (diag != null) throw IllegalStateException(diag)
             Firebase.auth
         }
     )
 
-    private fun isFirebaseConfigured(): Boolean = try {
-        FirebaseApp.getApps(context).isNotEmpty() || FirebaseApp.initializeApp(context) != null
-    } catch (_: Exception) {
-        false
+    override fun isConfigured(): Boolean {
+        if (usesInjectedInstances) return true
+        return inspectFirebaseConfiguration(context) == null
+    }
+
+    override fun configurationDiagnostic(): String? {
+        if (usesInjectedInstances) return null
+        return inspectFirebaseConfiguration(context)
     }
 
     override val authIdentityFlow: Flow<CentralIdentity?> = callbackFlow {
-        if (!isFirebaseConfigured()) {
+        if (!isConfigured()) {
             trySend(null)
             awaitClose { }
             return@callbackFlow
         }
-        val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
-            val u = firebaseAuth.currentUser
+        val firebaseAuth = try {
+            auth
+        } catch (e: Exception) {
+            Log.e(TAG, "Unable to attach AuthStateListener", e)
+            trySend(null)
+            awaitClose { }
+            return@callbackFlow
+        }
+        val listener = FirebaseAuth.AuthStateListener { fa ->
+            val u = fa.currentUser
             trySend(
                 u?.let {
                     CentralIdentity(
@@ -77,12 +89,18 @@ class FirebaseCentralAuthorityGateway private constructor(
                 }
             )
         }
-        auth.addAuthStateListener(listener)
-        awaitClose { auth.removeAuthStateListener(listener) }
+        firebaseAuth.addAuthStateListener(listener)
+        awaitClose { firebaseAuth.removeAuthStateListener(listener) }
     }
 
     override fun currentIdentity(): CentralIdentity? {
-        val u = auth.currentUser ?: return null
+        if (!isConfigured()) return null
+        val u = try {
+            auth.currentUser
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to read FirebaseAuth.currentUser safely", e)
+            return null
+        } ?: return null
         return CentralIdentity(
             uid = u.uid,
             email = u.email?.trim()?.lowercase().orEmpty(),
@@ -91,8 +109,11 @@ class FirebaseCentralAuthorityGateway private constructor(
         )
     }
 
-    private fun requireIdentity(): CentralIdentity =
-        currentIdentity() ?: throw AuthorizationException("Google Sign-In required before accessing central authority.")
+    private fun requireIdentity(): CentralIdentity {
+        configurationDiagnostic()?.let { throw IllegalStateException(it) }
+        return currentIdentity()
+            ?: throw AuthorizationException("Google Sign-In required before accessing central authority.")
+    }
 
     override suspend fun getPlatformStatus(): PlatformStatus {
         requireIdentity()
@@ -1073,6 +1094,7 @@ class FirebaseCentralAuthorityGateway private constructor(
         serverSessionId: String,
         deviceId: String
     ): Flow<String?> {
+        if (!isConfigured()) return emptyFlow()
         val statusFlow = db.collection(COL_PLATFORM_STATUS).document(DOC_PUBLIC)
             .snapshots()
             .map { snap ->
@@ -1567,6 +1589,7 @@ class FirebaseCentralAuthorityGateway private constructor(
     }
 
     companion object {
+        private const val TAG = "OneHomeFirebaseGate"
         private const val COL_PLATFORM_CONFIG = "platform_config"
         private const val DOC_GLOBAL = "global"
         private const val COL_PLATFORM_STATUS = "platform_status"
@@ -1578,5 +1601,42 @@ class FirebaseCentralAuthorityGateway private constructor(
         private const val COL_AUDIT_LOGS = "admin_audit_logs"
         private const val COL_ADMIN_DEVICES = "admin_devices"
         private const val COL_CLOUD_SNAPSHOTS = "cloud_snapshots"
+
+        @Suppress("DiscouragedApi")
+        private fun resolveResourceString(context: Context, name: String): String? = try {
+            val resId = context.resources.getIdentifier(name, "string", context.packageName)
+            if (resId != 0) context.getString(resId).takeIf { it.isNotBlank() } else null
+        } catch (_: Exception) {
+            null
+        }
+
+        private fun resolveFirestoreDatabaseId(context: Context): String? =
+            resolveResourceString(context, "firestore_database_id")
+
+        private fun inspectFirebaseConfiguration(context: Context): String? {
+            val appCtx = context.applicationContext ?: context
+            val googleAppId = resolveResourceString(appCtx, "google_app_id")
+                ?: return "Firebase configuration missing: app/google-services.json was not bundled in this APK (google_app_id resource not found)."
+            if (googleAppId.startsWith("1:0000") || googleAppId.contains("placeholder", ignoreCase = true)) {
+                return "Firebase configuration contains placeholder google_app_id ($googleAppId). Bundle the real app/google-services.json."
+            }
+            if (resolveFirestoreDatabaseId(appCtx).isNullOrBlank()) {
+                return "Firestore database configuration missing: firestore_database_id string resource not found."
+            }
+            return try {
+                val app = if (FirebaseApp.getApps(appCtx).isNotEmpty()) {
+                    FirebaseApp.getInstance()
+                } else {
+                    FirebaseApp.initializeApp(appCtx)
+                }
+                if (app == null) {
+                    "FirebaseApp.initializeApp returned null. Verify app/google-services.json matches package ${appCtx.packageName}."
+                } else {
+                    null
+                }
+            } catch (t: Throwable) {
+                "Firebase initialization error: ${t.message ?: t::class.java.simpleName}"
+            }
+        }
     }
 }

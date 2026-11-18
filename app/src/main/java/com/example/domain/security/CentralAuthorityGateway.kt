@@ -3,6 +3,9 @@ package com.example.domain.security
 import kotlinx.coroutines.flow.Flow
 
 interface CentralAuthorityGateway {
+    fun isConfigured(): Boolean = true
+    fun configurationDiagnostic(): String? = null
+
     val authIdentityFlow: Flow<CentralIdentity?>
     fun currentIdentity(): CentralIdentity?
 

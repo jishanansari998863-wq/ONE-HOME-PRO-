@@ -22,7 +22,8 @@ enum class AuthScreenStep {
     LOGIN,
     FORGOT_PASSWORD,
     MFA_CHALLENGE,
-    DEVICE_CHALLENGE
+    DEVICE_CHALLENGE,
+    STARTUP_ERROR
 }
 
 enum class AppDestination {
@@ -147,6 +148,10 @@ data class OneHomeUiState(
     val isBusy: Boolean = false,
     val bannerError: String? = null,
     val bannerSuccess: String? = null,
+    val startupErrorTitle: String? = null,
+    val startupErrorMessage: String? = null,
+    val startupErrorDetails: String? = null,
+    val isDatabaseStartupError: Boolean = false,
     val mfaProvisionInfo: Pair<String, List<String>>? = null,
     val lastBackupVerification: BackupVerificationResult? = null,
     val documentUploadProgress: DocumentUploadProgress = DocumentUploadProgress(),

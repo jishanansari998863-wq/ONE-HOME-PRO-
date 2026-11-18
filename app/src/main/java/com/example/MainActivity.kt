@@ -135,6 +135,12 @@ fun OneHomeProAppRoot(vm: OneHomeProViewModel) {
                             onCancel = { vm.setAuthStep(AuthScreenStep.LOGIN) },
                             onDismissBanner = vm::clearBanners
                         )
+                        AuthScreenStep.STARTUP_ERROR -> StartupErrorScreen(
+                            uiState = uiState,
+                            onChangeLanguage = vm::setLanguage,
+                            onRetry = vm::retryStartupBootstrap,
+                            onRepairDatabase = vm::repairLocalDatabaseAndRetry
+                        )
                     }
                 }
             } else {

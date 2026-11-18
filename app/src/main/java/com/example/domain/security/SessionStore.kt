@@ -7,9 +7,12 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import com.example.localization.AppLanguage
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.util.concurrent.ConcurrentHashMap
@@ -29,14 +32,18 @@ class SessionStore(
         val DARK_MODE = booleanPreferencesKey("dark_mode")
     }
 
-    val languageFlow: Flow<AppLanguage> = dataStore.data.map { prefs ->
-        val code = prefs[Keys.LANGUAGE] ?: AppLanguage.EN.name
-        AppLanguage.entries.firstOrNull { it.name == code } ?: AppLanguage.EN
-    }
+    val languageFlow: Flow<AppLanguage> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs ->
+            val code = prefs[Keys.LANGUAGE] ?: AppLanguage.EN.name
+            AppLanguage.entries.firstOrNull { it.name == code } ?: AppLanguage.EN
+        }
 
-    val darkModeFlow: Flow<Boolean> = dataStore.data.map { prefs ->
-        prefs[Keys.DARK_MODE] ?: false
-    }
+    val darkModeFlow: Flow<Boolean> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs ->
+            prefs[Keys.DARK_MODE] ?: false
+        }
 
     suspend fun getOrCreateDeviceId(): String {
         val current = dataStore.data.first()[Keys.DEVICE_ID]
@@ -84,6 +91,7 @@ class SessionStore(
             return storesByPath[key] ?: synchronized(storesByPath) {
                 storesByPath.getOrPut(key) {
                     PreferenceDataStoreFactory.create(
+                        corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
                         produceFile = { targetFile }
                     )
                 }
