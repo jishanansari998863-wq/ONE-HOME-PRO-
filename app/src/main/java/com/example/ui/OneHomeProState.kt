@@ -116,6 +116,13 @@ data class FinancialReportsState(
     val balanceSheet: BalanceSheetReport? = null
 )
 
+data class OwnerSelfTestItem(
+    val feature: String,
+    val status: String, // PASS, FAIL, PENDING
+    val evidence: String,
+    val remainingIssue: String = ""
+)
+
 data class OneHomeUiState(
     val isInitializing: Boolean = true,
     val hasExistingUsers: Boolean = false,
@@ -154,6 +161,7 @@ data class OneHomeUiState(
     val isDatabaseStartupError: Boolean = false,
     val mfaProvisionInfo: Pair<String, List<String>>? = null,
     val lastBackupVerification: BackupVerificationResult? = null,
+    val ownerSelfTests: List<OwnerSelfTestItem> = emptyList(),
     val documentUploadProgress: DocumentUploadProgress = DocumentUploadProgress(),
     val data: BusinessSnapshotData = BusinessSnapshotData(),
     val reports: FinancialReportsState = FinancialReportsState()

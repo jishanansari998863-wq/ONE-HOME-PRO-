@@ -124,6 +124,13 @@ class ComposeUiFlowRobolectricTest {
             composeRule.onAllNodesWithText("الرئيسية").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText("الرئيسية").assertExists()
+
+        // Switch language to Hindi (Devanagari) and assert Hindi localization renders
+        vm.setLanguage(AppLanguage.HI_IN)
+        composeRule.waitUntil(timeoutMillis = 5_000L) {
+            composeRule.onAllNodesWithText("होम").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("होम").assertExists()
     }
 
     @Test

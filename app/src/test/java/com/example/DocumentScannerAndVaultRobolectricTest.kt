@@ -249,6 +249,30 @@ class DocumentScannerAndVaultRobolectricTest {
         assertTrue(db.operationsDao().getDocumentById(dPay.id)?.isArchived == true)
         assertFalse(java.io.File(dPay.privateFilePath).exists())
         assertTrue(staffAuth.id.isNotBlank() && custLogin.id.isNotBlank())
+
+        // Verify encrypted MP4 video vault storage + AES-GCM decryption
+        val sampleMp4 = byteArrayOf(0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x6D, 0x70, 0x34, 0x32)
+        val dVideo = container.governanceBackupService.storeProcessedDocumentBytes(
+            ownerCtx, sampleMp4, "video/mp4", "mp4", "PROPERTY", prop.id, "MAINTENANCE", "Walkthrough Clip"
+        )
+        assertEquals("video/mp4", dVideo.mimeType)
+        assertTrue(dVideo.privateFilePath.contains(".mp4"))
+        val (vidDoc, vidDecrypted) = container.governanceBackupService.readDecryptedDocumentBytes(ownerCtx, dVideo.id)
+        assertEquals("video/mp4", vidDoc.mimeType)
+        assertArrayEquals(sampleMp4, vidDecrypted)
+
+        // Verify multi-currency formatter keeps QAR default and formats AED/USD cleanly
+        assertEquals("QAR 500.00", com.example.domain.util.QatarFormatters.formatMoney(50_000L, "QAR"))
+        assertEquals("AED 500.00", com.example.domain.util.QatarFormatters.formatMoney(50_000L, "AED"))
+
+        // Verify automatic encrypted backup creation + restore integrity check
+        val autoBackup = container.governanceBackupService.runAutomaticEncryptedBackupAndVerify(ownerCtx, force = true)
+        assertNotNull(autoBackup)
+        assertTrue(autoBackup!!.checksumMatched)
+        assertTrue(autoBackup.isBalanced)
+        val savedBackup = db.operationsDao().getBackupById(autoBackup.backupId)
+        assertNotNull(savedBackup)
+        assertTrue(java.io.File(savedBackup!!.filePath).exists())
     }
 
     @Test

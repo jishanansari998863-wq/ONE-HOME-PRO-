@@ -10,6 +10,7 @@ import com.example.domain.security.AppModule
 import com.example.domain.security.AuthContext
 import com.example.domain.security.AuthorizationGuard
 import com.example.domain.security.CryptoUtil
+import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -102,11 +103,11 @@ class GovernanceBackupService(
 
         val normalizedMime = mimeType.lowercase()
         val normalizedExt = extension.lowercase()
-        require(normalizedExt in setOf("jpg", "jpeg", "png", "pdf")) {
-            "Unsupported format '$extension'. Supported formats: JPG, JPEG, PNG, PDF."
+        require(normalizedExt in setOf("jpg", "jpeg", "png", "webp", "pdf", "mp4")) {
+            "Unsupported format '$extension'. Supported formats: JPG, JPEG, PNG, WEBP, PDF, MP4."
         }
-        require(normalizedMime in setOf("image/jpeg", "image/jpg", "image/png", "application/pdf")) {
-            "Unsupported MIME type '$mimeType'. Supported types: JPG, JPEG, PNG, PDF."
+        require(normalizedMime in setOf("image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf", "video/mp4")) {
+            "Unsupported MIME type '$mimeType'. Supported types: JPG, JPEG, PNG, WEBP, PDF, MP4."
         }
         require(bytes.isNotEmpty() && bytes.size <= 15 * 1024 * 1024) {
             "Document size must be between 1 byte and 15 MB"
@@ -467,5 +468,21 @@ class GovernanceBackupService(
             isBalanced = balanced,
             checksumMatched = shaMatches
         )
+    }
+
+    suspend fun runAutomaticEncryptedBackupAndVerify(
+        ctx: AuthContext,
+        force: Boolean = false
+    ): BackupVerificationResult? {
+        AuthorizationGuard.requirePermission(ctx, AppModule.BACKUPS, ActionType.EXPORT, ctx.activeBusinessId)
+        val existingBackups = opsDao.observeBackups(ctx.activeBusinessId).first()
+        val newest = existingBackups.maxByOrNull { it.createdAtEpoch }
+        val oneDayMs = 24L * 60L * 60L * 1000L
+        if (!force && newest != null && (System.currentTimeMillis() - newest.createdAtEpoch) < oneDayMs) {
+            return null
+        }
+        val secret = getOrCreateVaultSecret()
+        val record = createEncryptedBackup(ctx, secret)
+        return verifyAndTestRestoreBackup(ctx, record.id, secret)
     }
 }

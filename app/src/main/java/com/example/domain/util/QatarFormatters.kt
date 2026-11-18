@@ -10,7 +10,12 @@ import kotlin.math.abs
 object QatarFormatters {
     val qatarTimeZone: TimeZone = TimeZone.getTimeZone("Asia/Qatar")
 
-    fun formatQar(fils: Long): String {
+    val SUPPORTED_CURRENCIES: List<String> = listOf("QAR", "SAR", "AED", "USD", "EUR", "INR")
+
+    fun formatQar(fils: Long): String = formatMoney(fils, "QAR")
+
+    fun formatMoney(fils: Long, currencyCode: String = "QAR"): String {
+        val code = currencyCode.trim().uppercase().ifBlank { "QAR" }
         val negative = fils < 0
         val absFils = abs(fils)
         val whole = absFils / 100
@@ -18,7 +23,7 @@ object QatarFormatters {
         val nf = NumberFormat.getIntegerInstance(Locale.US)
         val formattedWhole = nf.format(whole)
         val sign = if (negative) "-" else ""
-        return "${sign}QAR $formattedWhole.${"%02d".format(cents)}"
+        return "${sign}$code $formattedWhole.${"%02d".format(cents)}"
     }
 
     fun parseQarToFils(input: String): Long? {

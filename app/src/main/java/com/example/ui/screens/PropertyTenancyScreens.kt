@@ -158,6 +158,11 @@ fun PropertiesScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text("Room ${room.roomNumber} (${room.roomType})", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                     Text(
+                                        "Permanent Room ID: RM-${room.id.take(8).uppercase()}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
                                         "${room.furnishedStatus} • Cap ${room.capacity} • Keys: ${room.keyCount} • Card: ${room.accessCardCode.ifBlank { "-" }}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant

@@ -2,7 +2,7 @@
 
 - **Product Name**: ONE HOME PRO (Qatar Business Edition)
 - **Primary Currency / Timezone**: `QAR` (stored internally as integer `Long` fils = 1/100 QAR) / `Asia/Qatar`
-- **Languages**: English (`EN`), Arabic (`AR` with true RTL layout), Hindi/Hinglish (`HI`)
+- **Languages**: English (`EN`), Arabic (`AR` with true RTL layout), Hinglish (`HI`), Hindi (`HI-IN` Devanagari)
 
 ## Requirement Traceability Summary
 
@@ -19,8 +19,8 @@
 | REQ-009 | Payments, Cheques & Deposits | Idempotent confirmed receipts, payment allocation & reversals, cheque lifecycle (`RECEIVED` -> `DEPOSITED` -> `CLEARED`/`BOUNCED`/replacement without inflating bank before clearing), GL 2100 security deposit liability | `RentPaymentChequeService.kt`, `RentPaymentScreens.kt` | Implemented & Tested |
 | REQ-010 | Double-Entry Accounting | Chart of Accounts, Journal Entries (`DR == CR` in `withTransaction`), Trial Balance, P&L, Balance Sheet, Bank Accounts & Reconciliation, Cashbook, Petty Cash, Fiscal Period Close/Reopen | `AccountingService.kt`, `AccountingScreens.kt` | Implemented & Tested |
 | REQ-011 | Workforce, Maintenance & Inventory | Departments, employee onboarding & non-destructive deactivation, attendance, complaints, job assignments, work reports + Photo Picker before/after photos, single-execution material usage, weighted-avg inventory, negative stock block | `WorkforceMaintenanceInventoryService.kt`, `WorkforceMaintenanceInventoryScreens.kt` | Implemented & Tested |
-| REQ-012 | Private Vault & Notifications | Zero-permission Photo Picker & SAF PDF vault with SHA-256 checksum & access audit logs; local notification inbox | `GovernanceBackupService.kt`, `DocumentsAndReportsScreens.kt` | Implemented & Compiled |
+| REQ-012 | Private Vault & Notifications | Zero-permission Photo Picker & SAF PDF/Photo/MP4 vault with AES-256-GCM encryption, SHA-256 checksum & access audit logs; local notification inbox | `GovernanceBackupService.kt`, `DocumentsAndReportsScreens.kt` | Implemented & Tested |
 | REQ-013 | 17-Report Hub | 17 operational & financial reports computed directly from SQLite/GL tables | `ReportsScreen` in `DocumentsAndReportsScreens.kt` | Implemented & Compiled |
-| REQ-014 | Encrypted Backup & Restore | AES-256-GCM passphrase-encrypted JSON/SQLite snapshots + verified restore dry-run validating checksum & GL Trial Balance | `GovernanceBackupService.kt`, `OwnerControlScreen.kt` | Implemented & Tested |
-| REQ-015 | Cloud Sync (Firebase) | Firestore real-time cloud sync / auth | User declined Firebase setup in AI Studio UI consent flow | Blocked (User Declined) |
-| REQ-016 | External Gateways | Live SMS, SMTP, WhatsApp Business, Qatar bank open-banking feeds, online card PSPs | Configurable endpoints stored honestly as `PROVIDER_NOT_CONFIGURED` / `LOCAL_SANDBOX`; requires company API credentials & compliance review | Blocked (No Live Credentials) |
+| REQ-014 | Encrypted Backup & Restore | AES-256-GCM passphrase & automatic encrypted snapshots + verified restore validating checksum & GL Trial Balance | `GovernanceBackupService.kt`, `OwnerControlScreen.kt` | Implemented & Tested |
+| REQ-015 | Cloud Sync & Auth (Firebase) | Firestore Central Authority Gate, Super Admin MFA/recovery, and GZIP SHA-256 Cloud Snapshots | `FirebaseCentralAuthorityGateway.kt`, `CloudDataSyncService.kt`, `firestore.rules` | Implemented & Verified on Firebase Emulator |
+| REQ-016 | External Gateways | Live SMS, SMTP, WhatsApp Business, Qatar bank open-banking feeds, online card PSPs | Configurable endpoints stored honestly as `NOT_CONFIGURED` / `CONFIGURED_OFFLINE_FALLBACK`; requires company API credentials | Pending (External Credentials Required) |

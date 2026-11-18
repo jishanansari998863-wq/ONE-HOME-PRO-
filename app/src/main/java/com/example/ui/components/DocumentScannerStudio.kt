@@ -227,11 +227,13 @@ fun DocumentScannerStudioDialog(
                 val info = withContext(Dispatchers.IO) {
                     DocumentImageProcessor.validatePickedFile(context, uri)
                 }
-                if (info.mimeType == "application/pdf") {
+                if (info.mimeType == "application/pdf" || info.mimeType.startsWith("video/")) {
                     stagedPages = emptyList()
                     directPickedFileUri = uri
                     directPickedFileInfo = info
-                    outputFormat = DocumentOutputFormat.PDF
+                    if (info.mimeType == "application/pdf") {
+                        outputFormat = DocumentOutputFormat.PDF
+                    }
                     if (title.isBlank()) title = info.displayName.substringBeforeLast('.')
                 } else {
                     ingestImageUris(listOf(uri), autoCropEdges = false, replaceIdx = null)
@@ -357,12 +359,12 @@ fun DocumentScannerStudioDialog(
                                 Text("Gallery", maxLines = 1)
                             }
                             OutlinedButton(
-                                onClick = { pickFileLauncher.launch(arrayOf("image/jpeg", "image/png", "application/pdf")) },
+                                onClick = { pickFileLauncher.launch(arrayOf("image/jpeg", "image/png", "image/webp", "application/pdf", "video/mp4")) },
                                 modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp).testTag("btn_upload_file")
                             ) {
                                 Icon(Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Upload File", maxLines = 1)
+                                Text("Upload File/Video", maxLines = 1)
                             }
                         }
                     }

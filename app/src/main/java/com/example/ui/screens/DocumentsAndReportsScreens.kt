@@ -154,6 +154,11 @@ fun DocumentsScreen(
                             modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp).clip(RoundedCornerShape(10.dp)),
                             contentScale = ContentScale.Fit
                         )
+                    } else if (doc.mimeType.startsWith("video/")) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(Icons.Default.VideoFile, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
+                            Text("Private Encrypted Video Verified (${bytes.size} bytes decrypted cleanly)", style = MaterialTheme.typography.bodyMedium)
+                        }
                     } else {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = CrimsonError, modifier = Modifier.size(36.dp))

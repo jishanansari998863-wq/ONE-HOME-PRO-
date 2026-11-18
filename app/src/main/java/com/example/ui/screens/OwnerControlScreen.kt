@@ -46,6 +46,11 @@ fun OwnerControlScreen(
     var showCreateBackup by remember { mutableStateOf(false) }
     var restoreVerifyTarget by remember { mutableStateOf<BackupRecordEntity?>(null) }
     var showConfigIntegration by remember { mutableStateOf(false) }
+    var managePermissionsRole by remember { mutableStateOf<com.example.data.db.entities.RoleEntity?>(null) }
+
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 6) vm.runOwnerSelfTests()
+    }
 
     Column(modifier = Modifier.fillMaxSize().testTag("owner_control_screen")) {
         ScrollableTabRow(selectedTabIndex = selectedTab) {
@@ -55,6 +60,12 @@ fun OwnerControlScreen(
             Tab(selected = selectedTab == 3, onClick = { selectedTab = 3 }, text = { Text("Audit & Security") })
             Tab(selected = selectedTab == 4, onClick = { selectedTab = 4 }, text = { Text("Integrations & Health") })
             Tab(selected = selectedTab == 5, onClick = { selectedTab = 5 }, text = { Text("Legal & Readiness") })
+            Tab(
+                selected = selectedTab == 6,
+                onClick = { selectedTab = 6 },
+                text = { Text("Testing Dashboard") },
+                modifier = Modifier.testTag("owner_testing_tab")
+            )
         }
 
         LazyColumn(
@@ -136,21 +147,39 @@ fun OwnerControlScreen(
                     }
                     items(data.roles, key = { it.id }) { r ->
                         val permCount = data.rolePermissions.count { it.roleId == r.id }
-                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-                            Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        OutlinedCard(modifier = Modifier.fillMaxWidth().testTag("role_card_${r.name}")) {
+                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(r.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                    Text(r.description, style = MaterialTheme.typography.bodySmall)
+                                    Text("${r.description} • $permCount permissions", style = MaterialTheme.typography.bodySmall)
                                 }
-                                Text("$permCount perms", style = MaterialTheme.typography.labelMedium)
+                                if (r.name != "OWNER") {
+                                    OutlinedButton(
+                                        onClick = { managePermissionsRole = r },
+                                        modifier = Modifier.defaultMinSize(minHeight = 48.dp).testTag("manage_perms_${r.name}")
+                                    ) { Text("Permissions") }
+                                } else {
+                                    StatusBadge("FULL ACCESS")
+                                }
                             }
                         }
                     }
                 }
                 2 -> {
                     item {
-                        SectionHeader("AES-256-GCM Encrypted Backups", "Passphrase-protected snapshots with checksum & GL verification", "Create Backup", "create_backup_button") {
+                        SectionHeader("AES-256-GCM Encrypted Backups", "Passphrase & automatic encrypted snapshots with tested restore verification", "Create Backup", "create_backup_button") {
                             showCreateBackup = true
+                        }
+                    }
+                    item {
+                        OutlinedButton(
+                            onClick = { vm.runAutomaticBackupAndVerify() },
+                            enabled = !uiState.isBusy,
+                            modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).testTag("auto_backup_test_btn")
+                        ) {
+                            Icon(Icons.Default.Backup, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Run Automatic Backup & Restore Verification")
                         }
                     }
                     uiState.lastBackupVerification?.let { res ->
@@ -250,13 +279,85 @@ fun OwnerControlScreen(
                                 Text("• Law No. 13 of 2016 (Qatar Personal Data Privacy Protection): Consent, minimal QID/Passport storage in private app vault, access audit log implemented.")
                                 Text("• Google Play Store Storage Compliance: Zero broad storage permissions; Photo Picker & SAF used.")
                                 Text("• Account Closure Flow: Self-service customer closure request workflow + admin review implemented.")
-                                Text("• Documentation Deliverables: Available under /docs/ in repository root.")
+                                Text("• Primary Currency: QAR (with multi-currency formatter foundation ready: QAR, SAR, AED, USD, EUR, INR).")
+                            }
+                        }
+                    }
+                }
+                6 -> {
+                    item {
+                        SectionHeader(
+                            title = "Owner-Only Testing Dashboard",
+                            subtitle = "Live PASS / FAIL / PENDING runtime verification",
+                            actionLabel = "Run Self-Test",
+                            actionTag = "owner_run_self_tests_btn"
+                        ) {
+                            vm.runOwnerSelfTests()
+                        }
+                    }
+                    if (uiState.ownerSelfTests.isEmpty()) {
+                        item {
+                            EmptyStateCard("Tap Run Self-Test", "Verify DB integrity, Double-Entry GL, Backups, Firebase Gate & Vault status.")
+                        }
+                    } else {
+                        items(uiState.ownerSelfTests, key = { it.feature }) { row ->
+                            ElevatedCard(modifier = Modifier.fillMaxWidth().testTag("owner_test_row_${row.feature.take(12)}")) {
+                                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(row.feature, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                                        StatusBadge(row.status)
+                                    }
+                                    Text("Evidence: ${row.evidence}", style = MaterialTheme.typography.bodySmall)
+                                    if (row.remainingIssue.isNotBlank()) {
+                                        Text("Remaining: ${row.remainingIssue}", style = MaterialTheme.typography.labelSmall, color = AmberWarning)
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    managePermissionsRole?.let { role ->
+        val assignedPermIds = remember(data.rolePermissions, role.id) {
+            data.rolePermissions.filter { it.roleId == role.id }.map { it.permissionId }.toSet()
+        }
+        AlertDialog(
+            onDismissRequest = { managePermissionsRole = null },
+            title = { Text("Manage ${role.name} Permissions") },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    data.permissions.forEach { perm ->
+                        val checked = assignedPermIds.contains(perm.id)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = { granted ->
+                                    vm.toggleRolePermission(role.id, perm.id, granted)
+                                }
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("${perm.module}:${perm.action}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                                Text(perm.description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { managePermissionsRole = null }) { Text("Done") }
+            }
+        )
     }
 
     if (showAddBranch) {
