@@ -142,7 +142,7 @@ dependencies {
 
 tasks.withType<Test> {
   failFast = false
-  maxHeapSize = "2048m"
+  maxHeapSize = "1536m"
   forkEvery = 0
   timeout.set(Duration.ofMinutes(15))
   javaLauncher.set(

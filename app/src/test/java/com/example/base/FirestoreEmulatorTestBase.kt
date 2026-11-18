@@ -40,27 +40,26 @@ abstract class FirestoreEmulatorTestBase {
         val resId = appContext.resources.getIdentifier("firestore_database_id", "string", appContext.packageName)
         databaseId = if (resId != 0) appContext.getString(resId) else "ai-studio-android-onehomep-b7e88f8b-dd6f-442a-8d76-7b31f8e0512f"
 
-        val app = if (FirebaseApp.getApps(appContext).isEmpty()) {
-            val newApp = FirebaseApp.initializeApp(
+        val appName = "onehomepro-emulator-suite"
+        val app = FirebaseApp.getApps(appContext).firstOrNull { it.name == appName }
+            ?: FirebaseApp.initializeApp(
                 appContext,
                 FirebaseOptions.Builder()
                     .setApplicationId("com.aistudio.onehomepro.qtrvbx")
                     .setProjectId(PROJECT_ID)
                     .setApiKey("fake-api-key-for-emulator")
+                    .build(),
+                appName
+            ).also { emulatorApp ->
+                val newFirestore = FirebaseFirestore.getInstance(emulatorApp, databaseId)
+                newFirestore.useEmulator(EMULATOR_HOST, FIRESTORE_PORT)
+                newFirestore.firestoreSettings = FirebaseFirestoreSettings.Builder()
+                    .setLocalCacheSettings(MemoryCacheSettings.newBuilder().build())
                     .build()
-            )
-            val newFirestore = FirebaseFirestore.getInstance(newApp, databaseId)
-            newFirestore.useEmulator(EMULATOR_HOST, FIRESTORE_PORT)
-            newFirestore.firestoreSettings = FirebaseFirestoreSettings.Builder()
-                .setLocalCacheSettings(MemoryCacheSettings.newBuilder().build())
-                .build()
 
-            val newAuth = FirebaseAuth.getInstance(newApp)
-            newAuth.useEmulator(EMULATOR_HOST, AUTH_PORT)
-            newApp
-        } else {
-            FirebaseApp.getInstance()
-        }
+                val newAuth = FirebaseAuth.getInstance(emulatorApp)
+                newAuth.useEmulator(EMULATOR_HOST, AUTH_PORT)
+            }
 
         firestore = FirebaseFirestore.getInstance(app, databaseId)
         auth = FirebaseAuth.getInstance(app)

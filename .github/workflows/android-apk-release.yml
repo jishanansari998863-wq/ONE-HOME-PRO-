@@ -182,7 +182,7 @@ jobs:
           echo "NODE_PATH=$(npm root -g)" >> "$GITHUB_ENV"
 
       - name: Configure optional google-services.json from GitHub Secrets
-        if: env.GOOGLE_SERVICES_JSON != ''
+        if: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         shell: bash
@@ -195,15 +195,6 @@ jobs:
           fi
           test -s app/google-services.json
 
-      - name: Run Firestore Rules, Unit, Robolectric & Emulator Security Tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          firebase emulators:exec --only auth,firestore --project demo-no-project '
-            node --test firestore.test.js &&
-            gradle :app:testDebugUnitTest --no-daemon --no-configuration-cache -Dkotlin.compiler.execution.strategy=daemon -Dorg.gradle.parallel=false --stacktrace
-          '
-
       - name: Verify google-services.json is present
         shell: bash
         run: |
@@ -212,14 +203,32 @@ jobs:
             exit 1
           fi
 
+      - name: Run Firestore Rules Tests Independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NODE_PATH="${NODE_PATH:-$(npm root -g)}"
+          firebase emulators:exec --only auth,firestore --project demo-no-project '
+            NODE_PATH="'"$NODE_PATH"'" node --test firestore.test.js
+          '
+
+      - name: Run Android Unit, Robolectric & Emulator Security Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          firebase emulators:exec --only auth,firestore --project demo-no-project '
+            gradle :app:testDebugUnitTest --no-daemon --max-workers=2 -Dkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs="-Xmx2560m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8" --stacktrace --console=plain
+          '
+
       - name: Build Android Debug APK
         run: >
           gradle :app:assembleDebug
           --no-daemon
-          --no-configuration-cache
-          -Dkotlin.compiler.execution.strategy=daemon
-          -Dorg.gradle.parallel=false
+          --max-workers=2
+          -Dkotlin.compiler.execution.strategy=in-process
+          -Dorg.gradle.jvmargs="-Xmx2560m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
           --stacktrace
+          --console=plain
 
       - name: Verify Debug APK & bundled Firebase resources exist
         shell: bash
