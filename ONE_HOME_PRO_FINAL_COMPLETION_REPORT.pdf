@@ -3,7 +3,7 @@
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R 12 0 R 14 0 R] /Count 5 >>
+<< /Type /Pages /Kids [6 0 R 8 0 R] /Count 2 >>
 endobj
 3 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
@@ -12,528 +12,140 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
 endobj
 5 0 obj
-<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+<< /Length 5025 >>
+stream
+BT
+/F2 15 Tf 48 760 Td (ONE HOME PRO - FINAL COMPLETION & DELIVERY REPORT) Tj
+-48 -760 Td
+/F1 9 Tf 48 740 Td (Build v1.0.2 \(Build 2\) | Verified Android Package, Security & Firebase Fix) Tj
+-48 -740 Td
+/F2 11 Tf 48 718 Td (1. Verified Deliverable Metadata) Tj
+-48 -718 Td
+/F1 9.5 Tf 52 703 Td (App Name: ONE HOME PRO \(Qatar Business Edition | QAR | Asia/Qatar\)) Tj
+-52 -703 Td
+/F1 9.5 Tf 52 690 Td (Application ID / Package Name: com.aistudio.onehomepro.qtrvbx) Tj
+-52 -690 Td
+/F1 9.5 Tf 52 677 Td (Version: v1.0.2 \(versionCode 2\) | Min SDK 24 | Target/Compile SDK 36) Tj
+-52 -677 Td
+/F1 9.5 Tf 52 664 Td (APK File: ONE_HOME_PRO_FINAL.apk \(30,151,134 bytes\)) Tj
+-52 -664 Td
+/F1 9.5 Tf 52 651 Td (APK SHA-256: a669032d5a19548147d39b4c28fbab66073d3b32517b393e81954d66354a6d4c) Tj
+-52 -651 Td
+/F1 9.5 Tf 52 638 Td (Signing Cert SHA-1 \(Debug Keystore\): 05356ba3334feb7a32da5957f69451f994009fe1) Tj
+-52 -638 Td
+/F1 9.5 Tf 52 625 Td (Signing Cert SHA-256: c6b54f573c9d41735876dda13f99793348e7915349f415c217cf96d50975ebac) Tj
+-52 -625 Td
+/F1 9.5 Tf 52 612 Td (Source Archive: ONE_HOME_PRO_COMPLETE_SOURCE.zip \(1,275,643 bytes, SHA-256:) Tj
+-52 -612 Td
+/F1 9.5 Tf 52 599 Td (dd9f3729e70d8fd0e49ab86f3614ed1767296c32d5105d1edd943bbaa7cebad2\)) Tj
+-52 -599 Td
+/F1 9.5 Tf 52 586 Td (Firebase Project: gen-lang-client-0874428284 | google_app_id:) Tj
+-52 -586 Td
+/F1 9.5 Tf 52 573 Td (1:487338231669:android:9fcfa85a6ff1d8de99353c) Tj
+-52 -573 Td
+/F1 9.5 Tf 52 560 Td (Firestore Database ID: ai-studio-android-onehomep-b7e88f8b-dd6f-442a-8d76-7b31f8e0512f) Tj
+-52 -560 Td
+/F2 11 Tf 48 541 Td (2. Real-Phone Firebase Safe Mode Root Cause & Permanent Fix) Tj
+-48 -541 Td
+/F1 9.5 Tf 52 526 Td (Observed User Issue: Real phone showed 'Firebase Configuration Missing / Protected Safe) Tj
+-52 -526 Td
+/F1 9.5 Tf 52 513 Td (Mode Dashboard Locked \(google_app_id resource not found\)'.) Tj
+-52 -513 Td
+/F1 9.5 Tf 52 500 Td (Root Cause Analysis: 1\) FirebaseCentralAuthorityGateway and GoogleSignInHelper previously) Tj
+-52 -500 Td
+/F1 9.5 Tf 52 487 Td (resolved Firebase strings exclusively via FirebaseOptions.fromResource\(\) \(which uses Play) Tj
+-52 -487 Td
+/F1 9.5 Tf 52 474 Td (Services' StringResourceValueReader package lookup on) Tj
+-52 -474 Td
+/F1 9.5 Tf 52 461 Td (common_google_play_services_unknown_issue\) and getIdentifier\(\), without directly reading) Tj
+-52 -461 Td
+/F1 9.5 Tf 52 448 Td (compile-time R.string.* resource IDs. 2\) When FirebaseApp.initializeApp\(appCtx\) returned) Tj
+-52 -448 Td
+/F1 9.5 Tf 52 435 Td (null on an OEM/ROM resource-package mismatch or uninitialized FirebaseInitProvider path,) Tj
+-52 -435 Td
+/F1 9.5 Tf 52 422 Td (the gateway had no FirebaseOptions.Builder fallback from bundled R.string resources. 3\)) Tj
+-52 -422 Td
+/F1 9.5 Tf 52 409 Td (Prior APKs all shared versionCode 1 \(v1.0.0\), making stale phone installs) Tj
+-52 -409 Td
+/F1 9.5 Tf 52 396 Td (indistinguishable.) Tj
+-52 -396 Td
+/F1 9.5 Tf 52 383 Td (Permanent Fix Implemented: Created FirebaseConfigProvider.kt to read compile-time) Tj
+-52 -383 Td
+/F1 9.5 Tf 52 370 Td (com.example.R.string.google_app_id, google_api_key, project_id, gcm_defaultSenderId,) Tj
+-52 -370 Td
+/F1 9.5 Tf 52 357 Td (google_storage_bucket, default_web_client_id, and firestore_database_id directly by) Tj
+-52 -357 Td
+/F1 9.5 Tf 52 344 Td (integer resource ID, plus FirebaseOptions.fromResource and multi-package getIdentifier) Tj
+-52 -344 Td
+/F1 9.5 Tf 52 331 Td (fallbacks. Added explicit FirebaseApp initialization in OneHomeProApp.onCreate\(\) and) Tj
+-52 -331 Td
+/F1 9.5 Tf 52 318 Td (FirebaseConfigProvider.ensureFirebaseApp\(\) while keeping Protected Safe Mode strictly) Tj
+-52 -318 Td
+/F1 9.5 Tf 52 305 Td (active whenever real resources are missing or placeholder. Added ProGuard keep rules,) Tj
+-52 -305 Td
+/F1 9.5 Tf 52 292 Td (explicit INTERNET/ACCESS_NETWORK_STATE permissions, and bumped versionCode to 2 \(v1.0.2\)) Tj
+-52 -292 Td
+/F1 9.5 Tf 52 279 Td (displayed on screen.) Tj
+-52 -279 Td
+/F2 11 Tf 48 260 Td (3. Clean Build & Automated Verification Results) Tj
+-48 -260 Td
+/F1 9.5 Tf 52 245 Td (Clean Gradle Build: 'gradle :app:clean :app:assembleDebug) Tj
+-52 -245 Td
+/F1 9.5 Tf 52 232 Td (:app:processReleaseGoogleServices' succeeded \(0 errors\).) Tj
+-52 -232 Td
+/F1 9.5 Tf 52 219 Td (Firestore Security Rules Tests \(node --test firestore.test.js under Auth+Firestore) Tj
+-52 -219 Td
+/F1 9.5 Tf 52 206 Td (Emulator\): 6/6 PASSED.) Tj
+-52 -206 Td
+/F1 9.5 Tf 52 193 Td (Android, Robolectric, Compose UI & Firestore Emulator Tests \(:app:testDebugUnitTest\):) Tj
+-52 -193 Td
+/F1 9.5 Tf 52 180 Td (31/31 PASSED across 9 test suites, including strengthened MainActivity + OneHomeProApp) Tj
+-52 -180 Td
+/F1 9.5 Tf 52 167 Td (cold-start verification proving transition to Restricted Gate without Safe Mode error.) Tj
+-52 -167 Td
+/F1 9.5 Tf 52 154 Td (Binary APK Inspection \(aapt2 + apksigner\): Package com.aistudio.onehomepro.qtrvbx v1.0.2) Tj
+-52 -154 Td
+/F1 8 Tf 48 28 Td (ONE HOME PRO | Qatar Business Edition | Page 1 of 2) Tj
+ET
+endstream
 endobj
 6 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 7 0 R >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
 endobj
 7 0 obj
-<< /Length 8405 >>
+<< /Length 694 >>
 stream
-0.07 0.24 0.20 rg 40 774 515 44 re f
-0.83 0.68 0.22 rg 40 772 515 2.5 re f
-BT /F2 14 Tf 1 1 1 rg 52 798 Td (ONE HOME PRO - FINAL COMPLETION REPORT) Tj ET
-BT /F1 8.5 Tf 0.92 0.95 0.93 rg 52 782 Td (20-Section Consolidated Engineering, Security, Test & Delivery Dossier | Qatar Business Edition) Tj ET
-0.93 0.96 0.95 rg 42 746.0 511 17 re f
-0.07 0.24 0.20 rg 42 746.0 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 750.8 Td (1. EXECUTIVE SUMMARY) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 730.0 Td (ONE HOME PRO \(Qatar Business Edition, package com.aistudio.onehomepro.qtrvbx\) is an) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 718.6 Td (enterprise-grade Android application built with Kotlin, Jetpack Compose, Material 3, Room SQLite) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 707.2 Td (\(83 entities\), Firebase Authentication \(Google Sign-In via Credential Manager\), and Cloud) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 695.8 Td (Firestore.) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 682.9 Td (All engineering fixes, missing feature completions, regression tests, APK builds, and) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 671.5 Td (cryptographic verifications requested in the completion command have finished with 0 test failures) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 660.1 Td (\(6/6 Firestore security rule tests and 31/31 Android/Robolectric tests passing\). Live GitHub push,) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 648.7 Td (physical phone testing, Play Store release signing, and external third-party messaging/payment) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 637.3 Td (gateways remain honestly flagged as PENDING external credentials.) Tj ET
-0.93 0.96 0.95 rg 42 616.4 511 17 re f
-0.07 0.24 0.20 rg 42 616.4 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 621.2 Td (2. REQUIREMENT AUDIT TABLE \(PASS / FAIL / PENDING\)) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 600.4 Td (Summary across 23 audited engineering & operational items: 18 PASS \(verified in source/tests/APK\),) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 589.0 Td (0 FAIL, 5 PENDING \(external environment/credentials only\). Full row-by-row breakdown is delivered) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 577.6 Td (in ONE_HOME_PRO_REQUIREMENT_AUDIT.pdf.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 564.7 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 564.7 Td (PASS \(18\): Branding, Clean Empty Data, Crash-Free Startup, 83-Table DB + QAR Fils,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 553.3 Td (PBKDF2/TOTP/Sessions, Exclusive Super Admin Gate, Lost-Phone Recovery + Cloud Snapshots,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 541.9 Td (Dynamic RBAC Custom Roles, Property/Tenancy, Rent/Cheques/Deposits, Double-Entry GL,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 530.5 Td (HR/Maintenance/Inventory, Document Scanner/Audio Vault/Expiry, Operational Alert Scanner,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 519.1 Td (17-Report CSV+PDF Export, AES-256-GCM Backups, 4-Lang RTL & Tablet UI, Firebase APK + CI) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 507.7 Td (Workflow YAML.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 495.3 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 495.3 Td (FAIL \(0\): Zero unresolved code failures.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 482.9 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 482.9 Td (PENDING \(5\): Remote GitHub push/CI trigger \(NO_DOT_GIT\), Physical Android phone test \(no) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 471.5 Td (ADB\), Release .jks Play Store signing & MOCI legal filings, External) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 460.1 Td (SMS/WhatsApp/SMTP/Bank/PSP keys, Non-Android native builds \(iOS/Windows/Web\).) Tj ET
-0.93 0.96 0.95 rg 42 439.7 511 17 re f
-0.07 0.24 0.20 rg 42 439.7 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 444.5 Td (3. ARCHITECTURE OVERVIEW) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 423.7 Td (Clean MVVM layered Android architecture: UI \(Jetpack Compose Material 3 screens + adaptive) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 412.3 Td (NavigationBar/NavigationRail\) -> OneHomeProViewModel \(StateFlow + lifecycle-safe coroutine) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 400.9 Td (observers\) -> Domain Services \(AuthService, PropertyTenancyService, RentPaymentChequeService,) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 389.5 Td (AccountingService, WorkforceMaintenanceInventoryService, GovernanceBackupService,) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 378.1 Td (CloudDataSyncService\) -> Persistence & Remote Gateways \(Room SQLite + DataStore Preferences +) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 366.7 Td (FirebaseCentralAuthorityGateway\).) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 353.8 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 353.8 Td (Concurrency: Kotlin Coroutines + Flow; multi-table financial/inventory/tenancy updates) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 342.4 Td (execute inside atomic Room withTransaction blocks.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 330.0 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 330.0 Td (Monetary Safety: 100% integer Long fils \(1 QAR = 100 fils\) with QatarFormatters formatting;) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 318.6 Td (zero floating-point rounding drift.) Tj ET
-0.93 0.96 0.95 rg 42 298.2 511 17 re f
-0.07 0.24 0.20 rg 42 298.2 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 303.0 Td (4. DATABASE STRUCTURE & RELATIONSHIPS) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 282.2 Td (OneHomeProDatabase \(db version 1\) defines 83 relational @Entity tables grouped into 7 structural) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 270.8 Td (domains, enforced by RESTRICT foreign keys on financial vouchers and unique composite indexes) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 259.4 Td (\(businessId+code, agreementId+periodKey, idempotencyKey, tokenHash\).) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 246.5 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 246.5 Td (Phase 1 Core & Tenancy \(12\): businesses, properties, buildings, floors, rooms,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 235.1 Td (room_reservations, property_inspections, customers, family_members, agreements,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 223.7 Td (agreement_members, tenancy_history.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 211.3 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 211.3 Td (Phase 2 Payments & Cheques \(8\): monthly_rents, payments, payment_allocations, receipts,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 199.9 Td (security_deposits, deposit_transactions, cheques, advance_rents.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 187.5 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 187.5 Td (Phase 3 Double-Entry Accounting \(12\): chart_of_accounts, journal_entries, journal_lines,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 176.1 Td (income_records, expense_records, bank_accounts, cashbook_entries, petty_cash_entries,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 164.7 Td (bank_transactions, bank_reconciliations, approval_requests, fiscal_periods.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 152.3 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 152.3 Td (Phase 4 Workforce, RBAC & Security \(21\): employees, departments, teams, team_members, users,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 140.9 Td (roles, permissions, role_permissions, user_roles, user_business_access,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 129.5 Td (user_property_access, attendance, employee_work_history, login_sessions, login_history,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 118.1 Td (account_closure_requests, mfa_credentials, recovery_codes, security_events, user_devices,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 106.7 Td (password_reset_requests.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 94.3 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 94.3 Td (Phase 5 Maintenance \(8\) & Phase 6 Inventory \(16\): complaints, attachments, job_assignments,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 82.9 Td (work_reports, work_report_photos, material_usage, job_approvals, status_history; suppliers,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 71.5 Td (item_categories, items, stock_locations, purchases, purchase_items, stock_movements,) Tj ET
-0.85 0.87 0.87 RG 0.5 w 44 40 m 551 40 l S
-BT /F1 7.6 Tf 0.42 0.45 0.47 rg 44 28 Td (ONE HOME PRO | Qatar Business Edition | Package: com.aistudio.onehomepro.qtrvbx) Tj ET
-BT /F2 7.6 Tf 0.20 0.25 0.24 rg 496 28 Td (Page 1 of 5) Tj ET
+BT
+/F1 9.5 Tf 52 760 Td (\(2\), APK v2 signature verified, google_app_id / default_web_client_id / google_api_key /) Tj
+-52 -760 Td
+/F1 9.5 Tf 52 747 Td (project_id / firestore_database_id verified inside resources.arsc.) Tj
+-52 -747 Td
+/F1 9.5 Tf 52 734 Td (Scope Note: Physical Android phone installation/execution and live production Google Play) Tj
+-52 -734 Td
+/F1 9.5 Tf 52 721 Td (Services Sign-In cannot run inside this offline Linux container \(no ADB/device attached\);) Tj
+-52 -721 Td
+/F1 9.5 Tf 52 708 Td (tests verified startup, Auth, and Firestore rules against local Firebase Emulators.) Tj
+-52 -708 Td
+/F1 8 Tf 48 28 Td (ONE HOME PRO | Qatar Business Edition | Page 2 of 2) Tj
+ET
 endstream
 endobj
 8 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 9 0 R >>
-endobj
-9 0 obj
-<< /Length 8809 >>
-stream
-0.88 0.90 0.89 rg 40 806 515 0.8 re f
-BT /F2 8.5 Tf 0.25 0.30 0.28 rg 44 812 Td (ONE HOME PRO - FINAL COMPLETION REPORT) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 792.0 Td (stock_transfers/lines, stock_adjustments, stock_counts/lines, supplier_payments/allocations,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 780.6 Td (approvals, goods_receipt_details.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 768.2 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 768.2 Td (Governance \(6\) + Firestore Cloud Schema \(9 collections\): documents, document_access_logs,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 756.8 Td (notifications, audit_logs, backup_records, integration_configs; plus Firestore) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 745.4 Td (platform_config, platform_status, access_requests, access_grants, businesses,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 734.0 Td (cloud_snapshots, admin_devices, sessions, admin_audit_logs.) Tj ET
-0.93 0.96 0.95 rg 42 713.6 511 17 re f
-0.07 0.24 0.20 rg 42 713.6 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 718.4 Td (5. AUTHENTICATION & ROLE MATRIX) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 697.6 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 697.6 Td (PASSWORD CRYPTO: PBKDF2WithHmacSHA256 \(120,000 iterations, 16-byte salt, 256-bit derived) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 686.2 Td (hash\), constant-time MessageDigest.isEqual verification, 5-attempt brute-force lockout.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 673.8 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 673.8 Td (MFA & SESSION TOKENS: 6-digit RFC-style HmacSHA1 TOTP \(+/-30s tolerance\), 6 single-use) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 662.4 Td (SHA-256 recovery codes \(OHP-XXXX-XXXX\), hashed 32-byte URL-safe device tokens in DataStore) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 651.0 Td (Preferences + login_sessions table.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 638.6 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 638.6 Td (AUTHORITY ROLES: SUPER_ADMIN \(exclusive Gmail authority\), OWNER \(full business control,) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 627.2 Td (custom role creation\), PROPERTY_MANAGER, ACCOUNTANT, TECHNICIAN, CUSTOM roles) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 615.8 Td (\(Owner-configured per AppModule:ActionType checkboxes\), CUSTOMER_PORTAL \(strictly isolated) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 604.4 Td (to own agreements/rents/payments/complaints/docs\).) Tj ET
-0.93 0.96 0.95 rg 42 584.0 511 17 re f
-0.07 0.24 0.20 rg 42 584.0 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 588.8 Td (6. SUPER ADMIN LOCK & RECOVERY FLOW) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 568.0 Td (Exclusive Super Admin identity is locked in both SuperAdminConfig.kt and firestore.rules to) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 556.6 Td (Google-verified email jishanansari998863@gmail.com. At first launch, the Super Admin bootstraps) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 545.2 Td (platform_config/global \(immutable superAdminUid + superAdminEmail, vault password, TOTP secret,) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 533.8 Td (single-use recovery code hashes, Master Recovery Key, and Security Question\).) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 520.9 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 520.9 Td (New Device / Lost Phone Flow: Registered admin_devices records track each phone. Marking a) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 509.5 Td (stolen/lost phone REVOKED_LOST immediately blocks new sessions in Firestore rules and denies) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 498.1 Td (offline/cached self-reauthorization.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 485.7 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 485.7 Td (Dual-Loss Recovery: Authorized via verified Google OAuth + Master Recovery Key / Recovery) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 474.3 Td (Code + Security Answer, rotating TOTP/password credentials cleanly and restoring business) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 462.9 Td (state from encrypted/checksummed Cloud Business Snapshots.) Tj ET
-0.93 0.96 0.95 rg 42 442.5 511 17 re f
-0.07 0.24 0.20 rg 42 442.5 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 447.3 Td (7. FIREBASE INTEGRATION DETAILS) Tj ET
-0.96 0.97 0.98 rg 44 335.5 507 94.0 re f
-0.82 0.85 0.86 RG 0.6 w 44 335.5 507 94.0 re S
-BT /F2 8.6 Tf 0.07 0.24 0.20 rg 50 419.0 Td (Verified Bundled Firebase Configuration) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 406.5 Td (Firebase Project ID:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 185.0 406.5 Td (gen-lang-client-0874428284 \(Project #487338231669\)) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 394.0 Td (Android Package Name:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 185.0 394.0 Td (com.aistudio.onehomepro.qtrvbx) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 381.5 Td (google_app_id \(in APK\):) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 185.0 381.5 Td (1:487338231669:android:9fcfa85a6ff1d8de99353c) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 369.0 Td (default_web_client_id:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 185.0 369.0 Td (487338231669-kbf2bvgir0fhdkv1obs45k1ee96thfjb.apps.googleusercontent.com) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 356.5 Td (firestore_database_id:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 185.0 356.5 Td (ai-studio-android-onehomep-b7e88f8b-dd6f-442a-8d76-7b31f8e0512f) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 344.0 Td (Google Services Strategy:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 185.0 344.0 Td (MissingGoogleServicesStrategy.ERROR \(enforced at build\)) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 326.5 Td (Security rules in firestore.rules default-deny all paths, enforce server request.time timestamps,) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 315.1 Td (prevent shadow fields, block applicant self-approval or role escalation, support instant global) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 303.7 Td (emergencyLockAllNonSuperAdmin, and isolate per-business GZIP+SHA-256 cloud_snapshots.) Tj ET
-0.93 0.96 0.95 rg 42 282.8 511 17 re f
-0.07 0.24 0.20 rg 42 282.8 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 287.6 Td (8. MODULE-BY-MODULE STATUS \(ALL 12 MODULES\)) Tj ET
-0.98 0.99 0.99 rg 44 231.4 507 37.4 re f
-0.88 0.90 0.90 RG 0.5 w 44 231.4 507 37.4 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 259.8 Td (MOD-01 | 01. Central Gate, Auth & Super Admin Panel) Tj ET
-0.87 0.96 0.90 rg 478 256.8 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 260.0 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 248.8 Td (Restricted Gate, Google Credential Manager, Access Requests/Grants, Admin Devices,) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 238.6 Td (Emergency Lock.) Tj ET
-0.98 0.99 0.99 rg 44 189.5 507 37.4 re f
-0.88 0.90 0.90 RG 0.5 w 44 189.5 507 37.4 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 217.9 Td (MOD-02 | 02. Dashboard & Navigation Hub) Tj ET
-0.87 0.96 0.90 rg 478 214.9 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 218.1 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 206.9 Td (Adaptive NavigationBar / NavigationRail, KPI tiles, property filter, global search,) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 196.7 Td (quick actions.) Tj ET
-0.98 0.99 0.99 rg 44 147.6 507 37.4 re f
-0.88 0.90 0.90 RG 0.5 w 44 147.6 507 37.4 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 176.0 Td (MOD-03 | 03. Properties, Buildings, Floors & Rooms) Tj ET
-0.87 0.96 0.90 rg 478 173.0 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 176.2 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 165.0 Td (Full 4-level Qatar property tree, unit status tracking, room reservations, property) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 154.8 Td (inspections.) Tj ET
-0.98 0.99 0.99 rg 44 105.7 507 37.4 re f
-0.88 0.90 0.90 RG 0.5 w 44 105.7 507 37.4 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 134.1 Td (MOD-04 | 04. Customers, Family & Tenancy Agreements) Tj ET
-0.87 0.96 0.90 rg 478 131.1 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 134.3 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 123.1 Td (Tenant onboarding, overlap date validation, renewal, move-out settlement, historical) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 112.9 Td (tenancy trail.) Tj ET
-0.98 0.99 0.99 rg 44 63.8 507 37.4 re f
-0.88 0.90 0.90 RG 0.5 w 44 63.8 507 37.4 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 92.2 Td (MOD-05 | 05. Rent Billing, Payments & Receipts) Tj ET
-0.87 0.96 0.90 rg 478 89.2 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 92.4 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 81.2 Td (Monthly QAR rent generation, idempotency-protected receipts, FIFO allocation,) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 71.0 Td (non-destructive reversals.) Tj ET
-0.85 0.87 0.87 RG 0.5 w 44 40 m 551 40 l S
-BT /F1 7.6 Tf 0.42 0.45 0.47 rg 44 28 Td (ONE HOME PRO | Qatar Business Edition | Package: com.aistudio.onehomepro.qtrvbx) Tj ET
-BT /F2 7.6 Tf 0.20 0.25 0.24 rg 496 28 Td (Page 2 of 5) Tj ET
-endstream
-endobj
-10 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 11 0 R >>
-endobj
-11 0 obj
-<< /Length 7900 >>
-stream
-0.88 0.90 0.89 rg 40 806 515 0.8 re f
-BT /F2 8.5 Tf 0.25 0.30 0.28 rg 44 812 Td (ONE HOME PRO - FINAL COMPLETION REPORT) Tj ET
-0.98 0.99 0.99 rg 44 756.6 507 37.4 re f
-0.88 0.90 0.90 RG 0.5 w 44 756.6 507 37.4 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 785.0 Td (MOD-06 | 06. Cheques & Security Deposits) Tj ET
-0.87 0.96 0.90 rg 478 782.0 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 785.2 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 774.0 Td (1020 Cheques Receivable clearing gate prior to 1010 Bank; 2100 Security Deposit) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 763.8 Td (liability isolation.) Tj ET
-0.98 0.99 0.99 rg 44 714.7 507 37.4 re f
-0.88 0.90 0.90 RG 0.5 w 44 714.7 507 37.4 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 743.1 Td (MOD-07 | 07. Double-Entry Accounting & Treasury) Tj ET
-0.87 0.96 0.90 rg 478 740.1 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 743.3 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 732.1 Td (Balanced DR==CR journals, COA, Trial Balance, P&L, Balance Sheet, Bank Recon,) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 721.9 Td (Cashbook, Petty Cash, Fiscal Close.) Tj ET
-0.98 0.99 0.99 rg 44 672.8 507 37.4 re f
-0.88 0.90 0.90 RG 0.5 w 44 672.8 507 37.4 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 701.2 Td (MOD-08 | 08. Workforce, HR, RBAC & Attendance) Tj ET
-0.87 0.96 0.90 rg 478 698.2 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 701.4 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 690.2 Td (Departments, teams, employee lifecycle, attendance logs, custom role builder &) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 680.0 Td (module:action toggles.) Tj ET
-0.98 0.99 0.99 rg 44 630.9 507 37.4 re f
-0.88 0.90 0.90 RG 0.5 w 44 630.9 507 37.4 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 659.3 Td (MOD-09 | 09. Maintenance & Work Orders) Tj ET
-0.87 0.96 0.90 rg 478 656.3 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 659.5 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 648.3 Td (Complaints, assignments, work reports, Photo Picker before/after images, single-exec) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 638.1 Td (material posting.) Tj ET
-0.98 0.99 0.99 rg 44 589.0 507 37.4 re f
-0.88 0.90 0.90 RG 0.5 w 44 589.0 507 37.4 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 617.4 Td (MOD-10 | 10. Purchase & Inventory Control) Tj ET
-0.87 0.96 0.90 rg 478 614.4 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 617.6 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 606.4 Td (Suppliers, weighted-average valuation, negative stock block, stock transfers,) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 596.2 Td (physical count variance GL.) Tj ET
-0.98 0.99 0.99 rg 44 547.1 507 37.4 re f
-0.88 0.90 0.90 RG 0.5 w 44 547.1 507 37.4 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 575.5 Td (MOD-11 | 11. Document Scanner, Encrypted Vault & Alerts) Tj ET
-0.87 0.96 0.90 rg 478 572.5 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 575.7 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 564.5 Td (CameraX + edge/crop/filter studio, PDF/JPG/PNG/MP4/Audio vault \(AES-256-GCM\), expiry) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 554.3 Td (tracking, 24h alert scanner.) Tj ET
-0.98 0.99 0.99 rg 44 505.2 507 37.4 re f
-0.88 0.90 0.90 RG 0.5 w 44 505.2 507 37.4 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 533.6 Td (MOD-12 | 12. 17-Report Hub, Exports & Customer Portal) Tj ET
-0.87 0.96 0.90 rg 478 530.6 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 533.8 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 522.6 Td (17 live SQLite/GL reports, Excel UTF-8 BOM CSV + multi-page PDF exports via SAF,) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 512.4 Td (isolated Tenant Portal & Owner Self-Test.) Tj ET
-0.93 0.96 0.95 rg 42 490.7 511 17 re f
-0.07 0.24 0.20 rg 42 490.7 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 495.5 Td (9. SECURITY VERIFICATION SUMMARY) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 474.7 Td (Verified zero unauthenticated reads/writes, zero applicant self-approval, zero role escalation to) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 463.3 Td (SUPER_ADMIN, zero cross-business or cross-customer queries, zero uncleared cheque cash inflation,) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 451.9 Td (encrypted document vault with access logging, encrypted AES-256-GCM backups, and zero broad) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 440.5 Td (storage permissions in AndroidManifest.xml.) Tj ET
-0.93 0.96 0.95 rg 42 419.6 511 17 re f
-0.07 0.24 0.20 rg 42 419.6 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 424.4 Td (10. BUGS FOUND & FIXED) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 403.6 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 403.6 Td (Startup Crash After Splash Fixed: Added MissingGoogleServicesStrategy.ERROR + safe startup) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 392.2 Td (pre-check in OneHomeProViewModel transitioning cleanly to StartupErrorScreen \(Protected Safe) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 380.8 Td (Mode\) with Retry & Local Cache Repair actions instead of crashing.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 368.4 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 368.4 Td (Missing Firebase Bundle Fixed: Verified real google-services.json matched package) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 357.0 Td (com.aistudio.onehomepro.qtrvbx and bundled google_app_id / default_web_client_id /) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 345.6 Td (firestore_database_id cleanly into APK resources.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 333.2 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 333.2 Td (Cross-Package Resource Resolution Fixed: GoogleSignInHelper.resolveWebClientId searches both) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 321.8 Td (com.example and applicationId package resources safely.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 309.4 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 309.4 Td (Corrupted SQLite Hang Prevention: Added 2500ms IO timeout +) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 298.0 Td (OneHomeProDatabase.resetCorruptedDatabaseFiles repair path + safe observer cancellation on) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 286.6 Td (ViewModel clear.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 274.2 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 274.2 Td (Final Audit Gaps Closed: Wired Excel BOM CSV + multi-page PDF report exports with RBAC) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 262.8 Td (EXPORT enforcement, added Audio media vault + expiry date UI/persistence, added idempotent) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 251.4 Td (24h operational alert scanner, and added Owner custom RBAC role creation + dynamic staff) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 240.0 Td (dropdown.) Tj ET
-0.93 0.96 0.95 rg 42 219.6 511 17 re f
-0.07 0.24 0.20 rg 42 219.6 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 224.4 Td (11. DUPLICATE / INCOMPLETE CODE REMOVAL) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 203.6 Td (Audited UI screens, ViewModel wiring, and repositories for dead buttons or stubbed placeholders.) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 192.2 Td (Replaced static Reports hub view-only behavior with real SAF CSV/PDF exporters; connected) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 180.8 Td (Notification header action to live operational alert scanner; removed hardcoded static role) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 169.4 Td (dropdown array in staff onboarding so custom RBAC roles appear live; verified all MoreHub and) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 158.0 Td (Dashboard shortcuts route to implemented destinations with BackHandler support.) Tj ET
-0.93 0.96 0.95 rg 42 137.1 511 17 re f
-0.07 0.24 0.20 rg 42 137.1 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 141.9 Td (12. AUTOMATED TEST RESULTS \(REAL EXECUTED OUTPUTS\)) Tj ET
-0.85 0.87 0.87 RG 0.5 w 44 40 m 551 40 l S
-BT /F1 7.6 Tf 0.42 0.45 0.47 rg 44 28 Td (ONE HOME PRO | Qatar Business Edition | Package: com.aistudio.onehomepro.qtrvbx) Tj ET
-BT /F2 7.6 Tf 0.20 0.25 0.24 rg 496 28 Td (Page 3 of 5) Tj ET
-endstream
-endobj
-12 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 13 0 R >>
-endobj
-13 0 obj
-<< /Length 8706 >>
-stream
-0.88 0.90 0.89 rg 40 806 515 0.8 re f
-BT /F2 8.5 Tf 0.25 0.30 0.28 rg 44 812 Td (ONE HOME PRO - FINAL COMPLETION REPORT) Tj ET
-0.96 0.97 0.98 rg 44 727.5 507 67.5 re f
-0.82 0.85 0.86 RG 0.6 w 44 727.5 507 67.5 re S
-BT /F2 8.6 Tf 0.07 0.24 0.20 rg 50 784.5 Td (Suite A: Firestore Security Rules \(Emulator + Node.js\)) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 772.0 Td (Command:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 150.0 772.0 Td (firebase emulators:exec --only auth,firestore 'node --test firestore.test.js') Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 759.5 Td (Result:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 150.0 759.5 Td (6/6 PASS | 0 Fail | 0 Skipped | Duration: 6112.93 ms | Exit Code: 0) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 747.0 Td (Coverage:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 150.0 747.0 Td (Unauth deny, spoofed email deny, Super Admin lock, pending request, emergency lock,) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 150.0 736.0 Td (lost-device block & snapshot isolation) Tj ET
-0.96 0.97 0.98 rg 44 511.5 507 210.0 re f
-0.82 0.85 0.86 RG 0.6 w 44 511.5 507 210.0 re S
-BT /F2 8.6 Tf 0.07 0.24 0.20 rg 50 711.0 Td (Suite B: Android Unit, Robolectric, Compose UI & Emulator Security \(Gradle\)) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 698.5 Td (Command:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 698.5 Td (firebase emulators:exec --only auth,firestore 'gradle) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 687.5 Td (:app:testDebugUnitTest --no-daemon ...') Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 675.0 Td (Total Result:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 675.0 Td (31 / 31 PASS | 0 Failures | 0 Errors | 0 Skipped | Exit Code: 0) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 662.5 Td (AccountingAndOps \(4/4\):) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 662.5 Td (16.02s - GL balance, cheque clearance, deposit liability, fiscal lock,) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 651.5 Td (W-avg stock, backups) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 639.0 Td (AdaptiveLayout \(3/3\):) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 639.0 Td (6.426s - Phone nav bar, Tablet nav rail, FileProvider camera URI) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 626.5 Td (ComposeUiFlow \(3/3\):) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 626.5 Td (4.442s - Cold start crash-free, Safe StartupErrorScreen, Restricted Gate ->) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 615.5 Td (Arabic RTL Dashboard) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 603.0 Td (DocScannerVault \(5/5\):) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 603.0 Td (4.724s - Edge/crop/rotate, PDF/PNG/JPG, CameraX, Audio vault, Alerts,) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 592.0 Td (CSV/PDF RBAC, Custom Roles) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 579.5 Td (ExampleRobo+Unit \(2/2\):) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 579.5 Td (0.048s - App branding, Qatar defaults & unit sanity) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 567.0 Td (SecurityIsolation \(5/5\):) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 567.0 Td (3.993s - PBKDF2, brute lockout, MFA, revocable Remember Me, RBAC isolation) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 554.5 Td (SuperAdminRules \(4/4\):) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 554.5 Td (14.595s - Live Firestore Emulator Kotlin integration: bootstrap, approval,) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 543.5 Td (lock, lost-phone, snapshots) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 531.0 Td (SuperAdminSec \(5/5\):) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 531.0 Td (10.693s - Req 11 lost/dual-loss/returned phone rules, branch switching,) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 195.0 520.0 Td (startup fault resilience) Tj ET
-0.93 0.96 0.95 rg 42 494.5 511 17 re f
-0.07 0.24 0.20 rg 42 494.5 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 499.3 Td (13. APK BUILD & SIGNATURE REPORT) Tj ET
-0.96 0.97 0.98 rg 44 340.5 507 141.0 re f
-0.82 0.85 0.86 RG 0.6 w 44 340.5 507 141.0 re S
-BT /F2 8.6 Tf 0.07 0.24 0.20 rg 50 471.0 Td (Verified Android Debug APK Deliverable) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 458.5 Td (Primary Output:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 458.5 Td (app/build/outputs/apk/debug/app-debug.apk \(mirrored to ONE_HOME_PRO_FINAL.apk &) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 447.5 Td (ONE_HOME_PRO_FIREBASE_FIXED.apk\)) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 435.0 Td (Exact File Size:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 435.0 Td (31,007,446 bytes \(30 MB\)) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 422.5 Td (APK SHA-256:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 422.5 Td (53e09468f8d601e55928389e15f5d82018ce4b091c07850af9bb2a78effc8d04) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 410.0 Td (Zip Integrity:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 410.0 Td (PASS - unzip -tq detected zero errors) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 397.5 Td (APK Signature v2:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 397.5 Td (Verified: true \(CN=Android Debug, O=Android, C=US\)) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 385.0 Td (Signing Cert SHA-1:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 385.0 Td (05356ba3334feb7a32da5957f69451f994009fe1) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 372.5 Td (Signing Cert SHA-256:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 372.5 Td (c6b54f573c9d41735876dda13f99793348e7915349f415c217cf96d50975ebac) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 360.0 Td (aapt2 Resources:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 360.0 Td (PASS - google_app_id, default_web_client_id, firestore_database_id, project_id) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 349.0 Td (present) Tj ET
-0.93 0.96 0.95 rg 42 323.5 511 17 re f
-0.07 0.24 0.20 rg 42 323.5 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 328.3 Td (14. GITHUB & WORKFLOW REPORT) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 307.5 Td (CI/CD workflow /.github/workflows/android-apk-release.yml is complete and audited: checks out) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 296.1 Td (code, configures JDK 21 Temurin, pre-accepts Android SDK 36/36.1 licenses, installs Node 22 +) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 284.7 Td (Firebase CLI + @firebase/rules-unit-testing, verifies app/google-services.json \(with optional) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 273.3 Td (GOOGLE_SERVICES_JSON secret fallback\), runs firestore.test.js and :app:testDebugUnitTest) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 261.9 Td (independently, builds app-debug.apk, verifies Firebase resources via aapt2, uploads test-reports +) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 250.5 Td (APK artifacts, and publishes GitHub Releases.) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 237.6 Td (Current Push Status: PENDING. This workspace contains NO .git directory \(NO_DOT_GIT\) and no GitHub) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 226.2 Td (authentication tokens, so remote git push and live GitHub Actions execution must be performed from) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 214.8 Td (the user's GitHub-linked workstation using ONE_HOME_PRO_COMPLETE_SOURCE.zip.) Tj ET
-0.93 0.96 0.95 rg 42 193.9 511 17 re f
-0.07 0.24 0.20 rg 42 193.9 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 198.7 Td (15. SOURCE ZIP CONTENTS SUMMARY) Tj ET
-0.96 0.97 0.98 rg 44 77.4 507 103.5 re f
-0.82 0.85 0.86 RG 0.6 w 44 77.4 507 103.5 re S
-BT /F2 8.6 Tf 0.07 0.24 0.20 rg 50 170.4 Td (Verified Complete Source Archive) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 157.9 Td (Archive Filename:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 165.0 157.9 Td (ONE_HOME_PRO_COMPLETE_SOURCE.zip) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 145.4 Td (Size & File Count:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 165.0 145.4 Td (1.2 MB | 116 tracked project files | unzip -tq PASS) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 132.9 Td (ZIP SHA-256:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 165.0 132.9 Td (35705cae206b8edd712039a1e4b6a439366b045fb944a9c30665e7670536cb23) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 120.4 Td (Included Scope:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 165.0 120.4 Td (app/, build.gradle.kts, settings.gradle.kts, gradle/, docs/, .github/,) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 165.0 109.4 Td (firestore.*, firebase*, .env.example, metadata.json) Tj ET
-BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 96.9 Td (Excluded Secrets:) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 165.0 96.9 Td (debug.keystore, .env, local.properties, app/build/, .gradle/, prebuilt) Tj ET
-BT /F3 7.7 Tf 0.10 0.12 0.14 rg 165.0 85.9 Td (*.apk/*.zip/*.pdf) Tj ET
-0.85 0.87 0.87 RG 0.5 w 44 40 m 551 40 l S
-BT /F1 7.6 Tf 0.42 0.45 0.47 rg 44 28 Td (ONE HOME PRO | Qatar Business Edition | Package: com.aistudio.onehomepro.qtrvbx) Tj ET
-BT /F2 7.6 Tf 0.20 0.25 0.24 rg 496 28 Td (Page 4 of 5) Tj ET
-endstream
-endobj
-14 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 15 0 R >>
-endobj
-15 0 obj
-<< /Length 7220 >>
-stream
-0.88 0.90 0.89 rg 40 806 515 0.8 re f
-BT /F2 8.5 Tf 0.25 0.30 0.28 rg 44 812 Td (ONE HOME PRO - FINAL COMPLETION REPORT) Tj ET
-0.93 0.96 0.95 rg 42 784.0 511 17 re f
-0.07 0.24 0.20 rg 42 784.0 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 788.8 Td (16. REMAINING ISSUES / BLOCKERS) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 768.0 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 768.0 Td (External Container Limits \(Not Code Bugs\): \(1\) No .git remote credentials -> manual push) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 756.6 Td (required; \(2\) No ADB / physical handset attached -> install/Google OAuth/CameraX hardware) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 745.2 Td (smoke test required on phone; \(3\) Release keystore my-upload-key.jks must be generated) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 733.8 Td (locally for Play Console .aab upload.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 721.4 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 721.4 Td (Advisory Minor Log Note: DocumentScannerEngine.buildMultiPagePdf writes PdfDocument cleanly) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 710.0 Td (under Robolectric tests \(CloseGuard logs a finalize warning unless closed explicitly in) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 698.6 Td (finally\); does not cause test failures or crashes and works safely on Android.) Tj ET
-0.93 0.96 0.95 rg 42 678.2 511 17 re f
-0.07 0.24 0.20 rg 42 678.2 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 683.0 Td (17. EXTERNAL API REQUIREMENTS) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 662.2 Td (Gateway configuration records in IntegrationConfigEntity store endpoints and honest status flags) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 650.8 Td (without faking live transmission. To enable external automation, configure merchant credentials) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 639.4 Td (for: \(1\) Qatar SMS Gateway \(Ooredoo / Vodafone Business SMS API\), \(2\) WhatsApp Business Cloud API) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 628.0 Td (\(Meta WABA Token + Phone ID\), \(3\) Authenticated SMTP Relay \(TLS email receipts\), \(4\) Qatar Bank) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 616.6 Td (Open-Banking / Statement Feed, and \(5\) Licensed Qatar Card PSP \(QPay / Sadad / SkipCash /) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 605.2 Td (CyberSource\).) Tj ET
-0.93 0.96 0.95 rg 42 584.3 511 17 re f
-0.07 0.24 0.20 rg 42 584.3 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 589.1 Td (18. LEGAL / GOOGLE PLAY STORE READINESS) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 568.3 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 568.3 Td (Qatar Law No. 13 of 2016 \(Personal Data Privacy Protection\): App enforces RBAC) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 556.9 Td (least-privilege, AES-256-GCM document vaulting, access audit logging, and in-app Account) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 545.5 Td (Closure Request submission. Company must publish Privacy Policy & designate DPO.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 533.1 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 533.1 Td (MOCI CR & Baladiya Leases: Business CR field supported on profile/receipts; legal lease) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 521.7 Td (registration & CPA 10-year tax retention review remain owner governance duties.) Tj ET
-BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 509.3 Td (-) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 509.3 Td (Google Play Policy Compliance: Zero broad storage permissions \(READ_EXTERNAL_STORAGE /) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 497.9 Td (READ_MEDIA_* absent\); uses Android Photo Picker & SAF; app title <= 30 chars; Dynamic Code) Tj ET
-BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 486.5 Td (Loading absent; Data Safety & Privacy Policy URL needed in Play Console.) Tj ET
-0.93 0.96 0.95 rg 42 466.1 511 17 re f
-0.07 0.24 0.20 rg 42 466.1 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 470.9 Td (19. INSTALLATION & FIRST-TIME OWNER GUIDE) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 450.1 Td (See companion ONE_HOME_PRO_FINAL_INSTALLATION_GUIDE.pdf for step-by-step sideload installation) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 438.7 Td (\(APK\), Super Admin first Google Sign-In & TOTP/Master Key backup, Owner approval workflow,) Tj ET
-BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 427.3 Td (staff/tenant onboarding, encrypted backups, and new-phone cloud restore instructions.) Tj ET
-0.93 0.96 0.95 rg 42 406.4 511 17 re f
-0.07 0.24 0.20 rg 42 406.4 3 17 re f
-BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 411.2 Td (20. FINAL ACCEPTANCE CHECKLIST) Tj ET
-0.98 0.99 0.99 rg 44 365.2 507 27.2 re f
-0.88 0.90 0.90 RG 0.5 w 44 365.2 507 27.2 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 383.4 Td (CHK-01 | Package ID & App Name Intact) Tj ET
-0.87 0.96 0.90 rg 478 380.4 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 383.6 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 372.4 Td (com.aistudio.onehomepro.qtrvbx | ONE HOME PRO) Tj ET
-0.98 0.99 0.99 rg 44 323.3 507 37.4 re f
-0.88 0.90 0.90 RG 0.5 w 44 323.3 507 37.4 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 351.7 Td (CHK-02 | Zero Startup Crash & Firebase Bundled) Tj ET
-0.87 0.96 0.90 rg 478 348.7 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 351.9 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 340.7 Td (google_app_id & default_web_client_id verified via aapt2; Safe Mode UI active if) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 330.5 Td (missing) Tj ET
-0.98 0.99 0.99 rg 44 291.6 507 27.2 re f
-0.88 0.90 0.90 RG 0.5 w 44 291.6 507 27.2 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 309.8 Td (CHK-03 | All Automated Tests Passing \(0 Fail\)) Tj ET
-0.87 0.96 0.90 rg 478 306.8 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 310.0 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 298.8 Td (6/6 Firestore JS + 31/31 Android/Robolectric/Rules PASS) Tj ET
-0.98 0.99 0.99 rg 44 259.9 507 27.2 re f
-0.88 0.90 0.90 RG 0.5 w 44 259.9 507 27.2 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 278.1 Td (CHK-04 | Signed Installable APK Delivered) Tj ET
-0.87 0.96 0.90 rg 478 275.1 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 278.3 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 267.1 Td (ONE_HOME_PRO_FINAL.apk + ONE_HOME_PRO_FIREBASE_FIXED.apk \(v2 verified, 31.0 MB\)) Tj ET
-0.98 0.99 0.99 rg 44 228.2 507 27.2 re f
-0.88 0.90 0.90 RG 0.5 w 44 228.2 507 27.2 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 246.4 Td (CHK-05 | Clean Complete Source Archive Delivered) Tj ET
-0.87 0.96 0.90 rg 478 243.4 66 11.5 re f
-BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 246.6 Td (PASS) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 235.4 Td (ONE_HOME_PRO_COMPLETE_SOURCE.zip \(116 files, unzip -tq PASS\)) Tj ET
-0.98 0.99 0.99 rg 44 196.5 507 27.2 re f
-0.88 0.90 0.90 RG 0.5 w 44 196.5 507 27.2 re S
-BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 214.7 Td (CHK-06 | GitHub Remote Push / Physical Phone Test) Tj ET
-0.99 0.95 0.84 rg 478 211.7 66 11.5 re f
-BT /F2 7.3 Tf 0.62 0.38 0.02 rg 485 214.9 Td (PENDING) Tj ET
-BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 203.7 Td (Requires user GitHub push & physical Android device verification) Tj ET
-0.85 0.87 0.87 RG 0.5 w 44 40 m 551 40 l S
-BT /F1 7.6 Tf 0.42 0.45 0.47 rg 44 28 Td (ONE HOME PRO | Qatar Business Edition | Package: com.aistudio.onehomepro.qtrvbx) Tj ET
-BT /F2 7.6 Tf 0.20 0.25 0.24 rg 496 28 Td (Page 5 of 5) Tj ET
-endstream
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
 endobj
 xref
-0 16
+0 9
 0000000000 65535 f 
 0000000009 00000 n 
 0000000058 00000 n 
-0000000142 00000 n 
-0000000212 00000 n 
-0000000287 00000 n 
-0000000355 00000 n 
-0000000501 00000 n 
-0000008958 00000 n 
-0000009104 00000 n 
-0000017965 00000 n 
-0000018113 00000 n 
-0000026066 00000 n 
-0000026214 00000 n 
-0000034973 00000 n 
-0000035121 00000 n 
+0000000121 00000 n 
+0000000191 00000 n 
+0000000266 00000 n 
+0000005343 00000 n 
+0000005479 00000 n 
+0000006224 00000 n 
 trailer
-<< /Size 16 /Root 1 0 R >>
+<< /Size 9 /Root 1 0 R >>
 startxref
-42394
+6360
 %%EOF

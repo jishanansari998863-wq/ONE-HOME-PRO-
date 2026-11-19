@@ -40,15 +40,19 @@ class FirebaseCentralAuthorityGateway private constructor(
             val appCtx = context.applicationContext ?: context
             val diag = inspectFirebaseConfiguration(appCtx)
             if (diag != null) throw IllegalStateException(diag)
+            val app = FirebaseConfigProvider.ensureFirebaseApp(appCtx)
+                ?: throw IllegalStateException("FirebaseApp unavailable despite validated configuration.")
             val dbId = resolveFirestoreDatabaseId(appCtx)
                 ?: throw IllegalStateException("Missing string resource firestore_database_id.")
-            FirebaseFirestore.getInstance(dbId)
+            FirebaseFirestore.getInstance(app, dbId)
         },
         authLazy = lazy {
             val appCtx = context.applicationContext ?: context
             val diag = inspectFirebaseConfiguration(appCtx)
             if (diag != null) throw IllegalStateException(diag)
-            Firebase.auth
+            val app = FirebaseConfigProvider.ensureFirebaseApp(appCtx)
+                ?: throw IllegalStateException("FirebaseApp unavailable despite validated configuration.")
+            FirebaseAuth.getInstance(app)
         }
     )
 
@@ -1602,60 +1606,10 @@ class FirebaseCentralAuthorityGateway private constructor(
         private const val COL_ADMIN_DEVICES = "admin_devices"
         private const val COL_CLOUD_SNAPSHOTS = "cloud_snapshots"
 
-        @Suppress("DiscouragedApi")
-        private fun resolveResourceString(context: Context, name: String): String? {
-            val candidates = linkedSetOf<String>()
-            candidates.add(context.packageName)
-            runCatching {
-                candidates.add(context.resources.getResourcePackageName(com.example.R.string.firestore_database_id))
-            }
-            candidates.add("com.example")
-            for (pkg in candidates) {
-                val value = try {
-                    val resId = context.resources.getIdentifier(name, "string", pkg)
-                    if (resId != 0) context.getString(resId).takeIf { it.isNotBlank() } else null
-                } catch (_: Exception) {
-                    null
-                }
-                if (value != null) return value
-            }
-            return null
-        }
-
         private fun resolveFirestoreDatabaseId(context: Context): String? =
-            runCatching {
-                context.getString(com.example.R.string.firestore_database_id).takeIf { it.isNotBlank() }
-            }.getOrNull() ?: resolveResourceString(context, "firestore_database_id")
+            FirebaseConfigProvider.resolveFirestoreDatabaseId(context)
 
-        private fun inspectFirebaseConfiguration(context: Context): String? {
-            val appCtx = context.applicationContext ?: context
-            val optionsFromRes = runCatching {
-                com.google.firebase.FirebaseOptions.fromResource(appCtx)
-            }.getOrNull()
-            val googleAppId = optionsFromRes?.applicationId?.takeIf { it.isNotBlank() }
-                ?: resolveResourceString(appCtx, "google_app_id")
-                ?: return "Firebase configuration missing: app/google-services.json was not bundled in this APK (google_app_id resource not found)."
-            if (googleAppId.startsWith("1:0000") || googleAppId.contains("placeholder", ignoreCase = true)) {
-                return "Firebase configuration contains placeholder google_app_id ($googleAppId). Bundle the real app/google-services.json."
-            }
-            if (resolveFirestoreDatabaseId(appCtx).isNullOrBlank()) {
-                return "Firestore database configuration missing: firestore_database_id string resource not found."
-            }
-            return try {
-                val app = if (FirebaseApp.getApps(appCtx).isNotEmpty()) {
-                    FirebaseApp.getInstance()
-                } else {
-                    FirebaseApp.initializeApp(appCtx)
-                        ?: optionsFromRes?.let { FirebaseApp.initializeApp(appCtx, it) }
-                }
-                if (app == null) {
-                    "FirebaseApp.initializeApp returned null. Verify app/google-services.json matches package ${appCtx.packageName}."
-                } else {
-                    null
-                }
-            } catch (t: Throwable) {
-                "Firebase initialization error: ${t.message ?: t::class.java.simpleName}"
-            }
-        }
+        private fun inspectFirebaseConfiguration(context: Context): String? =
+            FirebaseConfigProvider.inspectDiagnostic(context)
     }
 }

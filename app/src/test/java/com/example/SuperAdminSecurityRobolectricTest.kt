@@ -490,6 +490,15 @@ class SuperAdminSecurityRobolectricTest {
         // or show STARTUP_ERROR safely if missing:
         try {
             com.google.firebase.FirebaseApp.getApps(app).forEach { it.delete() }
+            val recoveredApp = com.example.data.remote.FirebaseConfigProvider.ensureFirebaseApp(app)
+            assertNotNull(recoveredApp)
+            assertNotNull(com.google.firebase.auth.FirebaseAuth.getInstance(recoveredApp!!))
+            assertNotNull(
+                com.google.firebase.firestore.FirebaseFirestore.getInstance(
+                    recoveredApp,
+                    com.example.data.remote.FirebaseConfigProvider.resolveFirestoreDatabaseId(app)!!
+                )
+            )
             val realGateAfterReset = com.example.data.remote.FirebaseCentralAuthorityGateway(app)
             assertTrue(realGateAfterReset.isConfigured())
             assertNull(realGateAfterReset.configurationDiagnostic())
@@ -497,7 +506,7 @@ class SuperAdminSecurityRobolectricTest {
             com.example.data.remote.GoogleSignInHelper.signOut(app)
         } finally {
             if (com.google.firebase.FirebaseApp.getApps(app).isEmpty()) {
-                runCatching { com.google.firebase.FirebaseApp.initializeApp(app) }
+                runCatching { com.example.data.remote.FirebaseConfigProvider.ensureFirebaseApp(app) }
             }
         }
 

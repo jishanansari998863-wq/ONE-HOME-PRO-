@@ -161,7 +161,12 @@ class ComposeUiFlowRobolectricTest {
     }
 
     @Test
-    fun `MainActivity and OneHomeProApp cold start completes without uncaught exceptions`() {
+    fun `MainActivity and OneHomeProApp cold start completes without uncaught exceptions or Firebase Safe Mode lock`() {
+        val app = ApplicationProvider.getApplicationContext<OneHomeProApp>()
+        org.junit.Assert.assertTrue(
+            app.container.centralAuthority.configurationDiagnostic() ?: "unexpected",
+            app.container.centralAuthority.isConfigured()
+        )
         val controller = org.robolectric.Robolectric.buildActivity(MainActivity::class.java).setup()
         try {
             val activity = controller.get()
@@ -171,6 +176,21 @@ class ComposeUiFlowRobolectricTest {
             org.junit.Assert.assertFalse(activity.isFinishing)
         } finally {
             controller.pause().stop().destroy()
+        }
+
+        // Also render OneHomeProAppRoot against the real app.container (real FirebaseCentralAuthorityGateway)
+        val realVm = OneHomeProViewModel(app.container, splashDelayMs = 0L)
+        try {
+            composeRule.setContent {
+                OneHomeProAppRoot(realVm)
+            }
+            composeRule.waitUntil(timeoutMillis = 5_000L) {
+                composeRule.onAllNodesWithTag("restricted_gate_screen").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onAllNodesWithTag("startup_error_screen").assertCountEquals(0)
+            composeRule.onNodeWithTag("auth_build_version_label").assertExists()
+        } finally {
+            realVm.stopObservers()
         }
     }
 }

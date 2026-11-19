@@ -143,6 +143,12 @@ private fun AuthHeaderCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Text(
+            text = "v${com.example.BuildConfig.VERSION_NAME} (Build ${com.example.BuildConfig.VERSION_CODE})",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
+            modifier = Modifier.testTag("auth_build_version_label")
+        )
     }
 }
 

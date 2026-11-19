@@ -3,6 +3,7 @@ package com.example
 import android.app.Application
 import com.example.data.db.OneHomeProDatabase
 import com.example.data.remote.FirebaseCentralAuthorityGateway
+import com.example.data.remote.FirebaseConfigProvider
 import com.example.domain.security.CentralAuthorityGateway
 import com.example.domain.security.SessionStore
 import com.example.domain.service.*
@@ -33,10 +34,12 @@ class OneHomeProApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        runCatching { FirebaseConfigProvider.ensureFirebaseApp(this) }
         container = AppContainer(this)
     }
 
     fun reinitializeContainer() {
+        runCatching { FirebaseConfigProvider.ensureFirebaseApp(this) }
         container = AppContainer(this)
     }
 }
