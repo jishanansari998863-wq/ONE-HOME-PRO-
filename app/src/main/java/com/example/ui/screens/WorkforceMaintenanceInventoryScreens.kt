@@ -195,8 +195,13 @@ fun WorkforceScreen(
     loginTarget?.let { emp ->
         var email by remember { mutableStateOf(emp.email) }
         var pass by remember { mutableStateOf("") }
-        var roleName by remember { mutableStateOf("TECHNICIAN") }
-        val roles = listOf("PROPERTY_MANAGER", "ACCOUNTANT", "TECHNICIAN")
+        val roles = remember(data.roles) {
+            data.roles
+                .map { it.name }
+                .filter { it !in setOf("OWNER", "CUSTOMER_PORTAL", "SUPER_ADMIN") }
+                .ifEmpty { listOf("PROPERTY_MANAGER", "ACCOUNTANT", "TECHNICIAN") }
+        }
+        var roleName by remember(roles) { mutableStateOf(if ("TECHNICIAN" in roles) "TECHNICIAN" else roles.first()) }
         AlertDialog(
             onDismissRequest = { loginTarget = null },
             title = { Text("Staff Login for ${emp.fullName}") },

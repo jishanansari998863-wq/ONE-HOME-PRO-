@@ -108,7 +108,9 @@ data class ValidatedUploadFile(
 
 object DocumentImageProcessor {
 
-    private val SUPPORTED_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "pdf", "mp4")
+    private val SUPPORTED_EXTENSIONS = setOf(
+        "jpg", "jpeg", "png", "webp", "pdf", "mp4", "mp3", "m4a", "aac", "wav", "ogg"
+    )
 
     fun loadOrientedBitmap(context: Context, uri: Uri, maxDimension: Int = 1800): Bitmap {
         val resolver = context.contentResolver
@@ -465,14 +467,24 @@ object DocumentImageProcessor {
         val resolvedMime = when {
             rawMime == "application/pdf" || ext == "pdf" -> "application/pdf"
             rawMime == "video/mp4" || rawMime.startsWith("video/") || ext == "mp4" -> "video/mp4"
+            rawMime == "audio/mpeg" || rawMime == "audio/mp3" || ext == "mp3" -> "audio/mpeg"
+            rawMime == "audio/mp4" || rawMime == "audio/m4a" || ext == "m4a" -> "audio/mp4"
+            rawMime == "audio/aac" || ext == "aac" -> "audio/aac"
+            rawMime == "audio/wav" || rawMime == "audio/x-wav" || ext == "wav" -> "audio/wav"
+            rawMime == "audio/ogg" || rawMime.startsWith("audio/") || ext == "ogg" -> "audio/ogg"
             rawMime == "image/webp" || ext == "webp" -> "image/webp"
             rawMime == "image/png" || ext == "png" -> "image/png"
             rawMime == "image/jpeg" || rawMime == "image/jpg" || ext == "jpg" || ext == "jpeg" -> "image/jpeg"
-            else -> throw IllegalArgumentException("Unsupported format. Please select JPG, JPEG, PNG, WEBP, PDF, or MP4 video.")
+            else -> throw IllegalArgumentException("Unsupported format. Please select JPG, JPEG, PNG, WEBP, PDF, MP4, or Audio (MP3/M4A/AAC/WAV/OGG).")
         }
         val resolvedExt = when {
             resolvedMime == "application/pdf" -> "pdf"
             resolvedMime == "video/mp4" -> "mp4"
+            resolvedMime == "audio/mpeg" -> "mp3"
+            resolvedMime == "audio/mp4" -> "m4a"
+            resolvedMime == "audio/aac" -> "aac"
+            resolvedMime == "audio/wav" -> "wav"
+            resolvedMime == "audio/ogg" -> "ogg"
             resolvedMime == "image/webp" -> "webp"
             resolvedMime == "image/png" -> "png"
             ext == "jpeg" -> "jpeg"

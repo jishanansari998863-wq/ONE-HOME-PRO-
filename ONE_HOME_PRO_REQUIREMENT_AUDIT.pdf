@@ -1,0 +1,248 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 8548 >>
+stream
+0.07 0.24 0.20 rg 40 774 515 44 re f
+0.83 0.68 0.22 rg 40 772 515 2.5 re f
+BT /F2 14 Tf 1 1 1 rg 52 798 Td (ONE HOME PRO - COMPLETE REQUIREMENT AUDIT REGISTER) Tj ET
+BT /F1 8.5 Tf 0.92 0.95 0.93 rg 52 782 Td (Qatar Business Edition | QAR | Asia/Qatar | Verified Source & Test Audit) Tj ET
+0.93 0.96 0.95 rg 42 746.0 511 17 re f
+0.07 0.24 0.20 rg 42 746.0 3 17 re f
+BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 750.8 Td (1. AUDIT SUMMARY & VERIFICATION METHODOLOGY) Tj ET
+BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 730.0 Td (This register audits every ONE HOME PRO functional, security, database, Firebase, build, and) Tj ET
+BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 718.6 Td (compliance requirement against actual Kotlin/Compose source code, Room KSP schema, Firebase) Tj ET
+BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 707.2 Td (security rules, emulator test suites, and compiled APK artifacts.) Tj ET
+0.96 0.97 0.98 rg 44 615.8 507 81.5 re f
+0.82 0.85 0.86 RG 0.6 w 44 615.8 507 81.5 re S
+BT /F2 8.6 Tf 0.07 0.24 0.20 rg 50 686.8 Td (Verified Build & Test Totals) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 674.3 Td (Application ID:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 200.0 674.3 Td (com.aistudio.onehomepro.qtrvbx \(v1.0.0, MinSDK 24, TargetSDK 36\)) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 661.8 Td (Firestore Rules Suite:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 200.0 661.8 Td (6 / 6 PASS \(0 fail, 0 skipped, Firebase Auth+Firestore Emulator\)) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 649.3 Td (Android Unit & Robolectric:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 200.0 649.3 Td (31 / 31 PASS across 9 test suites \(0 fail, 0 error, 0 skipped\)) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 636.8 Td (Debug APK SHA-256:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 200.0 636.8 Td (53e09468f8d601e55928389e15f5d82018ce4b091c07850af9bb2a78effc8d04) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 624.3 Td (Complete Source ZIP SHA-256:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 200.0 624.3 Td (35705cae206b8edd712039a1e4b6a439366b045fb944a9c30665e7670536cb23) Tj ET
+0.93 0.96 0.95 rg 42 598.8 511 17 re f
+0.07 0.24 0.20 rg 42 598.8 3 17 re f
+BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 603.6 Td (2. COMPLETE REQUIREMENT TRACEABILITY REGISTER) Tj ET
+0.98 0.99 0.99 rg 44 547.4 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 547.4 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 575.8 Td (REQ-001 | Branded Identity & Official Logo Icons) Tj ET
+0.87 0.96 0.90 rg 478 572.8 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 576.0 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 564.8 Td (strings.xml, metadata.json, adaptive mipmap icons, splash emblem validated by) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 554.6 Td (ExampleRobolectricTest.) Tj ET
+0.98 0.99 0.99 rg 44 505.5 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 505.5 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 533.9 Td (REQ-002 | Zero-Dummy Clean Empty State Policy) Tj ET
+0.87 0.96 0.90 rg 478 530.9 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 534.1 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 522.9 Td (0 preloaded fake tenants/rooms/payments/staff/purchases; verified via) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 512.7 Td (ComposeUiFlowRobolectricTest.) Tj ET
+0.98 0.99 0.99 rg 44 453.4 507 47.6 re f
+0.88 0.90 0.90 RG 0.5 w 44 453.4 507 47.6 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 492.0 Td (REQ-003 | Startup Crash Prevention & Safe Mode) Tj ET
+0.87 0.96 0.90 rg 478 489.0 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 492.2 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 481.0 Td (Pre-check Firebase config, 2500ms Room timeout, Room DB repair flow, clean observer) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 470.8 Td (cancellation; verified in ComposeUiFlowRobolectricTest &) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 460.6 Td (SuperAdminSecurityRobolectricTest.) Tj ET
+0.98 0.99 0.99 rg 44 411.5 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 411.5 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 439.9 Td (REQ-004 | 83-Table Relational Schema & PostgreSQL Doc) Tj ET
+0.87 0.96 0.90 rg 478 436.9 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 440.1 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 428.9 Td (OneHomeProDatabase compiles all 83 entities with KSP; integer Long fils QAR) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 418.7 Td (arithmetic; PostgreSQL ER doc in docs/POSTGRESQL_SCHEMA_AND_ER.md.) Tj ET
+0.98 0.99 0.99 rg 44 369.6 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 369.6 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 398.0 Td (REQ-005 | PBKDF2 Auth, TOTP MFA & Session Lifecycle) Tj ET
+0.87 0.96 0.90 rg 478 395.0 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 398.2 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 387.0 Td (PBKDF2-HMAC-SHA256 \(120k iter\), 5-attempt lockout, TOTP + recovery codes, revocable) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 376.8 Td (hashed sessions; 5/5 pass in SecurityAndIsolationRobolectricTest.) Tj ET
+0.98 0.99 0.99 rg 44 317.5 507 47.6 re f
+0.88 0.90 0.90 RG 0.5 w 44 317.5 507 47.6 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 356.1 Td (REQ-006 | Exclusive Super Admin Gate & Anti-Bypass) Tj ET
+0.87 0.96 0.90 rg 478 353.1 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 356.3 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 345.1 Td (Locked strictly to verified jishanansari998863@gmail.com; strangers/unauth blocked;) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 334.9 Td (validated in firestore.test.js \(6/6\), SuperAdminRulesTest \(4/4\),) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 324.7 Td (SuperAdminSecurityRobolectricTest \(5/5\).) Tj ET
+0.98 0.99 0.99 rg 44 275.6 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 275.6 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 304.0 Td (REQ-007 | Super Admin Lost-Phone & Dual-Loss Recovery) Tj ET
+0.87 0.96 0.90 rg 478 301.0 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 304.2 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 293.0 Td (Revoked/lost devices permanently blocked from creating sessions or self-resetting;) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 282.8 Td (GZIP+SHA-256 cloud snapshot restore verified on new device.) Tj ET
+0.98 0.99 0.99 rg 44 233.7 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 233.7 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 262.1 Td (REQ-008 | Multi-Tenant RBAC & Custom Role Creation) Tj ET
+0.87 0.96 0.90 rg 478 259.1 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 262.3 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 251.1 Td (Dynamic custom roles \(createCustomRole blocking reserved system roles\),) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 240.9 Td (Owner/Staff/Customer isolation, property-level scoping; verified in unit tests.) Tj ET
+0.98 0.99 0.99 rg 44 181.6 507 47.6 re f
+0.88 0.90 0.90 RG 0.5 w 44 181.6 507 47.6 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 220.2 Td (REQ-009 | Module 1-4: Property, Tenancy, Rent & Cheques) Tj ET
+0.87 0.96 0.90 rg 478 217.2 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 220.4 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 209.2 Td (Property->Building->Floor->Room hierarchy, reservations, inspections,) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 199.0 Td (overlap-blocked leases, idempotent receipts, RECEIVED->DEPOSITED->CLEARED/BOUNCED) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 188.8 Td (cheque GL flow.) Tj ET
+0.98 0.99 0.99 rg 44 139.7 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 139.7 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 168.1 Td (REQ-010 | Module 5-6: Double-Entry Accounting & Deposits) Tj ET
+0.87 0.96 0.90 rg 478 165.1 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 168.3 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 157.1 Td (COA seeding, balanced DR==CR journals in transaction, Trial Balance, P&L, Balance) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 146.9 Td (Sheet, Bank Recon, Cashbook, Petty Cash, GL 2100 Deposit Liability.) Tj ET
+0.98 0.99 0.99 rg 44 97.8 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 97.8 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 126.2 Td (REQ-011 | Module 7-9: HR, Maintenance & Inventory) Tj ET
+0.87 0.96 0.90 rg 478 123.2 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 126.4 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 115.2 Td (Departments/teams/attendance, complaints/jobs/work reports/Photo Picker photos,) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 105.0 Td (weighted-avg inventory, negative stock block, variance GL.) Tj ET
+0.85 0.87 0.87 RG 0.5 w 44 40 m 551 40 l S
+BT /F1 7.6 Tf 0.42 0.45 0.47 rg 44 28 Td (ONE HOME PRO | Qatar Business Edition | Package: com.aistudio.onehomepro.qtrvbx) Tj ET
+BT /F2 7.6 Tf 0.20 0.25 0.24 rg 496 28 Td (Page 1 of 2) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 9 0 R >>
+endobj
+9 0 obj
+<< /Length 6825 >>
+stream
+0.88 0.90 0.89 rg 40 806 515 0.8 re f
+BT /F2 8.5 Tf 0.25 0.30 0.28 rg 44 812 Td (ONE HOME PRO - COMPLETE REQUIREMENT AUDIT REGISTER) Tj ET
+0.98 0.99 0.99 rg 44 756.6 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 756.6 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 785.0 Td (REQ-012 | Module 10: Document Scanner, PDF & Audio Vault) Tj ET
+0.87 0.96 0.90 rg 478 782.0 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 785.2 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 774.0 Td (Auto edge-detect/crop/90-deg rotate/filters, CameraX, PDF/JPG/PNG/MP4 + Audio) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 763.8 Td (\(MP3/M4A/AAC/WAV/OGG\), optional expiry dates, AES-256-GCM + SHA-256 audit logs.) Tj ET
+0.98 0.99 0.99 rg 44 704.5 507 47.6 re f
+0.88 0.90 0.90 RG 0.5 w 44 704.5 507 47.6 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 743.1 Td (REQ-013 | Module 11: Operational Alert Scanner & Inbox) Tj ET
+0.87 0.96 0.90 rg 478 740.1 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 743.3 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 732.1 Td (Idempotent 24h-deduped alert generator for expiring leases, expiring QID/documents,) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 721.9 Td (overdue rent, and low-stock items; verified in) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 711.7 Td (DocumentScannerAndVaultRobolectricTest.) Tj ET
+0.98 0.99 0.99 rg 44 662.6 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 662.6 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 691.0 Td (REQ-014 | Module 12: 17-Report Hub + CSV & PDF Exports) Tj ET
+0.87 0.96 0.90 rg 478 688.0 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 691.2 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 680.0 Td (All 17 financial/operational reports + RBAC-gated EXPORT action producing Excel) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 669.8 Td (UTF-8 BOM CSV and multi-page PDF via SAF CreateDocument.) Tj ET
+0.98 0.99 0.99 rg 44 620.7 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 620.7 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 649.1 Td (REQ-015 | Encrypted Backup & Verified GL Restore) Tj ET
+0.87 0.96 0.90 rg 478 646.1 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 649.3 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 638.1 Td (AES-256-GCM passphrase/auto backups validating SHA-256 manifest and Trial Balance) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 627.9 Td (DR==CR.) Tj ET
+0.98 0.99 0.99 rg 44 578.8 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 578.8 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 607.2 Td (REQ-016 | 4-Language Localization & Adaptive UI) Tj ET
+0.87 0.96 0.90 rg 478 604.2 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 607.4 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 596.2 Td (English, Arabic \(true RTL\), Hinglish, Hindi Devanagari; phone NavigationBar + tablet) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 586.0 Td (NavigationRail verified in AdaptiveLayoutAndCameraRobolectricTest.) Tj ET
+0.98 0.99 0.99 rg 44 536.9 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 536.9 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 565.3 Td (REQ-017 | Firebase Google-Services Bundling & APK Signing) Tj ET
+0.87 0.96 0.90 rg 478 562.3 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 565.5 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 554.3 Td (google_app_id, project_id, default_web_client_id, firestore_database_id verified) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 544.1 Td (inside APK via aapt2; v2 signature verified via apksigner.) Tj ET
+0.98 0.99 0.99 rg 44 495.0 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 495.0 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 523.4 Td (REQ-018 | GitHub Actions CI Workflow Definition) Tj ET
+0.87 0.96 0.90 rg 478 520.4 66 11.5 re f
+BT /F2 7.3 Tf 0.06 0.44 0.20 rg 485 523.6 Td (PASS) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 512.4 Td (.github/workflows/android-apk-release.yml configured for JDK 21, SDK 36, separate) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 502.2 Td (Firestore & Android tests, aapt2 checks, artifact & release upload.) Tj ET
+0.98 0.99 0.99 rg 44 453.1 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 453.1 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 481.5 Td (REQ-019 | Remote GitHub Push & Live CI Execution) Tj ET
+0.99 0.95 0.84 rg 478 478.5 66 11.5 re f
+BT /F2 7.3 Tf 0.62 0.38 0.02 rg 485 481.7 Td (PENDING) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 470.5 Td (Container has NO_DOT_GIT and no GitHub credentials. User must push extracted ZIP to) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 460.3 Td (GitHub main to trigger CI run.) Tj ET
+0.98 0.99 0.99 rg 44 411.2 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 411.2 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 439.6 Td (REQ-020 | Physical Android Device & OAuth Hardware QA) Tj ET
+0.99 0.95 0.84 rg 478 436.6 66 11.5 re f
+BT /F2 7.3 Tf 0.62 0.38 0.02 rg 485 439.8 Td (PENDING) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 428.6 Td (Container has no ADB or attached phone. Physical install, live Credential Manager) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 418.4 Td (OAuth popup, and CameraX lens capture require phone testing.) Tj ET
+0.98 0.99 0.99 rg 44 369.3 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 369.3 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 397.7 Td (REQ-021 | Google Play Upload Signing & Legal Review) Tj ET
+0.99 0.95 0.84 rg 478 394.7 66 11.5 re f
+BT /F2 7.3 Tf 0.62 0.38 0.02 rg 485 397.9 Td (PENDING) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 386.7 Td (Production .jks upload keystore, MOCI CR, Baladiya lease registration, and Play) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 376.5 Td (Console Data Safety submission required before store release.) Tj ET
+0.98 0.99 0.99 rg 44 327.4 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 327.4 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 355.8 Td (REQ-022 | External SMS, WhatsApp, SMTP & Bank/Card APIs) Tj ET
+0.99 0.95 0.84 rg 478 352.8 66 11.5 re f
+BT /F2 7.3 Tf 0.62 0.38 0.02 rg 485 356.0 Td (PENDING) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 344.8 Td (Configurable endpoints present; live external messaging/banking requires third-party) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 334.6 Td (merchant API keys.) Tj ET
+0.98 0.99 0.99 rg 44 285.5 507 37.4 re f
+0.88 0.90 0.90 RG 0.5 w 44 285.5 507 37.4 re S
+BT /F2 8.2 Tf 0.07 0.24 0.20 rg 50 313.9 Td (REQ-023 | Native iOS \(.ipa\) / macOS / Windows / Web) Tj ET
+0.99 0.95 0.84 rg 478 310.9 66 11.5 re f
+BT /F2 7.3 Tf 0.62 0.38 0.02 rg 485 314.1 Td (PENDING) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 302.9 Td (Out of scope for Linux Android build container \(no Xcode/macOS/Windows/Node web app) Tj ET
+BT /F1 7.9 Tf 0.20 0.22 0.24 rg 50 292.7 Td (SDK\); PostgreSQL + KMP roadmap documented.) Tj ET
+0.85 0.87 0.87 RG 0.5 w 44 40 m 551 40 l S
+BT /F1 7.6 Tf 0.42 0.45 0.47 rg 44 28 Td (ONE HOME PRO | Qatar Business Edition | Package: com.aistudio.onehomepro.qtrvbx) Tj ET
+BT /F2 7.6 Tf 0.20 0.25 0.24 rg 496 28 Td (Page 2 of 2) Tj ET
+endstream
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000191 00000 n 
+0000000266 00000 n 
+0000000334 00000 n 
+0000000480 00000 n 
+0000009080 00000 n 
+0000009226 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+16103
+%%EOF

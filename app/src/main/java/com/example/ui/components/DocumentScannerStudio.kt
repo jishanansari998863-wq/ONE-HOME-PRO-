@@ -81,6 +81,7 @@ fun DocumentScannerStudioDialog(
         )
     }
     var title by remember { mutableStateOf("") }
+    var expiryDaysText by remember { mutableStateOf("") }
     var isRestricted by remember { mutableStateOf(true) }
     var outputFormat by remember { mutableStateOf(DocumentOutputFormat.PDF) }
 
@@ -227,7 +228,7 @@ fun DocumentScannerStudioDialog(
                 val info = withContext(Dispatchers.IO) {
                     DocumentImageProcessor.validatePickedFile(context, uri)
                 }
-                if (info.mimeType == "application/pdf" || info.mimeType.startsWith("video/")) {
+                if (info.mimeType == "application/pdf" || info.mimeType.startsWith("video/") || info.mimeType.startsWith("audio/")) {
                     stagedPages = emptyList()
                     directPickedFileUri = uri
                     directPickedFileInfo = info
@@ -359,12 +360,12 @@ fun DocumentScannerStudioDialog(
                                 Text("Gallery", maxLines = 1)
                             }
                             OutlinedButton(
-                                onClick = { pickFileLauncher.launch(arrayOf("image/jpeg", "image/png", "image/webp", "application/pdf", "video/mp4")) },
+                                onClick = { pickFileLauncher.launch(arrayOf("image/jpeg", "image/png", "image/webp", "application/pdf", "video/mp4", "audio/*")) },
                                 modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp).testTag("btn_upload_file")
                             ) {
                                 Icon(Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Upload File/Video", maxLines = 1)
+                                Text("Upload File/Media", maxLines = 1)
                             }
                         }
                     }
@@ -422,15 +423,28 @@ fun DocumentScannerStudioDialog(
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth().testTag("scanner_title_input")
                         )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = expiryDaysText,
+                            onValueChange = { expiryDaysText = it.filter { ch -> ch.isDigit() } },
+                            label = { Text("Valid For Days (optional expiry alert, e.g. 365)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().testTag("scanner_expiry_days_input")
+                        )
                     }
 
                     // Preview & Multi-Page Editor
                     if (directPickedFileInfo != null) {
                         val fileInfo = directPickedFileInfo!!
                         item {
+                            val icon = when {
+                                fileInfo.mimeType.startsWith("audio/") -> Icons.Default.AudioFile
+                                fileInfo.mimeType.startsWith("video/") -> Icons.Default.VideoFile
+                                else -> Icons.Default.PictureAsPdf
+                            }
                             ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                                 Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = CrimsonError, modifier = Modifier.size(36.dp))
+                                    Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
                                     Spacer(Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(fileInfo.displayName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -741,6 +755,9 @@ fun DocumentScannerStudioDialog(
                     onClick = {
                         showConfirmUploadDialog = false
                         val picked = directPickedFileUri
+                        val computedExpiryEpoch = expiryDaysText.toLongOrNull()?.takeIf { it > 0L }?.let { days ->
+                            System.currentTimeMillis() + (days * 86_400_000L)
+                        }
                         if (picked != null) {
                             vm.uploadVaultDocument(
                                 uri = picked,
@@ -748,6 +765,7 @@ fun DocumentScannerStudioDialog(
                                 entityId = selectedTargetId,
                                 category = selectedCategory.code,
                                 title = finalTitle,
+                                expiryDateEpoch = computedExpiryEpoch,
                                 isRestricted = isRestricted
                             ) { ok ->
                                 if (ok) onDismiss()
@@ -760,6 +778,7 @@ fun DocumentScannerStudioDialog(
                                 entityId = selectedTargetId,
                                 category = selectedCategory.code,
                                 title = finalTitle,
+                                expiryDateEpoch = computedExpiryEpoch,
                                 isRestricted = isRestricted
                             ) { ok ->
                                 if (ok) onDismiss()

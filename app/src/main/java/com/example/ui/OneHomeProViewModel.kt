@@ -1745,6 +1745,7 @@ class OneHomeProViewModel(
         category: String,
         title: String,
         propertyId: String? = null,
+        expiryDateEpoch: Long? = null,
         isRestricted: Boolean = true,
         onComplete: (Boolean) -> Unit = {}
     ) {
@@ -1771,6 +1772,7 @@ class OneHomeProViewModel(
                         category = category,
                         title = title,
                         propertyId = propertyId,
+                        expiryDateEpoch = expiryDateEpoch,
                         isRestricted = isRestricted
                     ) { frac, stage ->
                         _uiState.update { state ->
@@ -1825,6 +1827,7 @@ class OneHomeProViewModel(
         category: String,
         title: String,
         propertyId: String? = null,
+        expiryDateEpoch: Long? = null,
         isRestricted: Boolean = true,
         onComplete: (Boolean) -> Unit = {}
     ) {
@@ -1866,6 +1869,7 @@ class OneHomeProViewModel(
                         category = category,
                         title = title,
                         propertyId = propertyId,
+                        expiryDateEpoch = expiryDateEpoch,
                         isRestricted = isRestricted
                     ) { frac, stage ->
                         _uiState.update { state ->
@@ -2012,6 +2016,45 @@ class OneHomeProViewModel(
         runAction(if (granted) "Permission granted to role" else "Permission removed from role") {
             container.authService.toggleRolePermission(requireCtx(), roleId, permissionId, granted)
         }
+
+    fun createCustomRole(roleName: String, description: String) =
+        runAction("Custom RBAC role created") {
+            container.authService.createCustomRole(requireCtx(), roleName, description)
+        }
+
+    fun scanOperationalAlerts() {
+        val ctx = _uiState.value.authContext ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
+            try {
+                val count = withContext(Dispatchers.IO) {
+                    container.governanceBackupService.scanAndGenerateOperationalAlerts(ctx)
+                }
+                _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        bannerSuccess = if (count > 0) "Generated $count new expiry/overdue/stock alert(s)." else "All expiry, rent & stock alerts are already up to date."
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isBusy = false, bannerError = e.message ?: "Alert scan failed") }
+            }
+        }
+    }
+
+    fun recordReportExport(reportTitle: String, format: String) {
+        val ctx = _uiState.value.authContext ?: return
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    container.governanceBackupService.logReportExport(ctx, reportTitle, format)
+                }
+                _uiState.update { it.copy(bannerSuccess = "Exported '$reportTitle' as $format") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(bannerError = e.message ?: "Report export failed") }
+            }
+        }
+    }
 
     fun runOwnerSelfTests() {
         val state = _uiState.value

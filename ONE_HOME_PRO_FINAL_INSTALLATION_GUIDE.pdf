@@ -1,0 +1,179 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 8569 >>
+stream
+0.07 0.24 0.20 rg 40 774 515 44 re f
+0.83 0.68 0.22 rg 40 772 515 2.5 re f
+BT /F2 14 Tf 1 1 1 rg 52 798 Td (ONE HOME PRO - INSTALLATION & USER GUIDE) Tj ET
+BT /F1 8.5 Tf 0.92 0.95 0.93 rg 52 782 Td (Step-by-Step Android Setup, Super Admin Security, Operations & Device Recovery Guide) Tj ET
+0.93 0.96 0.95 rg 42 746.0 511 17 re f
+0.07 0.24 0.20 rg 42 746.0 3 17 re f
+BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 750.8 Td (1. PACKAGE VERIFICATION BEFORE INSTALLING) Tj ET
+BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 730.0 Td (Always verify that you are installing the authentic signed build before opening ONE HOME PRO on) Tj ET
+BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 718.6 Td (your Android phone \(Android 7.0 Nougat / API 24 or newer\).) Tj ET
+0.96 0.97 0.98 rg 44 614.7 507 94.0 re f
+0.82 0.85 0.86 RG 0.6 w 44 614.7 507 94.0 re S
+BT /F2 8.6 Tf 0.07 0.24 0.20 rg 50 698.2 Td (Official Build Identity & Checksums) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 685.7 Td (APK File:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 685.7 Td (ONE_HOME_PRO_FINAL.apk \(identical copy: ONE_HOME_PRO_FIREBASE_FIXED.apk\)) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 673.2 Td (Package ID:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 673.2 Td (com.aistudio.onehomepro.qtrvbx \(Version 1.0.0\)) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 660.7 Td (File Size:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 660.7 Td (31,007,446 bytes \(30 MB\)) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 648.2 Td (APK SHA-256:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 648.2 Td (53e09468f8d601e55928389e15f5d82018ce4b091c07850af9bb2a78effc8d04) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 635.7 Td (Signing Cert SHA-1:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 635.7 Td (05356ba3334feb7a32da5957f69451f994009fe1) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 623.2 Td (Signing Cert SHA-256:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 623.2 Td (c6b54f573c9d41735876dda13f99793348e7915349f415c217cf96d50975ebac) Tj ET
+0.93 0.96 0.95 rg 42 597.7 511 17 re f
+0.07 0.24 0.20 rg 42 597.7 3 17 re f
+BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 602.5 Td (2. INSTALLING THE APK ON YOUR ANDROID PHONE) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 581.7 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 581.7 Td (Step 1: Transfer ONE_HOME_PRO_FINAL.apk to your Android phone Downloads folder \(or download) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 570.3 Td (from your GitHub Release once pushed\).) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 557.9 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 557.9 Td (Step 2: Tap ONE_HOME_PRO_FINAL.apk. If Android prompts for unknown apps, allow installation) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 546.5 Td (from Files / Chrome.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 534.1 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 534.1 Td (Step 3: If Play Protect displays an informational prompt \(because this is a Debug/sideload) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 522.7 Td (build rather than Play Store\), choose 'Install anyway' only if the SHA-256 hash matches) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 511.3 Td (Section 1.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 498.9 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 498.9 Td (Step 4: If upgrading over an older build with an incompatible schema or old unsigned build,) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 487.5 Td (uninstall the prior package cleanly first \(after exporting any needed backup\).) Tj ET
+0.93 0.96 0.95 rg 42 467.1 511 17 re f
+0.07 0.24 0.20 rg 42 467.1 3 17 re f
+BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 471.9 Td (3. FIRST LAUNCH & EXCLUSIVE SUPER ADMIN BOOTSTRAP) Tj ET
+BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 451.1 Td (ONE HOME PRO launches into a Restricted Security Gate. No local sample data or unlocked dashboard) Tj ET
+BT /F1 8.4 Tf 0.14 0.16 0.17 rg 44.0 439.7 Td (is exposed before cloud identity verification.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 426.8 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 426.8 Td (Super Admin Account: Tap 'Sign In with Google' using jishanansari998863@gmail.com.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 414.4 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 414.4 Td (Initial Setup \(First Time Only\): Create a strong Vault Passphrase \(8+ chars\), optional) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 403.0 Td (Master Recovery Key, and Security Question/Answer. The app generates your TOTP Authenticator) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 391.6 Td (secret and 6 single-use Recovery Codes \(OHP-XXXX-XXXX\).) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 379.2 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 379.2 Td (CRITICAL BACKUP RULE: Immediately write down or store your TOTP secret, 6 recovery codes,) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 367.8 Td (Master Recovery Key, and Security Answer offline in a safe place. They protect you if you) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 356.4 Td (ever lose both your phone and authenticator.) Tj ET
+0.93 0.96 0.95 rg 42 336.0 511 17 re f
+0.07 0.24 0.20 rg 42 336.0 3 17 re f
+BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 340.8 Td (4. STAFF, OWNER & TENANT ONBOARDING FLOW) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 320.0 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 320.0 Td (Applicants / Staff / Tenants: Open app -> Sign in with Google -> Submit Access Request with) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 308.6 Td (Full Name, Phone, Role \(OWNER / EMPLOYEE / CUSTOMER\), Business Name, Branch, and optional) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 297.2 Td (QID/Passport summary -> Wait on Pending screen.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 284.8 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 284.8 Td (Super Admin Approval: Super Admin signs in -> Opens 'Super Admin Authority' console ->) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 273.4 Td (Reviews pending requests -> Approves business/branch, property scope, and module permissions) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 262.0 Td (-> User can immediately enter Workspace.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 249.6 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 249.6 Td (RBAC Custom Roles \(Owner Control Center\): Owners can open More -> Owner Control Center ->) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 238.2 Td (Users & RBAC -> 'New Role' to define custom roles and toggle granular) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 226.8 Td (VIEW/CREATE/EDIT/APPROVE/POST/REVERSE/EXPORT/RESTORE permissions.) Tj ET
+0.93 0.96 0.95 rg 42 206.4 511 17 re f
+0.07 0.24 0.20 rg 42 206.4 3 17 re f
+BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 211.2 Td (5. DAILY BUSINESS OPERATIONS & COMPLIANCE WORKFLOW) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 190.4 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 190.4 Td (Properties -> Units: Add Properties -> Buildings -> Floors -> Rooms. Set monthly QAR rents.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 178.0 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 178.0 Td (Tenancy & Rent: Register Customer + QID -> Create non-overlapping Agreement -> Monthly Rent) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 166.6 Td (schedules post automatically -> Issue idempotent Receipts \(Cash / Bank / Cheque\).) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 154.2 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 154.2 Td (Post-Dated Cheques: Cheques remain in 1020 Cheques Receivable until explicitly marked) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 142.8 Td (CLEARED \(which posts Bank 1010\) or BOUNCED \(which reverses back to Rent Receivable\).) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 130.4 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 130.4 Td (Document Vault & Scanner: Use Photo Picker, SAF Files \(PDF, MP4, MP3/M4A/AAC/WAV/OGG\), or) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 119.0 Td (CameraX scanner with auto crop/filter + optional Expiry Date. Stored encrypted via) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 107.6 Td (AES-256-GCM with SHA-256 verification.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 95.2 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 95.2 Td (Operational Alerts & 17 Reports: Tap Notifications -> 'Scan Alerts' to generate) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 83.8 Td (non-duplicated alerts for leases expiring within 30 days, expiring QID/documents, overdue) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 72.4 Td (rent, and low inventory. Export any of the 17 reports to CSV \(Excel\) or PDF.) Tj ET
+0.85 0.87 0.87 RG 0.5 w 44 40 m 551 40 l S
+BT /F1 7.6 Tf 0.42 0.45 0.47 rg 44 28 Td (ONE HOME PRO | Qatar Business Edition | Package: com.aistudio.onehomepro.qtrvbx) Tj ET
+BT /F2 7.6 Tf 0.20 0.25 0.24 rg 496 28 Td (Page 1 of 2) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 9 0 R >>
+endobj
+9 0 obj
+<< /Length 3408 >>
+stream
+0.88 0.90 0.89 rg 40 806 515 0.8 re f
+BT /F2 8.5 Tf 0.25 0.30 0.28 rg 44 812 Td (ONE HOME PRO - INSTALLATION & USER GUIDE) Tj ET
+0.93 0.96 0.95 rg 42 784.0 511 17 re f
+0.07 0.24 0.20 rg 42 784.0 3 17 re f
+BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 788.8 Td (6. CLOUD SYNC, BACKUP & LOST-PHONE RECOVERY) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 768.0 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 768.0 Td (Cloud Sync: From Owner Control Center or Top Actions, trigger Cloud Business Snapshot sync.) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 756.6 Td (Uploads GZIP-compressed SHA-256-verified business state + language/theme preferences to) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 745.2 Td (Firestore.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 732.8 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 732.8 Td (Local Encrypted Backups: Create AES-256-GCM passphrase-protected backup files and run) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 721.4 Td ('Decrypt & Verify Restore' to validate Trial Balance integrity.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 709.0 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 709.0 Td (If Phone Is Lost or Stolen: Sign in on your new phone with jishanansari998863@gmail.com ->) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 697.6 Td (Complete MFA / Dual-Loss Recovery -> Open Super Admin Console -> Admin Devices -> Mark the) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 686.2 Td (lost device REVOKED_LOST. The stolen phone is permanently locked out across Firestore rules) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 674.8 Td (even if later unlocked -> Tap Restore Cloud Snapshot to resume on the new phone.) Tj ET
+0.93 0.96 0.95 rg 42 654.4 511 17 re f
+0.07 0.24 0.20 rg 42 654.4 3 17 re f
+BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 659.2 Td (7. PHYSICAL PHONE ACCEPTANCE TEST CHECKLIST \(REQUIRED ON HARDWARE\)) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 638.4 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 638.4 Td ([ ] Cold launch shows branded splash and opens Restricted Gate cleanly \(no crash, no) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 627.0 Td ('Firebase Configuration Missing'\).) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 614.6 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 614.6 Td ([ ] Tap Google Sign-In -> Official Google account sheet opens -> Verify) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 603.2 Td (jishanansari998863@gmail.com signs in cleanly.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 590.8 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 590.8 Td ([ ] Confirm Arabic RTL toggle flips UI cleanly and Hindi/Hinglish/English labels render) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 579.4 Td (cleanly.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 567.0 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 567.0 Td ([ ] Test CameraX document capture, Photo Picker image upload, PDF/Audio file upload, and) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 555.6 Td (Report CSV + PDF SAF save.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 543.2 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 543.2 Td ([ ] Push ONE_HOME_PRO_COMPLETE_SOURCE.zip contents to GitHub main and verify GitHub Actions) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 531.8 Td (green badge.) Tj ET
+0.85 0.87 0.87 RG 0.5 w 44 40 m 551 40 l S
+BT /F1 7.6 Tf 0.42 0.45 0.47 rg 44 28 Td (ONE HOME PRO | Qatar Business Edition | Package: com.aistudio.onehomepro.qtrvbx) Tj ET
+BT /F2 7.6 Tf 0.20 0.25 0.24 rg 496 28 Td (Page 2 of 2) Tj ET
+endstream
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000191 00000 n 
+0000000266 00000 n 
+0000000334 00000 n 
+0000000480 00000 n 
+0000009101 00000 n 
+0000009247 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+12707
+%%EOF

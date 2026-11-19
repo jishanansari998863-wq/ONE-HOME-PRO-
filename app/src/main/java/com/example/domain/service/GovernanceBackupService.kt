@@ -103,11 +103,16 @@ class GovernanceBackupService(
 
         val normalizedMime = mimeType.lowercase()
         val normalizedExt = extension.lowercase()
-        require(normalizedExt in setOf("jpg", "jpeg", "png", "webp", "pdf", "mp4")) {
-            "Unsupported format '$extension'. Supported formats: JPG, JPEG, PNG, WEBP, PDF, MP4."
+        require(normalizedExt in setOf("jpg", "jpeg", "png", "webp", "pdf", "mp4", "mp3", "m4a", "aac", "wav", "ogg")) {
+            "Unsupported format '$extension'. Supported formats: JPG, JPEG, PNG, WEBP, PDF, MP4, MP3, M4A, AAC, WAV, OGG."
         }
-        require(normalizedMime in setOf("image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf", "video/mp4")) {
-            "Unsupported MIME type '$mimeType'. Supported types: JPG, JPEG, PNG, WEBP, PDF, MP4."
+        require(
+            normalizedMime in setOf(
+                "image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf", "video/mp4",
+                "audio/mpeg", "audio/mp3", "audio/mp4", "audio/m4a", "audio/aac", "audio/wav", "audio/x-wav", "audio/ogg"
+            )
+        ) {
+            "Unsupported MIME type '$mimeType'. Supported types: JPG, JPEG, PNG, WEBP, PDF, MP4, Audio."
         }
         require(bytes.isNotEmpty() && bytes.size <= 15 * 1024 * 1024) {
             "Document size must be between 1 byte and 15 MB"
@@ -484,5 +489,99 @@ class GovernanceBackupService(
         val secret = getOrCreateVaultSecret()
         val record = createEncryptedBackup(ctx, secret)
         return verifyAndTestRestoreBackup(ctx, record.id, secret)
+    }
+
+    suspend fun logReportExport(ctx: AuthContext, reportTitle: String, format: String) {
+        AuthorizationGuard.requirePermission(ctx, AppModule.REPORTS, ActionType.EXPORT, ctx.activeBusinessId)
+        opsDao.insertAuditLog(
+            AuditLogEntity(
+                id = CryptoUtil.newUuid(),
+                businessId = ctx.activeBusinessId,
+                actorUserId = ctx.userId,
+                action = "EXPORT_REPORT_$format",
+                entityType = "REPORT",
+                entityId = reportTitle.take(40),
+                summary = "Exported report '$reportTitle' as $format",
+                occurredAtEpoch = System.currentTimeMillis()
+            )
+        )
+    }
+
+    suspend fun scanAndGenerateOperationalAlerts(ctx: AuthContext, nowEpoch: Long = System.currentTimeMillis()): Int {
+        AuthorizationGuard.requirePermission(ctx, AppModule.NOTIFICATIONS, ActionType.VIEW, ctx.activeBusinessId)
+        val bizId = ctx.activeBusinessId
+        val existing = opsDao.getNotificationsByBusiness(bizId)
+        val oneDayMs = 86_400_000L
+        val thirtyDaysMs = 30L * oneDayMs
+        var createdCount = 0
+
+        suspend fun emitOncePerDay(category: String, title: String, message: String) {
+            val dup = existing.any {
+                it.category == category && it.title == title && (nowEpoch - it.createdAtEpoch) < oneDayMs
+            }
+            if (!dup) {
+                opsDao.insertNotification(
+                    NotificationEntity(
+                        id = CryptoUtil.newUuid(),
+                        businessId = bizId,
+                        recipientUserId = ctx.userId,
+                        category = category,
+                        title = title,
+                        message = message,
+                        channel = "IN_APP",
+                        deliveryStatus = "DELIVERED_LOCAL",
+                        createdAtEpoch = nowEpoch
+                    )
+                )
+                createdCount++
+            }
+        }
+
+        coreDao.getAgreementsByBusiness(bizId)
+            .filter { it.status == "ACTIVE" && it.endDateEpoch <= nowEpoch + thirtyDaysMs }
+            .forEach { ag ->
+                val stateLabel = if (ag.endDateEpoch < nowEpoch) "Expired" else "Expiring Soon"
+                emitOncePerDay(
+                    category = "AGREEMENT_EXPIRY",
+                    title = "Lease $stateLabel: ${ag.agreementNumber}",
+                    message = "Rental agreement ${ag.agreementNumber} ends ${com.example.domain.util.QatarFormatters.formatDate(ag.endDateEpoch)}."
+                )
+            }
+
+        opsDao.observeDocuments(bizId).first()
+            .filter { !it.isArchived && it.expiryDateEpoch != null && it.expiryDateEpoch <= nowEpoch + thirtyDaysMs }
+            .forEach { doc ->
+                val stateLabel = if ((doc.expiryDateEpoch ?: 0L) < nowEpoch) "Expired" else "Expiring Soon"
+                emitOncePerDay(
+                    category = "DOCUMENT",
+                    title = "${doc.category} $stateLabel: ${doc.title}",
+                    message = "Document '${doc.title}' (${doc.entityType}) expires ${com.example.domain.util.QatarFormatters.formatDate(doc.expiryDateEpoch ?: nowEpoch)}."
+                )
+            }
+
+        coreDao.getMonthlyRentsByBusiness(bizId)
+            .filter { it.status != "PAID" && (it.status == "OVERDUE" || it.dueDateEpoch < nowEpoch) }
+            .forEach { rent ->
+                val outstanding = (rent.amountDueFils - rent.amountPaidFils).coerceAtLeast(0L)
+                if (outstanding > 0L) {
+                    emitOncePerDay(
+                        category = "RENT_DUE",
+                        title = "Overdue Rent ${rent.periodKey} (${rent.id.take(6)})",
+                        message = "Outstanding rent balance ${com.example.domain.util.QatarFormatters.formatQar(outstanding)} past due date."
+                    )
+                }
+            }
+
+        opsDao.getItemsByBusiness(bizId)
+            .filter { it.currentStockQty <= it.reorderLevel }
+            .forEach { item ->
+                emitOncePerDay(
+                    category = "STOCK",
+                    title = "Low Stock: ${item.name}",
+                    message = "${item.sku} stock is ${item.currentStockQty} ${item.unit} (reorder level ${item.reorderLevel})."
+                )
+            }
+
+        return createdCount
     }
 }

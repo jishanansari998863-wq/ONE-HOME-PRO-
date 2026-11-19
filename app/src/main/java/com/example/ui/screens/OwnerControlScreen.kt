@@ -47,6 +47,7 @@ fun OwnerControlScreen(
     var restoreVerifyTarget by remember { mutableStateOf<BackupRecordEntity?>(null) }
     var showConfigIntegration by remember { mutableStateOf(false) }
     var managePermissionsRole by remember { mutableStateOf<com.example.data.db.entities.RoleEntity?>(null) }
+    var showCreateRole by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedTab) {
         if (selectedTab == 6) vm.runOwnerSelfTests()
@@ -143,7 +144,9 @@ fun OwnerControlScreen(
                         }
                     }
                     item {
-                        Text("Role Matrix", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        SectionHeader("Role Matrix", "Customizable RBAC roles (Owner protected)", "New Role", "create_custom_role_button") {
+                            showCreateRole = true
+                        }
                     }
                     items(data.roles, key = { it.id }) { r ->
                         val permCount = data.rolePermissions.count { it.roleId == r.id }
@@ -488,6 +491,38 @@ fun OwnerControlScreen(
                 Button(onClick = { vm.configureIntegration(type, name, handle, enabled); showConfigIntegration = false }) { Text(strings.save) }
             },
             dismissButton = { TextButton(onClick = { showConfigIntegration = false }) { Text(strings.cancel) } }
+        )
+    }
+
+    if (showCreateRole) {
+        var rName by remember { mutableStateOf("") }
+        var rDesc by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showCreateRole = false },
+            title = { Text("Create Custom Staff Role") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = rName,
+                        onValueChange = { rName = it },
+                        label = { Text("Role Name (e.g. LEASING_OFFICER)*") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("custom_role_name_input")
+                    )
+                    OutlinedTextField(
+                        value = rDesc,
+                        onValueChange = { rDesc = it },
+                        label = { Text("Role Description") },
+                        modifier = Modifier.fillMaxWidth().testTag("custom_role_desc_input")
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = { vm.createCustomRole(rName, rDesc); showCreateRole = false }, modifier = Modifier.testTag("confirm_create_role_button")) {
+                    Text(strings.save)
+                }
+            },
+            dismissButton = { TextButton(onClick = { showCreateRole = false }) { Text(strings.cancel) } }
         )
     }
 }

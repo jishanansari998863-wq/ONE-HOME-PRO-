@@ -284,7 +284,7 @@ private fun AuthenticatedWorkspaceScaffold(
                             AppDestination.INVENTORY -> InventoryScreen(uiState, vm)
                             AppDestination.DOCUMENTS -> DocumentsScreen(uiState, vm)
                             AppDestination.NOTIFICATIONS -> NotificationsScreen(uiState, vm)
-                            AppDestination.REPORTS -> ReportsScreen(uiState)
+                            AppDestination.REPORTS -> ReportsScreen(uiState, vm)
                             AppDestination.OWNER_CONTROL -> OwnerControlScreen(uiState, vm)
                             AppDestination.SUPER_ADMIN_CONSOLE -> SuperAdminPanelScreen(uiState, vm)
                             AppDestination.ACCOUNT_SECURITY -> AccountSecurityScreen(

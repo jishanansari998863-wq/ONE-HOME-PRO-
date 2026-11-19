@@ -3,7 +3,7 @@
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Kids [5 0 R 7 0 R] /Count 2 >>
+<< /Type /Pages /Kids [6 0 R] /Count 1 >>
 endobj
 3 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
@@ -12,119 +12,81 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
 endobj
 5 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
 endobj
 6 0 obj
-<< /Length 4626 >>
-stream
-0.12 0.25 0.42 rg
-BT /F2 9 Tf 48 772 Td (ONE HOME PRO - Setup, Firebase, Release & Installation Guide) Tj ET
-0.75 0.78 0.82 RG 0.5 w 48 767 m 564 767 l S
-0 0 0 rg
-0.07 0.19 0.36 rg
-BT /F2 17 Tf 48 749 Td (ONE HOME PRO - Setup & Installation Guide) Tj ET
-0 0 0 rg
-BT /F1 10 Tf 48 726 Td (Application ID: com.aistudio.onehomepro.qtrvbx | Min SDK: 24 \(Android 7.0+\) | Target SDK:) Tj ET
-BT /F1 10 Tf 48 712 Td (36) Tj ET
-BT /F1 10 Tf 48 695 Td (Edition: Qatar & Global Multi-Branch Property, Tenancy, Accounting, Workforce & Governance) Tj ET
-BT /F1 10 Tf 48 681 Td (Platform) Tj ET
-0.07 0.19 0.36 rg
-BT /F2 13 Tf 48 658 Td (1. Installing the Android APK on Your Phone) Tj ET
-0 0 0 rg
-BT /F1 10 Tf 56 639 Td (- Step 1: Download ONE_HOME_PRO_FINAL.apk from the AI Studio workspace file explorer \(or) Tj ET
-BT /F1 10 Tf 56 625 Td (  via Settings -> Generate APK / GitHub Releases\).) Tj ET
-BT /F1 10 Tf 56 611 Td (- Step 2: Transfer or open the .apk file on your Android phone \(Android 7.0 or newer\).) Tj ET
-BT /F1 10 Tf 56 597 Td (- Step 3: When Android prompts 'Install unknown apps', allow installation from your) Tj ET
-BT /F1 10 Tf 56 583 Td (  browser or File Manager.) Tj ET
-BT /F1 10 Tf 56 569 Td (- Step 4: Tap Install and wait for confirmation, then tap Open.) Tj ET
-BT /F1 10 Tf 56 555 Td (- Note on Debug Signing: ONE_HOME_PRO_FINAL.apk is signed with the project Debug key for) Tj ET
-BT /F1 10 Tf 56 541 Td (  immediate testing and phone installation. Google Play Store uploads require a Release) Tj ET
-BT /F1 10 Tf 56 527 Td (  AAB signed with your own upload keystore \(see Section 5\).) Tj ET
-0.07 0.19 0.36 rg
-BT /F2 13 Tf 48 507 Td (2. First-Time Super Admin Setup & Security Activation) Tj ET
-0 0 0 rg
-BT /F1 10 Tf 56 488 Td (- Exclusive Super Admin Account: jishanansari998863@gmail.com \(hard-locked on both) Tj ET
-BT /F1 10 Tf 56 474 Td (  client and firestore.rules\).) Tj ET
-BT /F1 10 Tf 56 460 Td (- Step 1: On the Restricted Welcome Gate screen, tap 'Continue with Google Account' and) Tj ET
-BT /F1 10 Tf 56 446 Td (  sign in using jishanansari998863@gmail.com.) Tj ET
-BT /F1 10 Tf 56 432 Td (- Step 2: Complete First-Time Super Admin Security Setup: create your strong Master) Tj ET
-BT /F1 10 Tf 56 418 Td (  Password \(min 12 chars\), enable TOTP Authenticator MFA, and save all generated 10-use) Tj ET
-BT /F1 10 Tf 56 404 Td (  Recovery Codes offline in a password manager or printed vault.) Tj ET
-BT /F1 10 Tf 56 390 Td (- Step 3: Access the Super Admin Control Panel to approve Owner, Staff, and Tenant) Tj ET
-BT /F1 10 Tf 56 376 Td (  access requests. Installing the APK alone never grants access to any business data) Tj ET
-BT /F1 10 Tf 56 362 Td (  until server-approved.) Tj ET
-0.07 0.19 0.36 rg
-BT /F2 13 Tf 48 342 Td (3. Lost Phone / New Phone Recovery Procedure) Tj ET
-0 0 0 rg
-BT /F1 10 Tf 56 323 Td (- If your phone is lost or replaced: sign in with Google \(jishanansari998863@gmail.com\)) Tj ET
-BT /F1 10 Tf 56 309 Td (  on your new device.) Tj ET
-BT /F1 10 Tf 56 295 Td (- Enter your Super Admin Master Password and either a current TOTP 6-digit code OR one) Tj ET
-BT /F1 10 Tf 56 281 Td (  of your saved offline Recovery Codes.) Tj ET
-BT /F1 10 Tf 56 267 Td (- Once verified, immediately revoke all lost/old device sessions from Super Admin Panel) Tj ET
-BT /F1 10 Tf 56 253 Td (  -> Devices & Sessions or Account Security -> Logout All Other Devices.) Tj ET
-0.07 0.19 0.36 rg
-BT /F2 13 Tf 48 233 Td (4. Firebase Backend, Firestore Rules & CI/CD Configuration) Tj ET
-0 0 0 rg
-BT /F1 10 Tf 56 214 Td (- Firebase Project ID: gen-lang-client-0874428284) Tj ET
-BT /F1 10 Tf 56 200 Td (- Firestore Database ID: ai-studio-android-onehomep-b7e88f8b-dd6f-442a-8d76-7b31f8e0512f) Tj ET
-BT /F1 10 Tf 56 186 Td (- Deploying Firestore Security Rules: run 'firebase deploy --only firestore:rules' from) Tj ET
-BT /F1 10 Tf 56 172 Td (  the repository root after authenticating Firebase CLI.) Tj ET
-BT /F1 10 Tf 56 158 Td (- GitHub Actions APK Automation: Push the complete source to GitHub repository main) Tj ET
-BT /F1 10 Tf 56 144 Td (  branch. Under GitHub Repository -> Settings -> Secrets and variables -> Actions, add) Tj ET
-BT /F1 10 Tf 56 130 Td (  secret GOOGLE_SERVICES_JSON containing your app/google-services.json content so CI) Tj ET
-BT /F1 10 Tf 56 116 Td (  APKs initialize Firebase automatically without falling back to the Startup Error) Tj ET
-BT /F1 10 Tf 56 102 Td (  screen.) Tj ET
-0.07 0.19 0.36 rg
-BT /F2 13 Tf 48 82 Td (5. Building a Signed Release App Bundle \(.aab\) for Google Play Store) Tj ET
-0 0 0 rg
-0.45 0.48 0.52 rg
-BT /F1 8 Tf 265 28 Td (Page 1 of 2) Tj ET
-0 0 0 rg
-endstream
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 7 0 R >>
 endobj
 7 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 8 0 R >>
-endobj
-8 0 obj
-<< /Length 1479 >>
+<< /Length 4632 >>
 stream
-0.12 0.25 0.42 rg
-BT /F2 9 Tf 48 772 Td (ONE HOME PRO - Setup, Firebase, Release & Installation Guide) Tj ET
-0.75 0.78 0.82 RG 0.5 w 48 767 m 564 767 l S
-0 0 0 rg
-BT /F1 10 Tf 56 755 Td (- 1. Generate a private Play Upload Keystore on a secure workstation:) Tj ET
-BT /F1 10 Tf 56 741 Td (-    keytool -genkey -v -keystore my-upload-key.jks -keyalg RSA -keysize 2048 -validity) Tj ET
-BT /F1 10 Tf 56 727 Td (  10000 -alias upload) Tj ET
-BT /F1 10 Tf 56 713 Td (- 2. Export environment variables \(never commit passwords or .jks to GitHub\):) Tj ET
-BT /F1 10 Tf 56 699 Td (-    export KEYSTORE_PATH=/path/to/my-upload-key.jks) Tj ET
-BT /F1 10 Tf 56 685 Td (-    export STORE_PASSWORD=your_store_password) Tj ET
-BT /F1 10 Tf 56 671 Td (-    export KEY_PASSWORD=your_key_password) Tj ET
-BT /F1 10 Tf 56 657 Td (- 3. Build signed bundle: gradle :app:bundleRelease) Tj ET
-BT /F1 10 Tf 56 643 Td (- 4. Upload app/build/outputs/bundle/release/app-release.aab to Google Play Console.) Tj ET
-0.07 0.19 0.36 rg
-BT /F2 13 Tf 48 623 Td (6. External Integration Credentials \(Optional Add-ons\)) Tj ET
-0 0 0 rg
-BT /F1 10 Tf 56 604 Td (- Live SMS / WhatsApp Business / SMTP email / Qatar Open Banking / Card PSPs remain) Tj ET
-BT /F1 10 Tf 56 590 Td (  safely offline until you enter your organization's API credentials inside Business) Tj ET
-BT /F1 10 Tf 56 576 Td (  Settings -> External Gateways or CI .env secrets.) Tj ET
-0.45 0.48 0.52 rg
-BT /F1 8 Tf 265 28 Td (Page 2 of 2) Tj ET
-0 0 0 rg
+0.07 0.24 0.20 rg 40 774 515 44 re f
+0.83 0.68 0.22 rg 40 772 515 2.5 re f
+BT /F2 14 Tf 1 1 1 rg 52 798 Td (ONE HOME PRO - SETUP, DEPLOYMENT & OPERATIONS) Tj ET
+BT /F1 8.5 Tf 0.92 0.95 0.93 rg 52 782 Td (Technical Build, Firebase Project, GitHub Actions & Play Store Release Reference) Tj ET
+0.93 0.96 0.95 rg 42 746.0 511 17 re f
+0.07 0.24 0.20 rg 42 746.0 3 17 re f
+BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 750.8 Td (1. ENVIRONMENT & PROJECT COORDINATES) Tj ET
+0.96 0.97 0.98 rg 44 639.0 507 94.0 re f
+0.82 0.85 0.86 RG 0.6 w 44 639.0 507 94.0 re S
+BT /F2 8.6 Tf 0.07 0.24 0.20 rg 50 722.5 Td (Verified Build Configuration) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 710.0 Td (Application ID / Label:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 710.0 Td (com.aistudio.onehomepro.qtrvbx | ONE HOME PRO) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 697.5 Td (Compile / Target / Min:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 697.5 Td (36.1 / 36 / 24 \(Java 21 Toolchain, AGP 9.1.1, Kotlin 2.2.10\)) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 685.0 Td (Firebase Project & App:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 685.0 Td (gen-lang-client-0874428284 | 1:487338231669:android:9fcfa85a6ff1d8de99353c) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 672.5 Td (Firestore Database ID:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 672.5 Td (ai-studio-android-onehomep-b7e88f8b-dd6f-442a-8d76-7b31f8e0512f) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 660.0 Td (Final APK SHA-256:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 660.0 Td (53e09468f8d601e55928389e15f5d82018ce4b091c07850af9bb2a78effc8d04) Tj ET
+BT /F2 7.8 Tf 0.18 0.20 0.22 rg 50 647.5 Td (Source ZIP SHA-256:) Tj ET
+BT /F3 7.7 Tf 0.10 0.12 0.14 rg 175.0 647.5 Td (35705cae206b8edd712039a1e4b6a439366b045fb944a9c30665e7670536cb23) Tj ET
+0.93 0.96 0.95 rg 42 622.0 511 17 re f
+0.07 0.24 0.20 rg 42 622.0 3 17 re f
+BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 626.8 Td (2. DEPLOYING SOURCE TO GITHUB & TRIGGERING CI) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 606.0 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 606.0 Td (Step 1: Extract ONE_HOME_PRO_COMPLETE_SOURCE.zip into a clean local folder and run 'git init) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 594.6 Td (&& git branch -M main'.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 582.2 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 582.2 Td (Step 2: Commit project files and push to your private GitHub repository remote \('git push -u) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 570.8 Td (origin main'\).) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 558.4 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 558.4 Td (Step 3: If app/google-services.json is kept untracked or private, add its JSON/base64 text) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 547.0 Td (to GitHub Repository Secret GOOGLE_SERVICES_JSON; workflow) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 535.6 Td (.github/workflows/android-apk-release.yml supports both committed file and secret.) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 523.2 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 523.2 Td (Step 4: GitHub Actions runs firestore.test.js, :app:testDebugUnitTest, :app:assembleDebug,) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 511.8 Td (aapt2 Firebase checks, and publishes the Debug APK artifact & Release.) Tj ET
+0.93 0.96 0.95 rg 42 491.4 511 17 re f
+0.07 0.24 0.20 rg 42 491.4 3 17 re f
+BT /F2 10.2 Tf 0.07 0.24 0.20 rg 50 496.2 Td (3. GOOGLE PLAY CONSOLE RELEASE SIGNING CHECKLIST) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 475.4 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 475.4 Td (Generate release keystore once offline: keytool -genkey -v -keystore my-upload-key.jks) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 464.0 Td (-keyalg RSA -keysize 2048 -validity 10000 -alias upload) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 451.6 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 451.6 Td (Provide KEYSTORE_PATH, STORE_PASSWORD, and KEY_PASSWORD via environment variables \(never) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 440.2 Td (commit keystore or .env\) and build with: gradle :app:bundleRelease) Tj ET
+BT /F2 8.4 Tf 0.07 0.24 0.20 rg 48 427.8 Td (-) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 427.8 Td (Upload Android App Bundle \(.aab\) to Google Play Console, register upload/app signing SHA-1) Tj ET
+BT /F1 8.3 Tf 0.14 0.16 0.17 rg 58 416.4 Td (in Firebase Console, publish Qatar Privacy Policy URL, and submit Data Safety declaration.) Tj ET
+0.85 0.87 0.87 RG 0.5 w 44 40 m 551 40 l S
+BT /F1 7.6 Tf 0.42 0.45 0.47 rg 44 28 Td (ONE HOME PRO | Qatar Business Edition | Package: com.aistudio.onehomepro.qtrvbx) Tj ET
+BT /F2 7.6 Tf 0.20 0.25 0.24 rg 496 28 Td (Page 1 of 1) Tj ET
 endstream
 endobj
 xref
-0 9
+0 8
 0000000000 65535 f 
 0000000009 00000 n 
 0000000058 00000 n 
-0000000121 00000 n 
-0000000191 00000 n 
-0000000266 00000 n 
-0000000402 00000 n 
-0000005080 00000 n 
-0000005216 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000000260 00000 n 
+0000000328 00000 n 
+0000000474 00000 n 
 trailer
-<< /Size 9 /Root 1 0 R >>
+<< /Size 8 /Root 1 0 R >>
 startxref
-6747
+5158
 %%EOF

@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
 import android.graphics.BitmapFactory
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,12 +17,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.db.entities.DocumentEntity
 import com.example.domain.document.DocumentCategoryOption
 import com.example.domain.document.DocumentTargetType
+import com.example.domain.document.ReportExporter
 import com.example.domain.security.ActionType
 import com.example.domain.security.AppModule
 import com.example.domain.util.QatarFormatters
@@ -87,6 +91,9 @@ fun DocumentsScreen(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text("${doc.category} • ${doc.title}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                         Text("${doc.entityType} • ${doc.mimeType} • ${doc.fileSizeBytes} bytes", style = MaterialTheme.typography.bodySmall)
+                                        doc.expiryDateEpoch?.let { exp ->
+                                            Text("Expires: ${QatarFormatters.formatDate(exp)}", style = MaterialTheme.typography.labelSmall, color = AmberWarning)
+                                        }
                                         Text("SHA-256: ${doc.sha256Checksum.take(18)}...", style = MaterialTheme.typography.labelSmall.copy(fontFamily = MonoFontFamily))
                                     }
                                     StatusBadge(if (doc.isRestricted) "RESTRICTED" else "STANDARD")
@@ -159,6 +166,11 @@ fun DocumentsScreen(
                             Icon(Icons.Default.VideoFile, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
                             Text("Private Encrypted Video Verified (${bytes.size} bytes decrypted cleanly)", style = MaterialTheme.typography.bodyMedium)
                         }
+                    } else if (doc.mimeType.startsWith("audio/")) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(Icons.Default.AudioFile, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
+                            Text("Private Encrypted Audio Verified (${bytes.size} bytes decrypted cleanly)", style = MaterialTheme.typography.bodyMedium)
+                        }
                     } else {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = CrimsonError, modifier = Modifier.size(36.dp))
@@ -166,6 +178,9 @@ fun DocumentsScreen(
                         }
                     }
                     Text("Entity: ${doc.entityType} | MIME: ${doc.mimeType}", style = MaterialTheme.typography.bodySmall)
+                    doc.expiryDateEpoch?.let { exp ->
+                        Text("Expiry Date: ${QatarFormatters.formatDate(exp)}", style = MaterialTheme.typography.bodySmall)
+                    }
                     Text("SHA-256: ${doc.sha256Checksum.take(24)}...", style = MaterialTheme.typography.labelSmall.copy(fontFamily = MonoFontFamily))
                 }
             },
@@ -189,7 +204,13 @@ fun NotificationsScreen(
         contentPadding = PaddingValues(vertical = 12.dp)
     ) {
         item {
-            SectionHeader(strings.notifications, "${list.count { !it.isRead }} unread • ${list.size} total")
+            SectionHeader(
+                title = strings.notifications,
+                subtitle = "${list.count { !it.isRead }} unread • ${list.size} total",
+                actionLabel = "Scan Alerts",
+                actionTag = "scan_alerts_button",
+                onAction = { vm.scanOperationalAlerts() }
+            )
         }
         if (list.isEmpty()) {
             item { EmptyStateCard("All Caught Up", "Alerts for rent due, bounced cheques, low stock, approvals, and security events appear here.") }
@@ -220,17 +241,23 @@ fun NotificationsScreen(
 }
 
 @Composable
-fun ReportsScreen(uiState: OneHomeUiState) {
+fun ReportsScreen(
+    uiState: OneHomeUiState,
+    vm: OneHomeProViewModel? = null
+) {
     val ctx = uiState.authContext ?: return
     if (!ctx.hasPermission(AppModule.REPORTS, ActionType.VIEW)) {
         PermissionDeniedCard()
         return
     }
+    val context = LocalContext.current
     val data = uiState.data
     val tb = uiState.reports.trialBalance
     val pnl = uiState.reports.profitAndLoss
     val bs = uiState.reports.balanceSheet
     var selectedReportIdx by remember { mutableIntStateOf(0) }
+    val activeBizName = data.businesses.firstOrNull { it.id == ctx.activeBusinessId }?.name ?: "ONE HOME PRO"
+    val canExport = ctx.hasPermission(AppModule.REPORTS, ActionType.EXPORT)
 
     val reportTitles = listOf(
         "1. Occupancy & Vacancy",
@@ -300,6 +327,22 @@ fun ReportsScreen(uiState: OneHomeUiState) {
         }
     }
 
+    val currentTitle = reportTitles[selectedReportIdx]
+    val exportCsvLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri != null) {
+            val bytes = ReportExporter.buildCsvReport(currentTitle, activeBizName, reportLines)
+            context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+            vm?.recordReportExport(currentTitle, "CSV")
+        }
+    }
+    val exportPdfLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+        if (uri != null) {
+            val bytes = ReportExporter.buildPdfReport(currentTitle, activeBizName, reportLines)
+            context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+            vm?.recordReportExport(currentTitle, "PDF")
+        }
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).testTag("reports_screen"),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -317,6 +360,31 @@ fun ReportsScreen(uiState: OneHomeUiState) {
                 onSelect = { selectedReportIdx = it },
                 testTag = "report_selector_dropdown"
             )
+        }
+        if (canExport) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { exportCsvLauncher.launch(ReportExporter.suggestedFileName(currentTitle, "csv")) },
+                        modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp).testTag("export_report_csv_btn")
+                    ) {
+                        Icon(Icons.Default.TableView, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Export CSV (Excel)")
+                    }
+                    Button(
+                        onClick = { exportPdfLauncher.launch(ReportExporter.suggestedFileName(currentTitle, "pdf")) },
+                        modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp).testTag("export_report_pdf_btn")
+                    ) {
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Export PDF")
+                    }
+                }
+            }
         }
         if (reportLines.isEmpty()) {
             item { EmptyStateCard("No Rows For This Report", "Real records will appear here once entered.") }

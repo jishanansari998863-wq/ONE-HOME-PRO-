@@ -356,4 +356,87 @@ class DocumentScannerAndVaultRobolectricTest {
         composeRule.waitForIdle()
         composeRule.onAllNodesWithTag("camerax_viewfinder_dialog").assertCountEquals(0)
     }
+
+    @Test
+    fun `audio vault encryption, expiry alert scanner, CSV+PDF report export with RBAC, and custom role creation work`() = runBlocking {
+        val prop = container.propertyTenancyService.createProperty(
+            ownerCtx, "Al Sadd Plaza", "ASP", "COMMERCIAL", "Al Sadd", "Doha", ""
+        )
+        val bldg = container.propertyTenancyService.addBuilding(ownerCtx, prop.id, "Block B", "B", 2)
+        val fl = container.propertyTenancyService.addFloor(ownerCtx, prop.id, bldg.id, 1, "Floor 1")
+        val room = container.propertyTenancyService.addRoom(
+            ownerCtx, prop.id, bldg.id, fl.id, "202", "STUDIO", 1, "FURNISHED", 350_000L, "AC", 1, "CARD-2", "Bed"
+        )
+        val cust = container.propertyTenancyService.createCustomer(
+            ownerCtx, "Tariq Mansoor", "+97455009988", "tariq@example.qa", "29200004444", "", "QA", "", "", ""
+        )
+        val emp = container.workforceMaintenanceInventoryService.addEmployee(
+            ownerCtx, "Samir Tech", "Technician", null, "+97455778899", "samir2@onehome.qa", "28800003333", "Al Sadd", "08:00-17:00"
+        )
+        container.authService.createStaffUser(
+            ownerCtx, emp.id, emp.fullName, "samir2@onehome.qa", "TechPass#2026", "TECHNICIAN", emptyList()
+        )
+        val techCtx = loginBypassingDeviceChallenge("samir2@onehome.qa", "TechPass#2026", "TechPhone")
+
+        // 1. Audio MP3 encrypted storage + expiry date
+        val sampleMp3 = byteArrayOf(0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x00, 0x11, 0x22)
+        val now = System.currentTimeMillis()
+        val expEpoch = now + 5L * 86_400_000L
+        val dAudio = container.governanceBackupService.storeProcessedDocumentBytes(
+            ctx = ownerCtx,
+            bytes = sampleMp3,
+            mimeType = "audio/mpeg",
+            extension = "mp3",
+            entityType = "CUSTOMER",
+            entityId = cust.id,
+            category = "OTHER",
+            title = "Tenant Voice Note",
+            expiryDateEpoch = expEpoch
+        )
+        assertEquals("audio/mpeg", dAudio.mimeType)
+        assertEquals(expEpoch, dAudio.expiryDateEpoch)
+        val (_, decAudio) = container.governanceBackupService.readDecryptedDocumentBytes(ownerCtx, dAudio.id)
+        assertArrayEquals(sampleMp3, decAudio)
+
+        // 2. Expiring lease & low stock + operational alert scan
+        container.propertyTenancyService.createAndActivateAgreement(
+            ownerCtx, room.id, cust.id, "MONTHLY", 350_000L, 0L, 350_000L, now - 25L * 86_400_000L, now + 5L * 86_400_000L, 30, ""
+        )
+        container.workforceMaintenanceInventoryService.createItemCategoryAndItem(
+            ownerCtx, "HVAC", "Thermostat", "SKU-THM-01", "PCS", 5L
+        )
+        val alertsGenerated = container.governanceBackupService.scanAndGenerateOperationalAlerts(ownerCtx, now)
+        assertTrue("Expected lease, document, and low-stock alerts", alertsGenerated >= 3)
+        val secondRun = container.governanceBackupService.scanAndGenerateOperationalAlerts(ownerCtx, now + 60_000L)
+        assertEquals("Duplicate alerts within 24h must be suppressed", 0, secondRun)
+
+        // 3. CSV and PDF report export + RBAC enforcement
+        val csvBytes = ReportExporter.buildCsvReport("1. Occupancy & Vacancy", "Doha Realty WLL", listOf("Room 202: OCCUPIED", "Rate: QAR 3,500.00"))
+        val csvText = String(csvBytes, Charsets.UTF_8)
+        assertTrue(csvText.contains("ONE HOME PRO"))
+        assertTrue(csvText.contains("Room 202: OCCUPIED"))
+
+        val pdfBytes = ReportExporter.buildPdfReport("1. Occupancy & Vacancy", "Doha Realty WLL", listOf("Room 202: OCCUPIED"))
+        assertEquals("%PDF-", pdfBytes.take(5).toByteArray().toString(Charsets.US_ASCII))
+        container.governanceBackupService.logReportExport(ownerCtx, "1. Occupancy & Vacancy", "PDF")
+
+        var exportBlockedForTech = false
+        try {
+            container.governanceBackupService.logReportExport(techCtx, "9. Trial Balance", "CSV")
+        } catch (_: SecurityException) {
+            exportBlockedForTech = true
+        }
+        assertTrue("Technician without REPORTS:EXPORT permission must be blocked", exportBlockedForTech)
+
+        // 4. Custom expandable RBAC role creation + SUPER_ADMIN protection
+        val customRole = container.authService.createCustomRole(ownerCtx, "Leasing Officer", "Handles viewings and lease drafts")
+        assertEquals("LEASING_OFFICER", customRole.name)
+        var reservedBlocked = false
+        try {
+            container.authService.createCustomRole(ownerCtx, "SUPER_ADMIN", "Forbidden")
+        } catch (_: IllegalArgumentException) {
+            reservedBlocked = true
+        }
+        assertTrue("Creating SUPER_ADMIN custom role must remain blocked", reservedBlocked)
+    }
 }

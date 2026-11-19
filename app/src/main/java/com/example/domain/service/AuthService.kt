@@ -1123,6 +1123,56 @@ class AuthService(
         }
     }
 
+    suspend fun createCustomRole(ctx: AuthContext, roleName: String, description: String): RoleEntity {
+        AuthorizationGuard.requireOwner(ctx)
+        val cleanName = roleName.trim().uppercase().replace(Regex("[^A-Z0-9_]+"), "_")
+        require(cleanName.length >= 3) { "Role name must be at least 3 characters" }
+        require(cleanName !in setOf(SuperAdminConfig.ROLE_SUPER_ADMIN, "OWNER", "CUSTOMER_PORTAL")) {
+            "Cannot create reserved role name '$cleanName'"
+        }
+        require(dao.getRoleByName(ctx.activeBusinessId, cleanName) == null) {
+            "Role '$cleanName' already exists in this business"
+        }
+        val now = System.currentTimeMillis()
+        val role = RoleEntity(
+            id = CryptoUtil.newUuid(),
+            businessId = ctx.activeBusinessId,
+            name = cleanName,
+            description = description.trim().ifBlank { "Custom business staff role" },
+            isSystemRole = false,
+            createdAtEpoch = now
+        )
+        ensurePermissionCatalogSeeded()
+        db.withTransaction {
+            dao.insertRole(role)
+            val baselinePerm = dao.getAllPermissions().firstOrNull {
+                it.module == AppModule.DASHBOARD.name && it.action == ActionType.VIEW.name
+            }
+            if (baselinePerm != null) {
+                dao.insertRolePermission(
+                    RolePermissionEntity(
+                        id = CryptoUtil.newUuid(),
+                        businessId = ctx.activeBusinessId,
+                        roleId = role.id,
+                        permissionId = baselinePerm.id
+                    )
+                )
+            }
+            dao.insertSecurityEvent(
+                SecurityEventEntity(
+                    id = CryptoUtil.newUuid(),
+                    businessId = ctx.activeBusinessId,
+                    userId = ctx.userId,
+                    eventType = "CUSTOM_ROLE_CREATED",
+                    severity = "INFO",
+                    description = "Owner created custom RBAC role $cleanName",
+                    occurredAtEpoch = now
+                )
+            )
+        }
+        return role
+    }
+
     suspend fun submitAccountClosureRequest(ctx: AuthContext, reason: String) {
         val req = AccountClosureRequestEntity(
             id = CryptoUtil.newUuid(),
