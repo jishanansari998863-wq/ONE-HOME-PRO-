@@ -339,11 +339,11 @@ class OneHomeProViewModel(
             _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
             val signedIn = GoogleSignInHelper.signInInteractive(
                 activityContext = activityContext,
-                onCancelled = {
+                onCancelled = { detail ->
                     _uiState.update {
                         it.copy(
                             isBusy = false,
-                            bannerError = "Sign-in was cancelled. Please select a verified Google account to continue."
+                            bannerError = detail ?: "Sign-in was cancelled. Please select a verified Google account to continue."
                         )
                     }
                 },

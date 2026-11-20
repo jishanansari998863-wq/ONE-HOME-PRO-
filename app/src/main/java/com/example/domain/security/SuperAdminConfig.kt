@@ -1,7 +1,7 @@
 package com.example.domain.security
 
 object SuperAdminConfig {
-    const val SUPER_ADMIN_EMAIL = "jishanansari998863@gmail.com"
+    const val SUPER_ADMIN_EMAIL = "ansarisahabaj980@gmail.com"
     const val ROLE_SUPER_ADMIN = "SUPER_ADMIN"
 
     // Only these roles may ever be requested by or assigned to standard users

@@ -34,11 +34,12 @@ service cloud.firestore {
              data.updatedAt is timestamp && data.updatedAt <= request.time;
     }
 
-    // Exclusive pre-authorized Super Admin identity
+    // Exclusive pre-authorized Initial Owner / Super Admin identity
     function isVerifiedSuperAdminEmail() {
       return isSignedIn() &&
              request.auth.token.email_verified == true &&
-             request.auth.token.email == 'jishanansari998863@gmail.com';
+             request.auth.token.email is string &&
+             request.auth.token.email.lower() == 'ansarisahabaj980@gmail.com';
     }
 
     function platformConfigExists() {
@@ -92,7 +93,8 @@ service cloud.firestore {
     // 3. Entity Validation Blueprints
     function isValidPlatformConfig(data) {
       return data.superAdminUid is string && data.superAdminUid.size() >= 3 && data.superAdminUid.size() <= 128 &&
-             data.superAdminEmail == 'jishanansari998863@gmail.com' &&
+             data.superAdminEmail is string &&
+             data.superAdminEmail.lower() == 'ansarisahabaj980@gmail.com' &&
              data.mfaEnabled == true &&
              data.passwordSalt is string && data.passwordSalt.size() >= 8 && data.passwordSalt.size() <= 128 &&
              data.passwordHash is string && data.passwordHash.size() >= 16 && data.passwordHash.size() <= 256 &&

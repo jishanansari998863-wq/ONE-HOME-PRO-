@@ -11,7 +11,8 @@ const PROJECT_ID = process.env.GCP_PROJECT || "demo-no-project";
 const [emulatorHost, emulatorPortStr] = (process.env.FIRESTORE_EMULATOR_HOST || "127.0.0.1:8085").split(":");
 const emulatorPort = parseInt(emulatorPortStr, 10);
 
-const SUPER_ADMIN_EMAIL = "jishanansari998863@gmail.com";
+const SUPER_ADMIN_EMAIL = "ansarisahabaj980@gmail.com";
+const PREVIOUS_EMAIL = "jishanansari998863@gmail.com";
 const SUPER_ADMIN_UID = "super_admin_uid_001";
 const IMPOSTER_ADMIN_UID = "imposter_uid_999";
 const STRANGER_UID = "stranger_uid_111";
@@ -120,6 +121,28 @@ test("2. Email spoofing / unverified email cannot bootstrap or access Super Admi
     })
   );
   await assertFails(spoofed.collection("platform_config").doc("global").get());
+
+  // Non-owner verified Gmail (including previous placeholder owner email) cannot bootstrap Super Admin
+  const nonOwner = testEnv
+    .authenticatedContext("non_owner_uid", {
+      email: PREVIOUS_EMAIL,
+      email_verified: true,
+    })
+    .firestore();
+  await assertFails(
+    nonOwner.collection("platform_config").doc("global").set({
+      superAdminUid: "non_owner_uid",
+      superAdminEmail: PREVIOUS_EMAIL,
+      mfaEnabled: true,
+      passwordSalt: "saltBase64_01234567",
+      passwordHash: "hashValue_0123456789abcdef",
+      totpSecret: "JBSWY3DPEHPK3PXP1234",
+      recoveryCodeHashes: ["abc123def456"],
+      createdAt: ts,
+      updatedAt: ts,
+    })
+  );
+  await assertFails(nonOwner.collection("platform_config").doc("global").get());
 });
 
 test("3. Verified Super Admin bootstrap locks authority UID and prevents replacement", async () => {

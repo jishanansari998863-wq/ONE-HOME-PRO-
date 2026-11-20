@@ -2,12 +2,16 @@ package com.example.data.remote
 
 import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.MutableContextWrapper
 import android.util.Log
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialProviderConfigurationException
+import androidx.credentials.exceptions.GetCredentialUnsupportedException
 import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
@@ -22,7 +26,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 object GoogleSignInHelper {
-    private const val TAG = "OneHomeGoogleAuth"
+    private const val TAG = "Auth"
+
+    private tailrec fun Context.findActivity(): Activity? = when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
 
     private fun ensureFirebaseInitialized(context: Context): Boolean = try {
         FirebaseConfigProvider.ensureFirebaseApp(context) != null
@@ -45,7 +55,8 @@ object GoogleSignInHelper {
             .addCredentialOption(googleIdOption)
             .build()
         return try {
-            val result = credentialManager.getCredential(context, request)
+            val hostContext = context.findActivity()?.let { MutableContextWrapper(it) } ?: context
+            val result = credentialManager.getCredential(hostContext, request)
             signInWithGoogleCredential(result.credential)
         } catch (e: NoCredentialException) {
             Log.d(TAG, "No authorized Google credentials saved on device: ${e.message}")
@@ -60,7 +71,7 @@ object GoogleSignInHelper {
 
     suspend fun signInInteractive(
         activityContext: Context,
-        onCancelled: () -> Unit = {},
+        onCancelled: (String?) -> Unit = {},
         onError: (String) -> Unit
     ): Boolean {
         if (!ensureFirebaseInitialized(activityContext)) {
@@ -72,26 +83,40 @@ object GoogleSignInHelper {
             onError("Google Sign-In configuration missing: default_web_client_id not found")
             return false
         }
-        val credentialManager = CredentialManager.create(activityContext)
+        val foregroundActivity = activityContext.findActivity()
+        if (foregroundActivity == null) {
+            onError("Google Sign-In requires an active foreground screen.")
+            return false
+        }
+        val uiContext = MutableContextWrapper(foregroundActivity)
+        val credentialManager = CredentialManager.create(foregroundActivity)
+
+        // Request 1: Explicit interactive Sign in with Google button flow (1 option per request for API 36)
         val signInOption = GetSignInWithGoogleOption.Builder(serverClientId = clientId).build()
-        val request = GetCredentialRequest.Builder()
+        val primaryRequest = GetCredentialRequest.Builder()
             .addCredentialOption(signInOption)
             .build()
 
         return try {
-            val result = credentialManager.getCredential(activityContext as? Activity ?: activityContext, request)
+            val result = credentialManager.getCredential(uiContext, primaryRequest)
             val ok = signInWithGoogleCredential(result.credential)
             if (!ok) {
                 onError("Unexpected credential type returned by Google Sign-In")
             }
             ok
         } catch (e: NoCredentialException) {
-            Log.w(TAG, "No Google account credential available on device: ${e.message}", e)
-            onError("No Google account is signed in on this device. Add a Google account in Android Settings and try again.")
+            Log.w(TAG, "GetSignInWithGoogleOption returned NoCredentialException; trying all-accounts GoogleId fallback: ${e.message}")
+            tryGoogleIdBottomSheetFallback(credentialManager, uiContext, clientId, onCancelled, onError)
+        } catch (e: GetCredentialUnsupportedException) {
+            Log.w(TAG, "GetSignInWithGoogleOption unsupported; trying GoogleId fallback: ${e.message}")
+            tryGoogleIdBottomSheetFallback(credentialManager, uiContext, clientId, onCancelled, onError)
+        } catch (e: GetCredentialProviderConfigurationException) {
+            Log.e(TAG, "Google Credential Manager provider unavailable", e)
+            onError("Google Play Services / Credential Manager is unavailable or outdated on this device.")
             false
         } catch (e: GetCredentialCancellationException) {
             Log.w(TAG, "Google Sign-In cancelled or dismissed: ${e.message}", e)
-            onCancelled()
+            onCancelled(formatCancellationDetail(e.message))
             false
         } catch (e: CancellationException) {
             throw e
@@ -99,6 +124,59 @@ object GoogleSignInHelper {
             Log.e(TAG, "Google Sign-In failed", e)
             onError(e.localizedMessage ?: "Google Sign-In failed")
             false
+        }
+    }
+
+    private suspend fun tryGoogleIdBottomSheetFallback(
+        credentialManager: CredentialManager,
+        uiContext: Context,
+        clientId: String,
+        onCancelled: (String?) -> Unit,
+        onError: (String) -> Unit
+    ): Boolean {
+        val fallbackOption = GetGoogleIdOption.Builder()
+            .setFilterByAuthorizedAccounts(false)
+            .setServerClientId(clientId)
+            .setAutoSelectEnabled(false)
+            .build()
+        val fallbackRequest = GetCredentialRequest.Builder()
+            .addCredentialOption(fallbackOption)
+            .build()
+        return try {
+            val result = credentialManager.getCredential(uiContext, fallbackRequest)
+            val ok = signInWithGoogleCredential(result.credential)
+            if (!ok) {
+                onError("Unexpected credential type returned by Google Sign-In")
+            }
+            ok
+        } catch (e: NoCredentialException) {
+            Log.w(TAG, "No Google account credential available on device: ${e.message}", e)
+            onError("No Google account is signed in on this device. Add your Google account in Android Settings > Accounts and try again.")
+            false
+        } catch (e: GetCredentialCancellationException) {
+            Log.w(TAG, "Google Sign-In cancelled or dismissed: ${e.message}", e)
+            onCancelled(formatCancellationDetail(e.message))
+            false
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "Google Sign-In fallback failed", e)
+            onError(e.localizedMessage ?: "Google Sign-In failed")
+            false
+        }
+    }
+
+    private fun formatCancellationDetail(rawMessage: String?): String? {
+        val clean = rawMessage?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        return when {
+            clean.contains("blocked", ignoreCase = true) ->
+                "Google Play Services temporarily paused sign-in prompts after repeated cancellations ($clean). Wait a moment or add your Google account in Android Settings and tap Continue with Google Account again."
+            clean.contains("16:") || clean.contains("Developer", ignoreCase = true) || clean.contains("reauth", ignoreCase = true) ->
+                "Google Play Services rejected or cancelled the prompt ($clean). Ensure you installed the official debug-signed APK and have a signed-in Google account on this device."
+            clean.equals("activity is cancelled by the user.", ignoreCase = true) ||
+                clean.equals("activity is cancelled by the user", ignoreCase = true) ->
+                null
+            else -> clean
         }
     }
 

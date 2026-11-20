@@ -63,7 +63,7 @@ class SuperAdminRulesTest : FirestoreEmulatorTestBase() {
                 firestore.collection("platform_config").document("global").set(
                     mapOf(
                         "superAdminUid" to strangerUid,
-                        "superAdminEmail" to "jishanansari998863@gmail.com",
+                        "superAdminEmail" to SuperAdminConfig.SUPER_ADMIN_EMAIL,
                         "mfaEnabled" to true,
                         "passwordSalt" to "1234567890",
                         "passwordHash" to "12345678901234567890",

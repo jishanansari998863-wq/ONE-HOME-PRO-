@@ -270,10 +270,13 @@ class FirebaseCentralAuthorityGateway private constructor(
         )
 
         val allPerms = AuthorizationGuard.defaultPermissionCatalog().map { "${it.first}:${it.second}" }
+        val ownerDisplayName = id.displayName.trim().let {
+            if (it.length >= 2) it.take(100) else "Initial Owner"
+        }
         val grantPayload = mapOf(
             "uid" to id.uid,
             "email" to SuperAdminConfig.SUPER_ADMIN_EMAIL,
-            "fullName" to id.displayName.ifBlank { "Super Admin" },
+            "fullName" to ownerDisplayName,
             "authorityRole" to "OWNER",
             "status" to SuperAdminConfig.GRANT_ACTIVE,
             "activeBusinessId" to hqBusinessId,
