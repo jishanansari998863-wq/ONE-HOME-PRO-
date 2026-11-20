@@ -344,6 +344,17 @@ class AccountingService(private val db: OneHomeProDatabase) {
                         createdByUserId = ctx.userId
                     )
                 )
+            } else {
+                applyBankAccountMovement(
+                    businessId = ctx.activeBusinessId,
+                    preferredBankAccountId = null,
+                    amountFils = amountFils,
+                    direction = "CREDIT_IN",
+                    bankReference = journal.entryNumber,
+                    description = "Income ($category): $description",
+                    journalEntryId = journal.id,
+                    transactionDateEpoch = now
+                )
             }
             rec
         }
@@ -428,9 +439,52 @@ class AccountingService(private val db: OneHomeProDatabase) {
                         createdByUserId = ctx.userId
                     )
                 )
+            } else if (creditAccount == ACC_BANK) {
+                applyBankAccountMovement(
+                    businessId = ctx.activeBusinessId,
+                    preferredBankAccountId = null,
+                    amountFils = amountFils,
+                    direction = "DEBIT_OUT",
+                    bankReference = journal.entryNumber,
+                    description = "Expense: $vendorName - $description",
+                    journalEntryId = journal.id,
+                    transactionDateEpoch = now
+                )
             }
             rec
         }
+    }
+
+    internal suspend fun applyBankAccountMovement(
+        businessId: String,
+        preferredBankAccountId: String?,
+        amountFils: Long,
+        direction: String,
+        bankReference: String,
+        description: String,
+        journalEntryId: String?,
+        transactionDateEpoch: Long
+    ) {
+        if (amountFils <= 0L) return
+        val target = preferredBankAccountId?.let { dao.getBankAccountById(it) }
+            ?.takeIf { it.businessId == businessId }
+            ?: dao.getBankAccountsByBusiness(businessId).firstOrNull { it.isActive }
+            ?: return
+        val delta = if (direction == "CREDIT_IN") amountFils else -amountFils
+        dao.updateBankAccount(target.copy(currentBalanceFils = target.currentBalanceFils + delta))
+        dao.insertBankTransaction(
+            BankTransactionEntity(
+                id = CryptoUtil.newUuid(),
+                businessId = businessId,
+                bankAccountId = target.id,
+                direction = direction,
+                amountFils = amountFils,
+                bankReference = bankReference,
+                description = description,
+                journalEntryId = journalEntryId,
+                transactionDateEpoch = transactionDateEpoch
+            )
+        )
     }
 
     suspend fun replenishPettyCash(ctx: AuthContext, amountFils: Long, notes: String): PettyCashEntryEntity {
@@ -480,9 +534,14 @@ class AccountingService(private val db: OneHomeProDatabase) {
             val bank = dao.getBankAccountById(bankAccountId)
                 ?: throw IllegalArgumentException("Bank account not found")
             require(bank.businessId == ctx.activeBusinessId) { "Cross-business access blocked" }
+            val allBanks = dao.getBankAccountsByBusiness(ctx.activeBusinessId)
             val tb = computeTrialBalance(ctx.activeBusinessId)
             val bankGlRow = tb.firstOrNull { it.code == ACC_BANK }
-            val bookBalanceFils = bankGlRow?.netBalanceFils ?: bank.currentBalanceFils
+            val bookBalanceFils = if (allBanks.size > 1) {
+                bank.currentBalanceFils
+            } else {
+                bankGlRow?.netBalanceFils ?: bank.currentBalanceFils
+            }
             val diff = statementEndingBalanceFils - bookBalanceFils
             val rec = BankReconciliationEntity(
                 id = CryptoUtil.newUuid(),

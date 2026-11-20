@@ -306,6 +306,9 @@ interface CoreAndTenancyDao {
     @Query("SELECT * FROM advance_rents WHERE businessId = :businessId")
     suspend fun getAdvanceRentsByBusiness(businessId: String): List<AdvanceRentEntity>
 
+    @Query("SELECT * FROM agreement_members WHERE businessId = :businessId")
+    suspend fun getAgreementMembersByBusiness(businessId: String): List<AgreementMemberEntity>
+
     @Upsert suspend fun upsertBusinesses(items: List<BusinessEntity>)
     @Upsert suspend fun upsertProperties(items: List<PropertyEntity>)
     @Upsert suspend fun upsertBuildings(items: List<BuildingEntity>)
@@ -316,6 +319,7 @@ interface CoreAndTenancyDao {
     @Upsert suspend fun upsertCustomers(items: List<CustomerEntity>)
     @Upsert suspend fun upsertFamilyMembers(items: List<FamilyMemberEntity>)
     @Upsert suspend fun upsertAgreements(items: List<AgreementEntity>)
+    @Upsert suspend fun upsertAgreementMembers(items: List<AgreementMemberEntity>)
     @Upsert suspend fun upsertTenancyHistory(items: List<TenancyHistoryEntity>)
     @Upsert suspend fun upsertMonthlyRents(items: List<MonthlyRentEntity>)
     @Upsert suspend fun upsertPayments(items: List<PaymentEntity>)

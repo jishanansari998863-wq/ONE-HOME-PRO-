@@ -9,8 +9,10 @@ import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
-import android.media.ExifInterface
 import android.net.Uri
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.scale
+import androidx.exifinterface.media.ExifInterface
 import java.io.ByteArrayOutputStream
 import kotlin.math.abs
 import kotlin.math.max
@@ -157,7 +159,7 @@ object DocumentImageProcessor {
         val scale = min(targetMax.toFloat() / bitmap.width, targetMax.toFloat() / bitmap.height).coerceAtMost(1f)
         val w = max(24, (bitmap.width * scale).roundToInt())
         val h = max(24, (bitmap.height * scale).roundToInt())
-        val small = if (w == bitmap.width && h == bitmap.height) bitmap else Bitmap.createScaledBitmap(bitmap, w, h, true)
+        val small = if (w == bitmap.width && h == bitmap.height) bitmap else bitmap.scale(w, h)
 
         val pixels = IntArray(w * h)
         small.getPixels(pixels, 0, w, 0, 0, w, h)
@@ -248,7 +250,7 @@ object DocumentImageProcessor {
         val rotated = rotateBitmap(cropped, rotationDegrees)
         if (mode == ReadabilityMode.ORIGINAL) return rotated
 
-        val result = Bitmap.createBitmap(rotated.width, rotated.height, Bitmap.Config.ARGB_8888)
+        val result = createBitmap(rotated.width, rotated.height)
         val canvas = Canvas(result)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 

@@ -8,12 +8,12 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.Companion.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
 import com.google.firebase.Firebase
-import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
 import kotlinx.coroutines.CancellationException
@@ -47,6 +47,9 @@ object GoogleSignInHelper {
         return try {
             val result = credentialManager.getCredential(context, request)
             signInWithGoogleCredential(result.credential)
+        } catch (e: NoCredentialException) {
+            Log.d(TAG, "No authorized Google credentials saved on device: ${e.message}")
+            false
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -82,6 +85,10 @@ object GoogleSignInHelper {
                 onError("Unexpected credential type returned by Google Sign-In")
             }
             ok
+        } catch (e: NoCredentialException) {
+            Log.w(TAG, "No Google account credential available on device: ${e.message}", e)
+            onError("No Google account is signed in on this device. Add a Google account in Android Settings and try again.")
+            false
         } catch (e: GetCredentialCancellationException) {
             Log.w(TAG, "Google Sign-In cancelled or dismissed: ${e.message}", e)
             onCancelled()

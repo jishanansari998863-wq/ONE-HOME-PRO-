@@ -542,4 +542,71 @@ class SuperAdminSecurityRobolectricTest {
         assertNull(vmBrokenDb.uiState.value.authContext)
         assertTrue(vmBrokenDb.uiState.value.isDatabaseStartupError)
     }
+
+    @Test
+    fun `repeated central login avoids duplicate user roles and cloud restore preserves HR work history, stock counts, and procurement records`() = runBlocking {
+        central.signInAsTestIdentity("uid_jishan", SuperAdminConfig.SUPER_ADMIN_EMAIL, "Jishan Ansari")
+        val phone1Store = SessionStore(app, "sync_full_p1_${System.nanoTime()}")
+        val phone1Container = AppContainer(app, db, central, phone1Store)
+        val vm1 = OneHomeProViewModel(phone1Container, splashDelayMs = 0L).also { activeVm = it }
+        awaitState { it.authStep == AuthScreenStep.SUPER_ADMIN_BOOTSTRAP && !it.isInitializing }
+
+        vm1.bootstrapSuperAdmin("FullSyncMaster#2026")
+        awaitState { it.authStep == AuthScreenStep.SUPER_ADMIN_VERIFY && it.superAdminMfaProvision != null }
+        val (secret, _) = vm1.uiState.value.superAdminMfaProvision!!
+        vm1.verifySuperAdminChallenge("FullSyncMaster#2026", CryptoUtil.currentTotpCode(secret))
+        awaitState { it.authContext?.isSuperAdmin == true }
+        val adminCtx = vm1.uiState.value.authContext!!
+        val bizId = adminCtx.activeBusinessId
+
+        // Re-login a second time on the same device: UserRoleEntity count must remain 1 (no duplicates)
+        phone1Store.clearSessionToken()
+        vm1.verifySuperAdminChallenge("FullSyncMaster#2026", CryptoUtil.currentTotpCode(secret))
+        awaitState { it.authContext?.isSuperAdmin == true && !it.isBusy }
+        val userRoles = db.securityAndHrDao().getUserRolesForBusiness(adminCtx.userId, bizId)
+        assertEquals(1, userRoles.size)
+
+        // Create operational records across HR, Maintenance, Inventory, and Backups
+        val prop = phone1Container.propertyTenancyService.createProperty(adminCtx, "Cloud Tower", "CT1", "COMMERCIAL", "Lusail", "Doha", "")
+        val emp = phone1Container.workforceMaintenanceInventoryService.addEmployee(adminCtx, "Tariq Eng", "Engineer", null, "+97455110000", "tariq@onehome.qa", "2910008", "Lusail", "08:00-17:00")
+        val cmp = phone1Container.workforceMaintenanceInventoryService.createComplaint(adminCtx, prop.id, null, null, "Chiller Valve", "Check pressure", "HVAC", "HIGH")
+        val sup = phone1Container.workforceMaintenanceInventoryService.createSupplier(adminCtx, "Doha HVAC", "Omar", "+97444001100", "", "CR-88")
+        val item = phone1Container.workforceMaintenanceInventoryService.createItemCategoryAndItem(adminCtx, "HVAC", "Sensor", "SKU-SNS1", "PCS", 2L)
+        val loc = db.operationsDao().getStockLocationsByBusiness(bizId).first()
+        val po = phone1Container.workforceMaintenanceInventoryService.createPurchaseOrder(adminCtx, sup.id, prop.id, item.id, 5L, 2_000L, "Sensors")
+        phone1Container.workforceMaintenanceInventoryService.approvePurchase(adminCtx, po.id, "Approved")
+        phone1Container.workforceMaintenanceInventoryService.receiveGoods(adminCtx, po.id, loc.id, "INV-88")
+        phone1Container.workforceMaintenanceInventoryService.paySupplier(adminCtx, po.id, 10_000L, "BANK_TRANSFER")
+        phone1Container.workforceMaintenanceInventoryService.recordStockCount(adminCtx, item.id, loc.id, 4L)
+        phone1Container.governanceBackupService.runAutomaticEncryptedBackupAndVerify(adminCtx, force = true)
+        assertTrue(cmp.id.isNotBlank() && emp.id.isNotBlank())
+
+        vm1.syncBusinessDataToCloud()
+        awaitState { it.lastCloudSyncCount != null && !it.isBusy }
+        vm1.stopObservers()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+
+        val phone2Db = Room.inMemoryDatabaseBuilder(app, OneHomeProDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val phone2Store = SessionStore(app, "sync_full_p2_${System.nanoTime()}")
+            val phone2Container = AppContainer(app, phone2Db, central, phone2Store)
+            val restoreCtx = adminCtx.copy(sessionId = "restore-sess")
+            val restored = phone2Container.cloudSyncService.restoreBusinessFromCloud(restoreCtx)
+            assertNotNull(restored)
+
+            assertTrue(phone2Db.securityAndHrDao().getEmployeeWorkHistoryByBusiness(bizId).isNotEmpty())
+            assertTrue(phone2Db.operationsDao().getComplaintStatusHistoryByBusiness(bizId).isNotEmpty())
+            assertTrue(phone2Db.operationsDao().getPurchaseApprovalsByBusiness(bizId).isNotEmpty())
+            assertTrue(phone2Db.operationsDao().getGoodsReceiptDetailsByBusiness(bizId).isNotEmpty())
+            assertTrue(phone2Db.operationsDao().getSupplierPaymentAllocationsByBusiness(bizId).isNotEmpty())
+            assertTrue(phone2Db.operationsDao().getStockCountsByBusiness(bizId).isNotEmpty())
+            assertTrue(phone2Db.operationsDao().getStockCountLinesByBusiness(bizId).isNotEmpty())
+            assertTrue(phone2Db.operationsDao().getStockAdjustmentsByBusiness(bizId).isNotEmpty())
+            assertTrue(phone2Db.operationsDao().getBackupRecordsByBusiness(bizId).isNotEmpty())
+        } finally {
+            phone2Db.close()
+        }
+    }
 }

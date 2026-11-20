@@ -325,16 +325,19 @@ class AuthService(
             }
             val role = dao.getRoleByName(business.id, roleName) ?: dao.getRoleByName(business.id, "TECHNICIAN")
             if (role != null) {
-                dao.insertUserRole(
-                    UserRoleEntity(
-                        id = CryptoUtil.newUuid(),
-                        businessId = business.id,
-                        userId = userId,
-                        roleId = role.id,
-                        assignedByUserId = grant.approvedByUid.ifBlank { userId },
-                        assignedAtEpoch = now
+                val existingRoles = dao.getUserRolesForBusiness(userId, business.id)
+                if (existingRoles.none { it.roleId == role.id }) {
+                    dao.insertUserRole(
+                        UserRoleEntity(
+                            id = CryptoUtil.newUuid(),
+                            businessId = business.id,
+                            userId = userId,
+                            roleId = role.id,
+                            assignedByUserId = grant.approvedByUid.ifBlank { userId },
+                            assignedAtEpoch = now
+                        )
                     )
-                )
+                }
             }
 
             val (ctx, token) = createSessionAndContext(
@@ -757,7 +760,7 @@ class AuthService(
                 }
             }
             sessionStore.clearSessionToken()
-            sessionStore.saveServerSessionId("")
+            sessionStore.clearServerSessionId()
             return null
         }
         val approved = centralValidation as CentralVerificationResult.Approved
@@ -1292,7 +1295,11 @@ class AuthService(
         deviceId: String
     ): AuthContext {
         val bizAccess = dao.getBusinessAccessForUser(user.id).map { it.businessId }.toSet()
-        val resolvedBiz = if (bizAccess.contains(activeBusinessId)) activeBusinessId else bizAccess.first()
+        val resolvedBiz = if (bizAccess.contains(activeBusinessId)) {
+            activeBusinessId
+        } else {
+            bizAccess.firstOrNull() ?: activeBusinessId
+        }
         val propAccess = dao.getPropertyAccessForUser(user.id, resolvedBiz).map { it.propertyId }.toSet()
         val perms = dao.getPermissionsForUserInBusiness(user.id, resolvedBiz)
             .map { "${it.module}:${it.action}" }

@@ -17,6 +17,7 @@ class WorkforceMaintenanceInventoryService(
     private val hrDao = db.securityAndHrDao()
     private val coreDao = db.coreAndTenancyDao()
     private val opsDao = db.operationsDao()
+    private val accDao = db.accountingDao()
 
     // --- HR & Workforce ---
     suspend fun createDepartment(ctx: AuthContext, name: String, description: String): DepartmentEntity {
@@ -728,6 +729,32 @@ class WorkforceMaintenanceInventoryService(
                 )
             )
             opsDao.updatePurchase(po.copy(paidAmountFils = po.paidAmountFils + amountFils, updatedAtEpoch = now))
+            if (creditCode == AccountingService.ACC_BANK) {
+                accountingService.applyBankAccountMovement(
+                    businessId = po.businessId,
+                    preferredBankAccountId = null,
+                    amountFils = amountFils,
+                    direction = "DEBIT_OUT",
+                    bankReference = ref,
+                    description = "Supplier payment $ref (${po.purchaseNumber})",
+                    journalEntryId = je.id,
+                    transactionDateEpoch = now
+                )
+            } else {
+                accDao.insertCashbookEntry(
+                    CashbookEntryEntity(
+                        id = CryptoUtil.newUuid(),
+                        businessId = po.businessId,
+                        direction = "OUTFLOW",
+                        amountFils = amountFils,
+                        description = "Supplier payment $ref (${po.purchaseNumber})",
+                        reference = ref,
+                        journalEntryId = je.id,
+                        entryDateEpoch = now,
+                        createdByUserId = ctx.userId
+                    )
+                )
+            }
         }
     }
 

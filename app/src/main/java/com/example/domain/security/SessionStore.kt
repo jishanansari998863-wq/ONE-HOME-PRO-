@@ -67,6 +67,10 @@ class SessionStore(
     suspend fun getServerSessionId(): String? =
         dataStore.data.first()[Keys.SERVER_SESSION_ID]
 
+    suspend fun clearServerSessionId() {
+        dataStore.edit { it.remove(Keys.SERVER_SESSION_ID) }
+    }
+
     suspend fun clearSessionToken() {
         dataStore.edit {
             it.remove(Keys.SESSION_TOKEN)

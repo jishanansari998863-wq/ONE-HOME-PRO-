@@ -162,6 +162,9 @@ interface AccountingDao {
     @Query("SELECT * FROM fiscal_periods WHERE businessId = :businessId")
     suspend fun getFiscalPeriodsByBusiness(businessId: String): List<FiscalPeriodEntity>
 
+    @Query("SELECT * FROM approval_requests WHERE businessId = :businessId")
+    suspend fun getApprovalRequestsByBusiness(businessId: String): List<ApprovalRequestEntity>
+
     @Query("SELECT COUNT(*) FROM journal_lines WHERE accountId = :accountId")
     suspend fun countJournalLinesForAccount(accountId: String): Int
 
@@ -178,5 +181,6 @@ interface AccountingDao {
     @Upsert suspend fun upsertPettyCashEntries(items: List<PettyCashEntryEntity>)
     @Upsert suspend fun upsertBankTransactions(items: List<BankTransactionEntity>)
     @Upsert suspend fun upsertBankReconciliations(items: List<BankReconciliationEntity>)
+    @Upsert suspend fun upsertApprovalRequests(items: List<ApprovalRequestEntity>)
     @Upsert suspend fun upsertFiscalPeriods(items: List<FiscalPeriodEntity>)
 }

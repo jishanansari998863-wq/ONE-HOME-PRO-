@@ -240,9 +240,17 @@ interface SecurityAndHrDao {
     @Query("SELECT * FROM roles WHERE businessId = :businessId")
     suspend fun getRolesByBusiness(businessId: String): List<RoleEntity>
 
+    @Query("SELECT * FROM team_members WHERE businessId = :businessId")
+    suspend fun getTeamMembersByBusiness(businessId: String): List<TeamMemberEntity>
+
+    @Query("SELECT * FROM employee_work_history WHERE businessId = :businessId")
+    suspend fun getEmployeeWorkHistoryByBusiness(businessId: String): List<EmployeeWorkHistoryEntity>
+
     @Upsert suspend fun upsertDepartments(items: List<DepartmentEntity>)
     @Upsert suspend fun upsertEmployees(items: List<EmployeeEntity>)
     @Upsert suspend fun upsertTeams(items: List<TeamEntity>)
+    @Upsert suspend fun upsertTeamMembers(items: List<TeamMemberEntity>)
     @Upsert suspend fun upsertAttendance(items: List<AttendanceEntity>)
+    @Upsert suspend fun upsertEmployeeWorkHistory(items: List<EmployeeWorkHistoryEntity>)
     @Upsert suspend fun upsertRoles(items: List<RoleEntity>)
 }

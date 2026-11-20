@@ -1,110 +1,42 @@
 %PDF-1.4
+%âãÏÓ
 1 0 obj
-<< /Type /Catalog /Pages 2 0 R >>
-endobj
-2 0 obj
-<< /Type /Pages /Kids [6 0 R] /Count 1 >>
-endobj
-3 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
-4 0 obj
+2 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
 endobj
-5 0 obj
-<< /Length 3880 >>
+3 0 obj
+<< /Type /Pages /Kids [ 5 0 R ] /Count 1 >>
+endobj
+4 0 obj
+<< /Length 1800 /Filter /FlateDecode >>
 stream
-BT
-/F2 15 Tf 48 760 Td (ONE HOME PRO - COMPLETE REQUIREMENT AUDIT REGISTER) Tj
--48 -760 Td
-/F1 9 Tf 48 740 Td (Qatar Business Edition \(QAR | Asia/Qatar\) | Audit Status Summary) Tj
--48 -740 Td
-/F2 11 Tf 48 718 Td (1. Audited Release Build) Tj
--48 -718 Td
-/F1 9.5 Tf 52 703 Td (App Name: ONE HOME PRO \(Qatar Business Edition | QAR | Asia/Qatar\)) Tj
--52 -703 Td
-/F1 9.5 Tf 52 690 Td (Application ID / Package Name: com.aistudio.onehomepro.qtrvbx) Tj
--52 -690 Td
-/F1 9.5 Tf 52 677 Td (Version: v1.0.2 \(versionCode 2\) | Min SDK 24 | Target/Compile SDK 36) Tj
--52 -677 Td
-/F1 9.5 Tf 52 664 Td (APK File: ONE_HOME_PRO_FINAL.apk \(30,151,134 bytes\)) Tj
--52 -664 Td
-/F1 9.5 Tf 52 651 Td (APK SHA-256: a669032d5a19548147d39b4c28fbab66073d3b32517b393e81954d66354a6d4c) Tj
--52 -651 Td
-/F1 9.5 Tf 52 638 Td (Signing Cert SHA-1 \(Debug Keystore\): 05356ba3334feb7a32da5957f69451f994009fe1) Tj
--52 -638 Td
-/F1 9.5 Tf 52 625 Td (Signing Cert SHA-256: c6b54f573c9d41735876dda13f99793348e7915349f415c217cf96d50975ebac) Tj
--52 -625 Td
-/F1 9.5 Tf 52 612 Td (Source Archive: ONE_HOME_PRO_COMPLETE_SOURCE.zip \(1,275,643 bytes, SHA-256:) Tj
--52 -612 Td
-/F1 9.5 Tf 52 599 Td (dd9f3729e70d8fd0e49ab86f3614ed1767296c32d5105d1edd943bbaa7cebad2\)) Tj
--52 -599 Td
-/F1 9.5 Tf 52 586 Td (Firebase Project: gen-lang-client-0874428284 | google_app_id:) Tj
--52 -586 Td
-/F1 9.5 Tf 52 573 Td (1:487338231669:android:9fcfa85a6ff1d8de99353c) Tj
--52 -573 Td
-/F1 9.5 Tf 52 560 Td (Firestore Database ID: ai-studio-android-onehomep-b7e88f8b-dd6f-442a-8d76-7b31f8e0512f) Tj
--52 -560 Td
-/F2 11 Tf 48 541 Td (2. Security, Auth & Cloud Verification) Tj
--48 -541 Td
-/F1 9.5 Tf 52 526 Td (PASS - Firebase Bundling & Runtime Init: google-services.json compiled into resources.arsc) Tj
--52 -526 Td
-/F1 9.5 Tf 52 513 Td (+ FirebaseConfigProvider direct R.string & FirebaseOptions fallback + cold-start verified) Tj
--52 -513 Td
-/F1 9.5 Tf 52 500 Td (in Robolectric.) Tj
--52 -500 Td
-/F1 9.5 Tf 52 487 Td (PASS - Zero-Trust Restricted Gate & Firestore Rules: Unauthenticated callers, spoofed) Tj
--52 -487 Td
-/F1 9.5 Tf 52 474 Td (emails, and self-approval rejected \(6/6 firestore.test.js + 4/4 SuperAdminRulesTest\).) Tj
--52 -474 Td
-/F1 9.5 Tf 52 461 Td (PASS - Super Admin MFA, Dual-Loss & Lost Phone Revocation: TOTP, PBKDF2, single-use codes,) Tj
--52 -461 Td
-/F1 9.5 Tf 52 448 Td (Security Question, Master Recovery Key, and immediate session/device revocation verified.) Tj
--52 -448 Td
-/F1 9.5 Tf 52 435 Td (PASS - AES-256-GCM Encrypted Backups & Cloud Sync Snapshot: Checksum + Trial Balance) Tj
--52 -435 Td
-/F1 9.5 Tf 52 422 Td (restoration and cross-device cloud snapshot isolation verified.) Tj
--52 -422 Td
-/F2 11 Tf 48 403 Td (3. Business, Accounting, Vault & Localization Modules) Tj
--48 -403 Td
-/F1 9.5 Tf 52 388 Td (PASS - 83-Entity Room Database, Clean Empty Start, Multi-Business QAR/Asia/Qatar) Tj
--52 -388 Td
-/F1 9.5 Tf 52 375 Td (Switching.) Tj
--52 -375 Td
-/F1 9.5 Tf 52 362 Td (PASS - Double-Entry General Ledger \(DR == CR enforced\), Cheques, Security Deposits, Rent) Tj
--52 -362 Td
-/F1 9.5 Tf 52 349 Td (Payments, Agreements, Utilities, Inventory & Maintenance.) Tj
--52 -349 Td
-/F1 9.5 Tf 52 336 Td (PASS - Private Photo/PDF/Audio Vault with CameraX & Photo Picker \(no broad media) Tj
--52 -336 Td
-/F1 9.5 Tf 52 323 Td (permissions\), Expiry Alert Scanner, 17-Report CSV/PDF Exports, Custom RBAC Roles.) Tj
--52 -323 Td
-/F1 9.5 Tf 52 310 Td (PASS - 4 Languages \(English, Hindi, Hinglish, Arabic RTL\) & Phone/Tablet Adaptive Material) Tj
--52 -310 Td
-/F1 9.5 Tf 52 297 Td (3 Layout.) Tj
--52 -297 Td
-/F1 9.5 Tf 52 284 Td (PENDING \(Expected\) - Live external WhatsApp/SMS/Bank gateway webhooks \(require external) Tj
--52 -284 Td
-/F1 9.5 Tf 52 271 Td (merchant API keys\); Apple iOS IPA \(requires macOS/Xcode\).) Tj
--52 -271 Td
-/F1 8 Tf 48 28 Td (ONE HOME PRO | Qatar Business Edition | Page 1 of 1) Tj
-ET
+xœ•Xao›Èış~Åımµ3Ã€?-±Äj\»ÆİöI•¢›†€;€·^íß;ŒãnóŞVX‘#cÃœ{î½çÜ;¶€c».ş£¨-P¸çó (	ùn60ºuPØä@ú?¼ÑÃ}›~Y¾›Áır1ƒÕz	L–‹ÕÃl3ƒõìı‡ùz¶˜½Û@ôa:ßà'wóx3[¿Í˜mÌÒ›éµ;`ø/ÔÑ„Áˆö ïE+ÜtMQÉ¦YV´E]Áç_ŞGkø¢¦£şÏoğòw©Š¼×ŠM+Ÿ!êğ‘`ôŸÚÉÀët`*üĞé ¶YÊ²8H%’RÂB¶"CÜW”ÂJäü2||îöËEû=¼Ïr?¤ïó¿ış—è`L¾`–E*úõæSÁJ¤Ob+O¤õ³-Š¦E–µ]WrW?Ë½ªí¯­:$ßƒáKƒa	ÃØ˜Sdv0ŸLêL‚Û—	÷E)ãìI7ŞÕV¶çËç¢Òï]o06¥†èê-ÜâÂ}rur1¹·ówÑƒ-öOu®C'¸}É±•ÍÙt3H|Y.óÇÀC7ç,I}îKWr—æ"à9ayêå™:Ü‘IBÎ3š„Y.hše2Ì˜ğ|â&<îğ<.¶UQma"UÛGAÓT&İŞJløZÉÏoÆà0ÊüDPJ½\&\P7,d<÷C‘<=Ç	sI†Â³Ğûÿğ}R?a^Î8MÃÌ#œ²€ûY&E bä!aÔs°Ô%<ÍC?cNÈ™LD:8ŠÀO\w*•©t‡z|UìzŒ—Ö“™ıg±Ç‘k‡×.%—VùÁ?1ÏœC—dRpN#‰Ï‰G)‘ËòT†ø¥‚Ñ,Hó+Ï2âzsÜ$p¥d~
+9Ÿ±ÿ¶P˜ªFÂJÕ_dÚa++«ÕÖJËBV­åÜóÜÀ<TØ¶®·¥|ûıc‘ƒyÆ¤ÈØ8¥æË÷Ã±¨2Uã2ab{3áç9Éìã2:¼znxfÒ7*LÑÎzNóéDa²NpÖ‹Y	—A‰•e~n!Ia÷-P’ÒaÄÍˆâ§ÆÎSQ×3"¬äøÃ°€¸m×`×De‰“Ğ?U}À`îº {¼ïCäF!/ÔÎ5,º²-J|Û‰Ö›¸‚I)EÕçV5zõq«(Ãp~¦Ôí¥‚(CE•V­BŒ¨kwµ*Ú#"Å2íú·ë®”A¦_Šf'*Q5Ba>ımû,ŠÒF«…oLâÎ˜²NŸémt›‰“§×0{–èóUz„üú‚,2£{j÷TÕiš]#FÏ–™õiµ6Y´°¾‰&gr%3ı(Èq+•êP§zš®iN€×ufªJKÕ¸!ÀjªìN®ÑµgkEcÍ°$÷n.ĞÔ0UóªÙ£ÊOÔzR71bf6¬‘=ÜeÙ÷ßJŸñ¤0ÙÉ¯lşÙS¹¯›¢m.Ã¢¡Ñ¶oÃ´î0­Ö[ïQšÖfG²PR4~«ô\}±SuUü‰»ÕÓé¸˜‡~x£t÷‰ƒRfXkø>™âòwÃD¹ÙSp>Öê)¯µı_ÁıúÂÌøÆ¢¨Ú¾’z¡	îJıÉ¥©öŒÖClI;íŸWØ/,i­.ìœÍÆŸ]¸´Ó}q*ª
+wÑ,¶î&ìĞâ€¿ÔØwYáîQ‰OØP»º­aU¤OZZqt‹Rÿ4¿½İ|ˆk$®ê¶Wö(EQŒVÓÛ
+vòu‚f»DAõëh÷+Q\Øì„[klnÜ¸Üw	’CÂoop+Üí/¬ñ4\c;Sy(°¬“²î²¾¿`ö­•JG°ÌsT„;Ìáâøİuo;0µÚşHÑTbß`*G7îWØá¼lZ`–VE†¬O¸i]åÅ¶3y•ĞŸJ×?ïòl	¤¹—•öR´”¯òŞHìIYğa_Ö";oY1ogÿ7Ë5îá¢Í=^.âøãr­Ï,xÃù¨Ghp7Šª^•=E¯38jDi‘ŒôÁÀü$á'
+wE«ûH¿DåÁ¾kvht²íF¦J¶M)&ªFıLæ ¿¡Óê†C:Ş	òw»€šCÑc¢ÕÒód38í®P™µzšÄ‹x/6«ÑÇhÜÃŒ4HmÅÛS„äÂjwl
+­›ÈlÒ`¯ÛŠªiEYš#æècò©,Ria4pèOæflŸqO'ÿ€ë“¿ë;}şÃ¾{Æû7%ÄçLhŞùeZôTÉÓxfşÙ¯£×¿¬ôY˜ \àå@ô7og°
 endstream
 endobj
+5 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 4 0 R >>
+endobj
 6 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+<< /Type /Catalog /Pages 3 0 R >>
 endobj
 xref
 0 7
 0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000185 00000 n 
-0000000260 00000 n 
-0000004192 00000 n 
+0000000015 00000 n 
+0000000085 00000 n 
+0000000160 00000 n 
+0000000219 00000 n 
+0000002092 00000 n 
+0000002228 00000 n 
 trailer
-<< /Size 7 /Root 1 0 R >>
+<< /Size 7 /Root 6 0 R >>
 startxref
-4328
+2277
 %%EOF

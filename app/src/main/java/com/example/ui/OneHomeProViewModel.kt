@@ -2075,6 +2075,8 @@ class OneHomeProViewModel(
             val cloudSynced = state.lastCloudSyncEpoch != null
             val activeBiz = state.data.businesses.firstOrNull { it.id == ctx.activeBusinessId }
 
+            val configuredCount = state.data.integrations.count { it.lastTestStatus == "CONFIGURED_OFFLINE_FALLBACK" }
+
             val results = listOf(
                 OwnerSelfTestItem(
                     feature = "Room SQLite 83-Entity Relational DB",
@@ -2122,8 +2124,8 @@ class OneHomeProViewModel(
                 OwnerSelfTestItem(
                     feature = "External Live Gateways (SMS/WhatsApp/PSP)",
                     status = "PENDING",
-                    evidence = "${state.data.integrations.size} integration record(s)",
-                    remainingIssue = "Requires external business API credentials"
+                    evidence = "$configuredCount/5 offline fallback configured (${state.data.integrations.size} saved record(s)); unavailable providers stay NOT_CONFIGURED",
+                    remainingIssue = "Requires live third-party merchant API keys/webhooks"
                 )
             )
             _uiState.update { it.copy(ownerSelfTests = results) }

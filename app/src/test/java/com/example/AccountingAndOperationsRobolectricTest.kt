@@ -284,4 +284,99 @@ class AccountingAndOperationsRobolectricTest {
         val bs = accountingService.computeBalanceSheet(ownerCtx.activeBusinessId)
         assertTrue(bs.isBalanced)
     }
+
+    @Test
+    fun `bank account balance and bank transaction ledger stay synced across income, expense, payments, cheques, deposits, and suppliers`() = runBlocking {
+        val bank = accountingService.createBankAccount(
+            ctx = ownerCtx,
+            bankName = "QNB",
+            accountTitle = "Main Operating",
+            ibanOrNumber = "QA58QNBA000000000000123456789",
+            openingBalanceFils = 1_000_000L
+        )
+        val prop = propertyService.createProperty(ownerCtx, "Doha Corniche", "DC1", "RESIDENTIAL", "Corniche", "Doha", "")
+        val bldg = propertyService.addBuilding(ownerCtx, prop.id, "B1", "B1", 2)
+        val fl = propertyService.addFloor(ownerCtx, prop.id, bldg.id, 1, "F1")
+        val room = propertyService.addRoom(ownerCtx, prop.id, bldg.id, fl.id, "101", "1BHK", 2, "FURNISHED", 500_000L, "AC", 2, "C1", "Full")
+        val cust = propertyService.createCustomer(ownerCtx, "Noor", "+97455123456", "noor@qa.com", "2910555", "", "QA", "", "", "")
+        val now = System.currentTimeMillis()
+        val ag = propertyService.createAndActivateAgreement(ownerCtx, room.id, cust.id, "MONTHLY", 500_000L, 0L, 100_000L, now, now + 90L * 86_400_000L, 30, "")
+        propertyService.generateRentForPeriod(ownerCtx, now)
+        val rent = db.coreAndTenancyDao().getMonthlyRentsByBusiness(ownerCtx.activeBusinessId).first()
+
+        // 1. Bank transfer payment (+200,000)
+        val bankPay = rentPaymentService.receiveConfirmedPayment(
+            ctx = ownerCtx,
+            customerId = cust.id,
+            agreementId = ag.id,
+            amountFils = 200_000L,
+            method = "BANK_TRANSFER",
+            bankAccountId = bank.id,
+            targetRentIdsInOrder = listOf(rent.id),
+            notes = "Rent bank transfer"
+        )
+        // 2. Direct bank income (+50,000)
+        accountingService.recordIncome(ownerCtx, prop.id, "PARKING", "Extra parking fee", 50_000L, receiveToBank = true)
+        // 3. Cheque cleared (+300,000)
+        val chq = rentPaymentService.registerCheque(ownerCtx, cust.id, ag.id, rent.id, "CHQ-771", "QNB", 300_000L, now, "Noor", "Qatar Homes WLL")
+        rentPaymentService.transitionChequeStatus(ownerCtx, chq.id, "CLEARED", bankReference = "QNB-CLR-771")
+        // 4. Reverse bank payment (-200,000)
+        rentPaymentService.reverseOrRefundPayment(ownerCtx, bankPay.id, "Duplicate transfer")
+        // 5. Bank expense (-25,000)
+        accountingService.recordExpense(ownerCtx, prop.id, "UTILITIES", "Ooredoo", "Fiber bill", 25_000L, "BANK_TRANSFER")
+        // 6. Security deposit received in cash & refunded via bank (-100,000)
+        val dep = db.coreAndTenancyDao().getSecurityDepositByAgreementId(ag.id)!!
+        rentPaymentService.recordDepositTransaction(ownerCtx, dep.id, "RECEIVE", 100_000L, "Deposit cash")
+        rentPaymentService.recordDepositTransaction(ownerCtx, dep.id, "REFUND", 100_000L, "Deposit refunded")
+        // 7. Purchase goods & pay supplier via BANK_TRANSFER (-15,000)
+        val sup = opsService.createSupplier(ownerCtx, "Doha Supply", "Salim", "+97444112233", "", "CR-77")
+        val item = opsService.createItemCategoryAndItem(ownerCtx, "ELEC", "Breaker", "SKU-BR1", "PCS", 2L)
+        val loc = db.operationsDao().observeStockLocations(ownerCtx.activeBusinessId).first().first()
+        val po = opsService.createPurchaseOrder(ownerCtx, sup.id, prop.id, item.id, 10L, 1_500L, "Breakers")
+        opsService.approvePurchase(ownerCtx, po.id, "Approved")
+        opsService.receiveGoods(ownerCtx, po.id, loc.id, "INV-77")
+        opsService.paySupplier(ownerCtx, po.id, 15_000L, "BANK_TRANSFER")
+
+        val expectedBalance = 1_000_000L + 200_000L + 50_000L + 300_000L - 200_000L - 25_000L - 100_000L - 15_000L
+        assertEquals(1_210_000L, expectedBalance)
+        val refreshedBank = db.accountingDao().getBankAccountById(bank.id)!!
+        assertEquals(expectedBalance, refreshedBank.currentBalanceFils)
+        val glBank = accountingService.computeTrialBalance(ownerCtx.activeBusinessId)
+            .first { it.code == AccountingService.ACC_BANK }.netBalanceFils
+        assertEquals(expectedBalance, glBank)
+        val txns = db.accountingDao().getBankTransactionsByBusiness(ownerCtx.activeBusinessId)
+        assertEquals(7, txns.size)
+        assertTrue(accountingService.computeBalanceSheet(ownerCtx.activeBusinessId).isBalanced)
+    }
+
+    @Test
+    fun `external integration providers stay honestly NOT_CONFIGURED without endpoint and log offline fallback config`() = runBlocking {
+        val catalog = backupService.canonicalExternalProviders()
+        assertEquals(5, catalog.size)
+
+        val unconfigured = backupService.configureIntegration(
+            ctx = ownerCtx,
+            providerType = "sms_gateway",
+            providerName = "",
+            endpointOrHandle = "",
+            enabled = true
+        )
+        assertEquals("SMS_GATEWAY", unconfigured.providerType)
+        assertEquals("NOT_CONFIGURED", unconfigured.lastTestStatus)
+        assertFalse(unconfigured.isEnabled)
+
+        val fallback = backupService.configureIntegration(
+            ctx = ownerCtx,
+            providerType = "email_smtp",
+            providerName = "Doha SMTP",
+            endpointOrHandle = "smtp.onehome.qa:587",
+            enabled = true
+        )
+        assertEquals("EMAIL_SMTP", fallback.providerType)
+        assertEquals("CONFIGURED_OFFLINE_FALLBACK", fallback.lastTestStatus)
+        assertTrue(fallback.isEnabled)
+
+        val logs = db.operationsDao().getAuditLogsByBusiness(ownerCtx.activeBusinessId)
+        assertTrue(logs.any { it.action == "CONFIGURE_INTEGRATION" && it.summary.contains("CONFIGURED_OFFLINE_FALLBACK") })
+    }
 }

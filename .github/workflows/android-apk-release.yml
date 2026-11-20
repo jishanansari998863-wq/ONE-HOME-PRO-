@@ -258,6 +258,46 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
+      - name: Build Signed Release APK & Play Store AAB (when upload keystore secrets configured)
+        if: >-
+          success() &&
+          secrets.RELEASE_KEYSTORE_BASE64 != '' &&
+          secrets.STORE_PASSWORD != '' &&
+          secrets.KEY_PASSWORD != ''
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 -d > my-upload-key.jks
+          trap 'rm -f my-upload-key.jks' EXIT
+          export KEYSTORE_PATH="$PWD/my-upload-key.jks"
+          gradle :app:bundleRelease :app:assembleRelease \
+            --no-daemon \
+            --max-workers=2 \
+            -Dkotlin.compiler.execution.strategy=in-process \
+            -Dorg.gradle.jvmargs="-Xmx2560m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8" \
+            --stacktrace \
+            --console=plain
+          test -s app/build/outputs/bundle/release/app-release.aab
+          test -s app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload Signed Release Artifacts (when built)
+        if: >-
+          success() &&
+          secrets.RELEASE_KEYSTORE_BASE64 != '' &&
+          secrets.STORE_PASSWORD != '' &&
+          secrets.KEY_PASSWORD != ''
+        uses: actions/upload-artifact@v6
+        with:
+          name: one-home-pro-signed-release
+          path: |
+            app/build/outputs/bundle/release/app-release.aab
+            app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
       - name: Publish Debug APK to GitHub Release
         if: >-
           success() && (

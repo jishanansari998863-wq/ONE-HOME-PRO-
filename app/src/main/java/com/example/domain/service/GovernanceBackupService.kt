@@ -328,6 +328,20 @@ class GovernanceBackupService(
         opsDao.markNotificationRead(notificationId)
     }
 
+    data class ExternalProviderDescriptor(
+        val providerType: String,
+        val defaultName: String,
+        val description: String
+    )
+
+    fun canonicalExternalProviders(): List<ExternalProviderDescriptor> = listOf(
+        ExternalProviderDescriptor("EMAIL_SMTP", "Company SMTP Relay", "Transactional rent receipts, lease expiry alerts & reports"),
+        ExternalProviderDescriptor("SMS_GATEWAY", "Qatar SMS Gateway", "OTP verification, overdue reminders & cheque bounce alerts"),
+        ExternalProviderDescriptor("WHATSAPP_API", "WhatsApp Business Cloud API", "Tenant statements, payment confirmations & maintenance updates"),
+        ExternalProviderDescriptor("BANK_FEED", "Qatar Open-Banking Feed", "Automated bank statement import & cheque clearing match"),
+        ExternalProviderDescriptor("PAYMENT_GATEWAY", "Online Card / PSP Gateway", "Hosted online tenant rent & deposit checkout")
+    )
+
     suspend fun configureIntegration(
         ctx: AuthContext,
         providerType: String,
@@ -336,20 +350,40 @@ class GovernanceBackupService(
         enabled: Boolean
     ): IntegrationConfigEntity {
         AuthorizationGuard.requireOwner(ctx)
+        val normalizedType = providerType.trim().uppercase().ifBlank {
+            throw IllegalArgumentException("Provider type is required")
+        }
+        val cleanName = providerName.trim().ifBlank {
+            canonicalExternalProviders().firstOrNull { it.providerType == normalizedType }?.defaultName ?: normalizedType
+        }
+        val cleanHandle = endpointOrHandle.trim()
+        val status = if (enabled && cleanHandle.isNotBlank()) "CONFIGURED_OFFLINE_FALLBACK" else "NOT_CONFIGURED"
         val now = System.currentTimeMillis()
         val cfg = IntegrationConfigEntity(
-            id = "${ctx.activeBusinessId}_$providerType",
+            id = "${ctx.activeBusinessId}_$normalizedType",
             businessId = ctx.activeBusinessId,
-            providerType = providerType,
-            providerName = providerName.trim(),
-            isEnabled = enabled,
-            endpointOrHandle = endpointOrHandle.trim(),
-            lastTestStatus = if (enabled && endpointOrHandle.isNotBlank()) "CONFIGURED_OFFLINE_FALLBACK" else "NOT_CONFIGURED",
+            providerType = normalizedType,
+            providerName = cleanName,
+            isEnabled = enabled && cleanHandle.isNotBlank(),
+            endpointOrHandle = cleanHandle,
+            lastTestStatus = status,
             lastTestedAtEpoch = now,
             updatedByUserId = ctx.userId,
             updatedAtEpoch = now
         )
         opsDao.upsertIntegration(cfg)
+        opsDao.insertAuditLog(
+            AuditLogEntity(
+                id = CryptoUtil.newUuid(),
+                businessId = ctx.activeBusinessId,
+                actorUserId = ctx.userId,
+                action = "CONFIGURE_INTEGRATION",
+                entityType = "INTEGRATION",
+                entityId = cfg.id,
+                summary = "$normalizedType ($cleanName) saved with honest status $status",
+                occurredAtEpoch = now
+            )
+        )
         return cfg
     }
 

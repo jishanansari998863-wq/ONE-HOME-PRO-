@@ -46,6 +46,10 @@ fun OwnerControlScreen(
     var showCreateBackup by remember { mutableStateOf(false) }
     var restoreVerifyTarget by remember { mutableStateOf<BackupRecordEntity?>(null) }
     var showConfigIntegration by remember { mutableStateOf(false) }
+    var integrationPresetType by remember { mutableStateOf("EMAIL_SMTP") }
+    var integrationPresetName by remember { mutableStateOf("Company SMTP Relay") }
+    var integrationPresetHandle by remember { mutableStateOf("") }
+    var integrationPresetEnabled by remember { mutableStateOf(false) }
     var managePermissionsRole by remember { mutableStateOf<com.example.data.db.entities.RoleEntity?>(null) }
     var showCreateRole by remember { mutableStateOf(false) }
 
@@ -245,6 +249,10 @@ fun OwnerControlScreen(
                 4 -> {
                     item {
                         SectionHeader("Integrations & System Health", "Honest status: no simulated external gateways", "Configure", "configure_integration_button") {
+                            integrationPresetType = "EMAIL_SMTP"
+                            integrationPresetName = "Company SMTP Relay"
+                            integrationPresetHandle = ""
+                            integrationPresetEnabled = false
                             showConfigIntegration = true
                         }
                     }
@@ -256,13 +264,57 @@ fun OwnerControlScreen(
                                 Text("• Database Engine: Room SQLite (83 Relational Entities)")
                                 Text("• Monetary Arithmetic: Integer Fils (1/100 QAR) — zero float drift")
                                 Text("• Trial Balance / Balance Sheet Balanced: $bsBal")
-                                Text("• Cloud Firestore Central Authority: ACTIVE (Exclusive Super Admin Gate)")
-                                Text("• Native iOS / macOS / Windows / Web Builds: BLOCKED in Android container")
+                                Text("• Cloud Firestore Central Authority: Configured (Super Admin Gate)")
+                                Text("• Offline External Gateways: Stored as NOT_CONFIGURED / CONFIGURED_OFFLINE_FALLBACK without fake API traffic")
                             }
                         }
                     }
-                    items(data.integrations, key = { it.id }) { cfg ->
-                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                    val savedByType = data.integrations.associateBy { it.providerType.uppercase() }
+                    val canonicalTypes = listOf(
+                        Triple("EMAIL_SMTP", "Company SMTP Relay", "Transactional rent receipts, expiry alerts & reports"),
+                        Triple("SMS_GATEWAY", "Qatar SMS Gateway", "OTP verification, overdue reminders & cheque alerts"),
+                        Triple("WHATSAPP_API", "WhatsApp Business Cloud API", "Tenant statements, payment confirmations & tickets"),
+                        Triple("BANK_FEED", "Qatar Open-Banking Feed", "Automated bank statement import & cheque match"),
+                        Triple("PAYMENT_GATEWAY", "Online Card / PSP Gateway", "Hosted online tenant rent & deposit checkout")
+                    )
+                    val customIntegrations = data.integrations.filter { cfg ->
+                        canonicalTypes.none { it.first == cfg.providerType.uppercase() }
+                    }
+                    items(canonicalTypes, key = { it.first }) { (pType, defaultName, desc) ->
+                        val saved = savedByType[pType]
+                        val displayName = saved?.providerName?.ifBlank { defaultName } ?: defaultName
+                        val displayHandle = saved?.endpointOrHandle.orEmpty()
+                        val displayStatus = saved?.lastTestStatus ?: "NOT_CONFIGURED"
+                        OutlinedCard(
+                            onClick = {
+                                integrationPresetType = pType
+                                integrationPresetName = displayName
+                                integrationPresetHandle = displayHandle
+                                integrationPresetEnabled = saved?.isEnabled ?: false
+                                showConfigIntegration = true
+                            },
+                            modifier = Modifier.fillMaxWidth().testTag("integration_card_$pType")
+                        ) {
+                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("$pType • $displayName", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                    Text(displayHandle.ifBlank { desc }, style = MaterialTheme.typography.bodySmall)
+                                }
+                                StatusBadge(displayStatus)
+                            }
+                        }
+                    }
+                    items(customIntegrations, key = { it.id }) { cfg ->
+                        OutlinedCard(
+                            onClick = {
+                                integrationPresetType = cfg.providerType
+                                integrationPresetName = cfg.providerName
+                                integrationPresetHandle = cfg.endpointOrHandle
+                                integrationPresetEnabled = cfg.isEnabled
+                                showConfigIntegration = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text("${cfg.providerType} • ${cfg.providerName}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -469,10 +521,10 @@ fun OwnerControlScreen(
     }
 
     if (showConfigIntegration) {
-        var type by remember { mutableStateOf("EMAIL_SMTP") }
-        var name by remember { mutableStateOf("Custom SMTP") }
-        var handle by remember { mutableStateOf("") }
-        var enabled by remember { mutableStateOf(false) }
+        var type by remember(integrationPresetType) { mutableStateOf(integrationPresetType) }
+        var name by remember(integrationPresetName) { mutableStateOf(integrationPresetName) }
+        var handle by remember(integrationPresetHandle) { mutableStateOf(integrationPresetHandle) }
+        var enabled by remember(integrationPresetEnabled) { mutableStateOf(integrationPresetEnabled) }
         AlertDialog(
             onDismissRequest = { showConfigIntegration = false },
             title = { Text("Configure Integration Provider") },
@@ -483,7 +535,7 @@ fun OwnerControlScreen(
                     OutlinedTextField(value = handle, onValueChange = { handle = it }, label = { Text("Endpoint / Account Handle") }, modifier = Modifier.fillMaxWidth())
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = enabled, onCheckedChange = { enabled = it })
-                        Text("Mark Provider Active")
+                        Text("Mark Active (Offline Fallback Until Live Credentials)")
                     }
                 }
             },

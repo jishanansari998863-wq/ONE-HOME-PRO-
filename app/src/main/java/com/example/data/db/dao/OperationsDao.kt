@@ -282,10 +282,56 @@ interface OperationsDao {
     @Query("SELECT * FROM integration_configs WHERE businessId = :businessId")
     suspend fun getIntegrationsByBusiness(businessId: String): List<IntegrationConfigEntity>
 
+    @Query("SELECT * FROM complaint_attachments WHERE businessId = :businessId")
+    suspend fun getComplaintAttachmentsByBusiness(businessId: String): List<ComplaintAttachmentEntity>
+
+    @Query("SELECT * FROM work_report_photos WHERE businessId = :businessId")
+    suspend fun getWorkReportPhotosByBusiness(businessId: String): List<WorkReportPhotoEntity>
+
+    @Query("SELECT * FROM job_approvals WHERE businessId = :businessId")
+    suspend fun getJobApprovalsByBusiness(businessId: String): List<JobApprovalEntity>
+
+    @Query("SELECT * FROM complaint_status_history WHERE businessId = :businessId")
+    suspend fun getComplaintStatusHistoryByBusiness(businessId: String): List<ComplaintStatusHistoryEntity>
+
+    @Query("SELECT * FROM stock_transfers WHERE businessId = :businessId")
+    suspend fun getStockTransfersByBusiness(businessId: String): List<StockTransferEntity>
+
+    @Query("SELECT * FROM stock_transfer_lines WHERE businessId = :businessId")
+    suspend fun getStockTransferLinesByBusiness(businessId: String): List<StockTransferLineEntity>
+
+    @Query("SELECT * FROM stock_adjustments WHERE businessId = :businessId")
+    suspend fun getStockAdjustmentsByBusiness(businessId: String): List<StockAdjustmentEntity>
+
+    @Query("SELECT * FROM stock_counts WHERE businessId = :businessId")
+    suspend fun getStockCountsByBusiness(businessId: String): List<StockCountEntity>
+
+    @Query("SELECT * FROM stock_count_lines WHERE businessId = :businessId")
+    suspend fun getStockCountLinesByBusiness(businessId: String): List<StockCountLineEntity>
+
+    @Query("SELECT * FROM supplier_payment_allocations WHERE businessId = :businessId")
+    suspend fun getSupplierPaymentAllocationsByBusiness(businessId: String): List<SupplierPaymentAllocationEntity>
+
+    @Query("SELECT * FROM purchase_approvals WHERE businessId = :businessId")
+    suspend fun getPurchaseApprovalsByBusiness(businessId: String): List<PurchaseApprovalEntity>
+
+    @Query("SELECT * FROM goods_receipt_details WHERE businessId = :businessId")
+    suspend fun getGoodsReceiptDetailsByBusiness(businessId: String): List<GoodsReceiptDetailEntity>
+
+    @Query("SELECT * FROM document_access_logs WHERE businessId = :businessId")
+    suspend fun getDocumentAccessLogsByBusiness(businessId: String): List<DocumentAccessLogEntity>
+
+    @Query("SELECT * FROM backup_records WHERE businessId = :businessId")
+    suspend fun getBackupRecordsByBusiness(businessId: String): List<BackupRecordEntity>
+
     @Upsert suspend fun upsertComplaints(items: List<ComplaintEntity>)
+    @Upsert suspend fun upsertComplaintAttachments(items: List<ComplaintAttachmentEntity>)
     @Upsert suspend fun upsertJobAssignments(items: List<JobAssignmentEntity>)
     @Upsert suspend fun upsertWorkReports(items: List<WorkReportEntity>)
+    @Upsert suspend fun upsertWorkReportPhotos(items: List<WorkReportPhotoEntity>)
     @Upsert suspend fun upsertMaterialUsage(items: List<MaterialUsageEntity>)
+    @Upsert suspend fun upsertJobApprovals(items: List<JobApprovalEntity>)
+    @Upsert suspend fun upsertComplaintStatusHistory(items: List<ComplaintStatusHistoryEntity>)
     @Upsert suspend fun upsertSuppliers(items: List<SupplierEntity>)
     @Upsert suspend fun upsertItemCategories(items: List<ItemCategoryEntity>)
     @Upsert suspend fun upsertItems(items: List<ItemEntity>)
@@ -293,9 +339,19 @@ interface OperationsDao {
     @Upsert suspend fun upsertPurchases(items: List<PurchaseEntity>)
     @Upsert suspend fun upsertPurchaseItems(items: List<PurchaseItemEntity>)
     @Upsert suspend fun upsertStockMovements(items: List<StockMovementEntity>)
+    @Upsert suspend fun upsertStockTransfers(items: List<StockTransferEntity>)
+    @Upsert suspend fun upsertStockTransferLines(items: List<StockTransferLineEntity>)
+    @Upsert suspend fun upsertStockAdjustments(items: List<StockAdjustmentEntity>)
+    @Upsert suspend fun upsertStockCounts(items: List<StockCountEntity>)
+    @Upsert suspend fun upsertStockCountLines(items: List<StockCountLineEntity>)
     @Upsert suspend fun upsertSupplierPayments(items: List<SupplierPaymentEntity>)
+    @Upsert suspend fun upsertSupplierPaymentAllocations(items: List<SupplierPaymentAllocationEntity>)
+    @Upsert suspend fun upsertPurchaseApprovals(items: List<PurchaseApprovalEntity>)
+    @Upsert suspend fun upsertGoodsReceiptDetails(items: List<GoodsReceiptDetailEntity>)
     @Upsert suspend fun upsertDocuments(items: List<DocumentEntity>)
+    @Upsert suspend fun upsertDocumentAccessLogs(items: List<DocumentAccessLogEntity>)
     @Upsert suspend fun upsertNotifications(items: List<NotificationEntity>)
     @Upsert suspend fun upsertAuditLogs(items: List<AuditLogEntity>)
+    @Upsert suspend fun upsertBackupRecords(items: List<BackupRecordEntity>)
     @Upsert suspend fun upsertIntegrations(items: List<IntegrationConfigEntity>)
 }

@@ -198,6 +198,17 @@ class RentPaymentChequeService(
                         createdByUserId = ctx.userId
                     )
                 )
+            } else if (assetAccount == AccountingService.ACC_BANK) {
+                accountingService.applyBankAccountMovement(
+                    businessId = ctx.activeBusinessId,
+                    preferredBankAccountId = bankAccountId,
+                    amountFils = amountFils,
+                    direction = "CREDIT_IN",
+                    bankReference = refNum,
+                    description = "Rent Payment $recNum (${customer.fullName})",
+                    journalEntryId = journal.id,
+                    transactionDateEpoch = now
+                )
             }
 
             if (customer.portalUserId != null) {
@@ -229,7 +240,33 @@ class RentPaymentChequeService(
             require(pay.businessId == ctx.activeBusinessId) { "Cross-business reversal blocked" }
             require(pay.status == "CONFIRMED") { "Only CONFIRMED payments can be reversed" }
 
-            pay.journalEntryId?.let { accountingService.reverseJournalEntry(ctx, it, reason) }
+            val revEntry = pay.journalEntryId?.let { accountingService.reverseJournalEntry(ctx, it, reason) }
+            if (pay.method == "BANK_TRANSFER" || pay.method == "CARD" || pay.method == "CHEQUE") {
+                accountingService.applyBankAccountMovement(
+                    businessId = pay.businessId,
+                    preferredBankAccountId = pay.bankAccountId,
+                    amountFils = pay.amountFils,
+                    direction = "DEBIT_OUT",
+                    bankReference = "REV-${pay.referenceNumber}",
+                    description = "Reversed ${pay.referenceNumber}: $reason",
+                    journalEntryId = revEntry?.id ?: pay.journalEntryId,
+                    transactionDateEpoch = now
+                )
+            } else if (pay.method == "CASH") {
+                accDao.insertCashbookEntry(
+                    CashbookEntryEntity(
+                        id = CryptoUtil.newUuid(),
+                        businessId = pay.businessId,
+                        direction = "OUTFLOW",
+                        amountFils = pay.amountFils,
+                        description = "Reversed ${pay.referenceNumber}: $reason",
+                        reference = "REV-${pay.referenceNumber}",
+                        journalEntryId = revEntry?.id ?: pay.journalEntryId ?: "",
+                        entryDateEpoch = now,
+                        createdByUserId = ctx.userId
+                    )
+                )
+            }
             val allocs = dao.getAllocationsForPayment(pay.id)
             for (alloc in allocs) {
                 val rent = dao.getMonthlyRentById(alloc.monthlyRentId) ?: continue
@@ -421,6 +458,16 @@ class RentPaymentChequeService(
                             issuedAtEpoch = now
                         )
                     )
+                    accountingService.applyBankAccountMovement(
+                        businessId = ch.businessId,
+                        preferredBankAccountId = null,
+                        amountFils = ch.amountFils,
+                        direction = "CREDIT_IN",
+                        bankReference = bankReference.ifBlank { "CHQ-${ch.chequeNumber}" },
+                        description = "Cleared cheque #${ch.chequeNumber} (${ch.bankName})",
+                        journalEntryId = clearJournal.id,
+                        transactionDateEpoch = now
+                    )
                 }
                 "BOUNCED" -> {
                     require(ch.status in setOf("RECEIVED", "HELD", "DUE_SOON", "DEPOSITED")) {
@@ -549,6 +596,32 @@ class RentPaymentChequeService(
                     occurredAtEpoch = now
                 )
             )
+            if (transactionType == "RECEIVE") {
+                accDao.insertCashbookEntry(
+                    CashbookEntryEntity(
+                        id = CryptoUtil.newUuid(),
+                        businessId = dep.businessId,
+                        direction = "INFLOW",
+                        amountFils = amountFils,
+                        description = "Security deposit received: $reason",
+                        reference = je.entryNumber,
+                        journalEntryId = je.id,
+                        entryDateEpoch = now,
+                        createdByUserId = ctx.userId
+                    )
+                )
+            } else if (transactionType == "REFUND") {
+                accountingService.applyBankAccountMovement(
+                    businessId = dep.businessId,
+                    preferredBankAccountId = null,
+                    amountFils = amountFils,
+                    direction = "DEBIT_OUT",
+                    bankReference = je.entryNumber,
+                    description = "Security deposit refund: $reason",
+                    journalEntryId = je.id,
+                    transactionDateEpoch = now
+                )
+            }
 
             val newReceived = if (transactionType == "RECEIVE") dep.receivedFils + amountFils else dep.receivedFils
             val newDeducted = if (transactionType == "DEDUCTION") dep.deductedFils + amountFils else dep.deductedFils

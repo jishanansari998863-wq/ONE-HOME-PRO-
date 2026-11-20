@@ -839,23 +839,23 @@ class FirebaseCentralAuthorityGateway private constructor(
 
         try {
             if (existing == null) {
-                val payload = mapOf(
-                    "uid" to id.uid,
-                    "email" to id.email.ifBlank { "unknown@example.com" },
-                    "fullName" to submission.fullName.trim().take(100),
-                    "phone" to submission.phone.trim().take(30),
-                    "requestedRole" to submission.requestedRole,
-                    "requestedBusinessName" to submission.requestedBusinessName.trim().take(120),
-                    "requestedBranchName" to submission.requestedBranchName.trim().ifBlank { "Doha HQ" }.take(120),
-                    "qidNumber" to submission.qidNumber?.trim()?.take(40)?.ifBlank { null },
-                    "passportNumber" to submission.passportNumber?.trim()?.take(40)?.ifBlank { null },
-                    "identityDocSummary" to submission.identityDocSummary?.trim()?.take(250)?.ifBlank { null },
-                    "deviceId" to submission.deviceId.take(128),
-                    "deviceName" to submission.deviceName.take(120),
-                    "status" to SuperAdminConfig.GRANT_PENDING,
-                    "createdAt" to FieldValue.serverTimestamp(),
-                    "updatedAt" to FieldValue.serverTimestamp()
-                ).filterValues { it != null } as Map<String, Any>
+                val payload = buildMap<String, Any> {
+                    put("uid", id.uid)
+                    put("email", id.email.ifBlank { "unknown@example.com" })
+                    put("fullName", submission.fullName.trim().take(100))
+                    put("phone", submission.phone.trim().take(30))
+                    put("requestedRole", submission.requestedRole)
+                    put("requestedBusinessName", submission.requestedBusinessName.trim().take(120))
+                    put("requestedBranchName", submission.requestedBranchName.trim().ifBlank { "Doha HQ" }.take(120))
+                    submission.qidNumber?.trim()?.take(40)?.takeIf { it.isNotBlank() }?.let { put("qidNumber", it) }
+                    submission.passportNumber?.trim()?.take(40)?.takeIf { it.isNotBlank() }?.let { put("passportNumber", it) }
+                    submission.identityDocSummary?.trim()?.take(250)?.takeIf { it.isNotBlank() }?.let { put("identityDocSummary", it) }
+                    put("deviceId", submission.deviceId.take(128))
+                    put("deviceName", submission.deviceName.take(120))
+                    put("status", SuperAdminConfig.GRANT_PENDING)
+                    put("createdAt", FieldValue.serverTimestamp())
+                    put("updatedAt", FieldValue.serverTimestamp())
+                }
                 docRef.set(payload).awaitResult()
             } else {
                 val updatePayload = mutableMapOf<String, Any>(
@@ -1545,16 +1545,16 @@ class FirebaseCentralAuthorityGateway private constructor(
         val id = currentIdentity() ?: return
         val logId = CryptoUtil.newUuid()
         val ref = db.collection(COL_AUDIT_LOGS).document(logId)
-        val payload = mapOf(
-            "actorUid" to id.uid,
-            "actorEmail" to id.email.ifBlank { "unknown@example.com" },
-            "action" to action.take(64),
-            "targetUid" to targetUid?.take(128),
-            "targetEmail" to targetEmail?.take(160),
-            "businessId" to businessId?.take(128),
-            "details" to details.take(500).ifBlank { action },
-            "createdAt" to FieldValue.serverTimestamp()
-        ).filterValues { it != null } as Map<String, Any>
+        val payload = buildMap<String, Any> {
+            put("actorUid", id.uid)
+            put("actorEmail", id.email.ifBlank { "unknown@example.com" })
+            put("action", action.take(64))
+            targetUid?.take(128)?.let { put("targetUid", it) }
+            targetEmail?.take(160)?.let { put("targetEmail", it) }
+            businessId?.take(128)?.let { put("businessId", it) }
+            put("details", details.take(500).ifBlank { action })
+            put("createdAt", FieldValue.serverTimestamp())
+        }
         try {
             ref.set(payload).awaitResult()
         } catch (e: Exception) {

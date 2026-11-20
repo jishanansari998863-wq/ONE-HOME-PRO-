@@ -112,23 +112,23 @@ data class AccessRequestRecord(
     @ServerTimestamp val createdAt: Timestamp? = null,
     @ServerTimestamp val updatedAt: Timestamp? = null
 ) {
-    fun toCreateMap(): Map<String, Any> = mapOf(
-        "uid" to uid,
-        "email" to email,
-        "fullName" to fullName,
-        "phone" to phone,
-        "requestedRole" to requestedRole,
-        "requestedBusinessName" to requestedBusinessName,
-        "requestedBranchName" to requestedBranchName,
-        "qidNumber" to qidNumber,
-        "passportNumber" to passportNumber,
-        "identityDocSummary" to identityDocSummary,
-        "deviceId" to deviceId,
-        "deviceName" to deviceName,
-        "status" to SuperAdminConfig.GRANT_PENDING,
-        "createdAt" to FieldValue.serverTimestamp(),
-        "updatedAt" to FieldValue.serverTimestamp()
-    ).filterValues { it != null } as Map<String, Any>
+    fun toCreateMap(): Map<String, Any> = buildMap {
+        put("uid", uid)
+        put("email", email)
+        put("fullName", fullName)
+        put("phone", phone)
+        put("requestedRole", requestedRole)
+        put("requestedBusinessName", requestedBusinessName)
+        put("requestedBranchName", requestedBranchName)
+        qidNumber?.let { put("qidNumber", it) }
+        passportNumber?.let { put("passportNumber", it) }
+        identityDocSummary?.let { put("identityDocSummary", it) }
+        put("deviceId", deviceId)
+        put("deviceName", deviceName)
+        put("status", SuperAdminConfig.GRANT_PENDING)
+        put("createdAt", FieldValue.serverTimestamp())
+        put("updatedAt", FieldValue.serverTimestamp())
+    }
 }
 
 @IgnoreExtraProperties

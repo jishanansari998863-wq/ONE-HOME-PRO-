@@ -21,6 +21,7 @@ data class CloudSyncPayload(
     val customers: List<CustomerEntity> = emptyList(),
     val familyMembers: List<FamilyMemberEntity> = emptyList(),
     val agreements: List<AgreementEntity> = emptyList(),
+    val agreementMembers: List<AgreementMemberEntity> = emptyList(),
     val tenancyHistory: List<TenancyHistoryEntity> = emptyList(),
     val monthlyRents: List<MonthlyRentEntity> = emptyList(),
     val payments: List<PaymentEntity> = emptyList(),
@@ -40,15 +41,22 @@ data class CloudSyncPayload(
     val pettyCashEntries: List<PettyCashEntryEntity> = emptyList(),
     val bankTransactions: List<BankTransactionEntity> = emptyList(),
     val bankReconciliations: List<BankReconciliationEntity> = emptyList(),
+    val approvalRequests: List<ApprovalRequestEntity> = emptyList(),
     val fiscalPeriods: List<FiscalPeriodEntity> = emptyList(),
     val departments: List<DepartmentEntity> = emptyList(),
     val employees: List<EmployeeEntity> = emptyList(),
     val teams: List<TeamEntity> = emptyList(),
+    val teamMembers: List<TeamMemberEntity> = emptyList(),
     val attendance: List<AttendanceEntity> = emptyList(),
+    val employeeWorkHistory: List<EmployeeWorkHistoryEntity> = emptyList(),
     val complaints: List<ComplaintEntity> = emptyList(),
+    val complaintAttachments: List<ComplaintAttachmentEntity> = emptyList(),
     val jobAssignments: List<JobAssignmentEntity> = emptyList(),
     val workReports: List<WorkReportEntity> = emptyList(),
+    val workReportPhotos: List<WorkReportPhotoEntity> = emptyList(),
     val materialUsage: List<MaterialUsageEntity> = emptyList(),
+    val jobApprovals: List<JobApprovalEntity> = emptyList(),
+    val complaintStatusHistory: List<ComplaintStatusHistoryEntity> = emptyList(),
     val suppliers: List<SupplierEntity> = emptyList(),
     val itemCategories: List<ItemCategoryEntity> = emptyList(),
     val items: List<ItemEntity> = emptyList(),
@@ -56,10 +64,20 @@ data class CloudSyncPayload(
     val purchases: List<PurchaseEntity> = emptyList(),
     val purchaseItems: List<PurchaseItemEntity> = emptyList(),
     val stockMovements: List<StockMovementEntity> = emptyList(),
+    val stockTransfers: List<StockTransferEntity> = emptyList(),
+    val stockTransferLines: List<StockTransferLineEntity> = emptyList(),
+    val stockAdjustments: List<StockAdjustmentEntity> = emptyList(),
+    val stockCounts: List<StockCountEntity> = emptyList(),
+    val stockCountLines: List<StockCountLineEntity> = emptyList(),
     val supplierPayments: List<SupplierPaymentEntity> = emptyList(),
+    val supplierPaymentAllocations: List<SupplierPaymentAllocationEntity> = emptyList(),
+    val purchaseApprovals: List<PurchaseApprovalEntity> = emptyList(),
+    val goodsReceiptDetails: List<GoodsReceiptDetailEntity> = emptyList(),
     val documents: List<DocumentEntity> = emptyList(),
+    val documentAccessLogs: List<DocumentAccessLogEntity> = emptyList(),
     val notifications: List<NotificationEntity> = emptyList(),
     val auditLogs: List<AuditLogEntity> = emptyList(),
+    val backupRecords: List<BackupRecordEntity> = emptyList(),
     val integrations: List<IntegrationConfigEntity> = emptyList(),
     val appLanguageCode: String = "en",
     val darkTheme: Boolean = false
@@ -68,18 +86,21 @@ data class CloudSyncPayload(
         (if (business != null) 1 else 0) +
             properties.size + buildings.size + floors.size + rooms.size +
             reservations.size + inspections.size + customers.size + familyMembers.size +
-            agreements.size + tenancyHistory.size + monthlyRents.size + payments.size +
+            agreements.size + agreementMembers.size + tenancyHistory.size + monthlyRents.size + payments.size +
             paymentAllocations.size + receipts.size + securityDeposits.size +
             depositTransactions.size + cheques.size + advanceRents.size +
             accounts.size + journals.size + journalLines.size +
             incomeRecords.size + expenseRecords.size + bankAccounts.size +
             cashbookEntries.size + pettyCashEntries.size + bankTransactions.size +
-            bankReconciliations.size + fiscalPeriods.size +
-            departments.size + employees.size + teams.size + attendance.size +
-            complaints.size + jobAssignments.size + workReports.size + materialUsage.size +
+            bankReconciliations.size + approvalRequests.size + fiscalPeriods.size +
+            departments.size + employees.size + teams.size + teamMembers.size + attendance.size + employeeWorkHistory.size +
+            complaints.size + complaintAttachments.size + jobAssignments.size + workReports.size +
+            workReportPhotos.size + materialUsage.size + jobApprovals.size + complaintStatusHistory.size +
             suppliers.size + itemCategories.size + items.size + stockLocations.size +
-            purchases.size + purchaseItems.size + stockMovements.size + supplierPayments.size +
-            documents.size + notifications.size + auditLogs.size + integrations.size
+            purchases.size + purchaseItems.size + stockMovements.size + stockTransfers.size +
+            stockTransferLines.size + stockAdjustments.size + stockCounts.size + stockCountLines.size +
+            supplierPayments.size + supplierPaymentAllocations.size + purchaseApprovals.size + goodsReceiptDetails.size +
+            documents.size + documentAccessLogs.size + notifications.size + auditLogs.size + backupRecords.size + integrations.size
 }
 
 data class CloudRestoreResult(
@@ -125,6 +146,7 @@ class CloudDataSyncService(
             customers = coreDao.getCustomersByBusiness(bizId),
             familyMembers = coreDao.getFamilyMembersByBusiness(bizId),
             agreements = coreDao.getAgreementsByBusiness(bizId),
+            agreementMembers = coreDao.getAgreementMembersByBusiness(bizId),
             tenancyHistory = coreDao.getTenancyHistoryByBusiness(bizId),
             monthlyRents = coreDao.getMonthlyRentsByBusiness(bizId),
             payments = coreDao.getPaymentsByBusiness(bizId),
@@ -144,15 +166,22 @@ class CloudDataSyncService(
             pettyCashEntries = accDao.getPettyCashEntriesByBusiness(bizId),
             bankTransactions = accDao.getBankTransactionsByBusiness(bizId),
             bankReconciliations = accDao.getBankReconciliationsByBusiness(bizId),
+            approvalRequests = accDao.getApprovalRequestsByBusiness(bizId),
             fiscalPeriods = accDao.getFiscalPeriodsByBusiness(bizId),
             departments = hrDao.getDepartmentsByBusiness(bizId),
             employees = hrDao.getAllEmployeesRaw(bizId),
             teams = hrDao.getTeamsByBusiness(bizId),
+            teamMembers = hrDao.getTeamMembersByBusiness(bizId),
             attendance = hrDao.getAttendanceByBusiness(bizId),
+            employeeWorkHistory = hrDao.getEmployeeWorkHistoryByBusiness(bizId),
             complaints = opsDao.getComplaintsByBusiness(bizId),
+            complaintAttachments = opsDao.getComplaintAttachmentsByBusiness(bizId),
             jobAssignments = opsDao.getJobAssignmentsByBusiness(bizId),
             workReports = opsDao.getWorkReportsByBusiness(bizId),
+            workReportPhotos = opsDao.getWorkReportPhotosByBusiness(bizId),
             materialUsage = opsDao.getMaterialUsageByBusiness(bizId),
+            jobApprovals = opsDao.getJobApprovalsByBusiness(bizId),
+            complaintStatusHistory = opsDao.getComplaintStatusHistoryByBusiness(bizId),
             suppliers = opsDao.getSuppliersByBusiness(bizId),
             itemCategories = opsDao.getItemCategoriesByBusiness(bizId),
             items = opsDao.getItemsByBusiness(bizId),
@@ -160,10 +189,20 @@ class CloudDataSyncService(
             purchases = opsDao.getPurchasesByBusiness(bizId),
             purchaseItems = opsDao.getPurchaseItemsByBusiness(bizId),
             stockMovements = opsDao.getStockMovementsByBusiness(bizId),
+            stockTransfers = opsDao.getStockTransfersByBusiness(bizId),
+            stockTransferLines = opsDao.getStockTransferLinesByBusiness(bizId),
+            stockAdjustments = opsDao.getStockAdjustmentsByBusiness(bizId),
+            stockCounts = opsDao.getStockCountsByBusiness(bizId),
+            stockCountLines = opsDao.getStockCountLinesByBusiness(bizId),
             supplierPayments = opsDao.getSupplierPaymentsByBusiness(bizId),
+            supplierPaymentAllocations = opsDao.getSupplierPaymentAllocationsByBusiness(bizId),
+            purchaseApprovals = opsDao.getPurchaseApprovalsByBusiness(bizId),
+            goodsReceiptDetails = opsDao.getGoodsReceiptDetailsByBusiness(bizId),
             documents = opsDao.getDocumentsByBusiness(bizId),
+            documentAccessLogs = opsDao.getDocumentAccessLogsByBusiness(bizId),
             notifications = opsDao.getNotificationsByBusiness(bizId),
             auditLogs = opsDao.getAuditLogsByBusiness(bizId),
+            backupRecords = opsDao.getBackupRecordsByBusiness(bizId),
             integrations = opsDao.getIntegrationsByBusiness(bizId),
             appLanguageCode = language.code,
             darkTheme = darkTheme
@@ -226,6 +265,7 @@ class CloudDataSyncService(
             if (payload.customers.isNotEmpty()) coreDao.upsertCustomers(payload.customers)
             if (payload.familyMembers.isNotEmpty()) coreDao.upsertFamilyMembers(payload.familyMembers)
             if (payload.agreements.isNotEmpty()) coreDao.upsertAgreements(payload.agreements)
+            if (payload.agreementMembers.isNotEmpty()) coreDao.upsertAgreementMembers(payload.agreementMembers)
             if (payload.tenancyHistory.isNotEmpty()) coreDao.upsertTenancyHistory(payload.tenancyHistory)
             if (payload.monthlyRents.isNotEmpty()) coreDao.upsertMonthlyRents(payload.monthlyRents)
             if (payload.payments.isNotEmpty()) coreDao.upsertPayments(payload.payments)
@@ -285,12 +325,15 @@ class CloudDataSyncService(
             if (payload.pettyCashEntries.isNotEmpty()) accDao.upsertPettyCashEntries(payload.pettyCashEntries)
             if (payload.bankTransactions.isNotEmpty()) accDao.upsertBankTransactions(payload.bankTransactions)
             if (payload.bankReconciliations.isNotEmpty()) accDao.upsertBankReconciliations(payload.bankReconciliations)
+            if (payload.approvalRequests.isNotEmpty()) accDao.upsertApprovalRequests(payload.approvalRequests)
             if (payload.fiscalPeriods.isNotEmpty()) accDao.upsertFiscalPeriods(payload.fiscalPeriods)
 
             if (payload.departments.isNotEmpty()) hrDao.upsertDepartments(payload.departments)
             if (payload.employees.isNotEmpty()) hrDao.upsertEmployees(payload.employees)
             if (payload.teams.isNotEmpty()) hrDao.upsertTeams(payload.teams)
+            if (payload.teamMembers.isNotEmpty()) hrDao.upsertTeamMembers(payload.teamMembers)
             if (payload.attendance.isNotEmpty()) hrDao.upsertAttendance(payload.attendance)
+            if (payload.employeeWorkHistory.isNotEmpty()) hrDao.upsertEmployeeWorkHistory(payload.employeeWorkHistory)
 
             if (payload.suppliers.isNotEmpty()) opsDao.upsertSuppliers(payload.suppliers)
             if (payload.itemCategories.isNotEmpty()) opsDao.upsertItemCategories(payload.itemCategories)
@@ -298,15 +341,29 @@ class CloudDataSyncService(
             if (payload.items.isNotEmpty()) opsDao.upsertItems(payload.items)
             if (payload.purchases.isNotEmpty()) opsDao.upsertPurchases(payload.purchases)
             if (payload.purchaseItems.isNotEmpty()) opsDao.upsertPurchaseItems(payload.purchaseItems)
+            if (payload.purchaseApprovals.isNotEmpty()) opsDao.upsertPurchaseApprovals(payload.purchaseApprovals)
             if (payload.stockMovements.isNotEmpty()) opsDao.upsertStockMovements(payload.stockMovements)
+            if (payload.stockTransfers.isNotEmpty()) opsDao.upsertStockTransfers(payload.stockTransfers)
+            if (payload.stockTransferLines.isNotEmpty()) opsDao.upsertStockTransferLines(payload.stockTransferLines)
+            if (payload.stockAdjustments.isNotEmpty()) opsDao.upsertStockAdjustments(payload.stockAdjustments)
+            if (payload.stockCounts.isNotEmpty()) opsDao.upsertStockCounts(payload.stockCounts)
+            if (payload.stockCountLines.isNotEmpty()) opsDao.upsertStockCountLines(payload.stockCountLines)
+            if (payload.goodsReceiptDetails.isNotEmpty()) opsDao.upsertGoodsReceiptDetails(payload.goodsReceiptDetails)
             if (payload.complaints.isNotEmpty()) opsDao.upsertComplaints(payload.complaints)
+            if (payload.complaintAttachments.isNotEmpty()) opsDao.upsertComplaintAttachments(payload.complaintAttachments)
             if (payload.jobAssignments.isNotEmpty()) opsDao.upsertJobAssignments(payload.jobAssignments)
             if (payload.workReports.isNotEmpty()) opsDao.upsertWorkReports(payload.workReports)
+            if (payload.workReportPhotos.isNotEmpty()) opsDao.upsertWorkReportPhotos(payload.workReportPhotos)
             if (payload.materialUsage.isNotEmpty()) opsDao.upsertMaterialUsage(payload.materialUsage)
+            if (payload.jobApprovals.isNotEmpty()) opsDao.upsertJobApprovals(payload.jobApprovals)
+            if (payload.complaintStatusHistory.isNotEmpty()) opsDao.upsertComplaintStatusHistory(payload.complaintStatusHistory)
             if (payload.supplierPayments.isNotEmpty()) opsDao.upsertSupplierPayments(payload.supplierPayments)
+            if (payload.supplierPaymentAllocations.isNotEmpty()) opsDao.upsertSupplierPaymentAllocations(payload.supplierPaymentAllocations)
             if (payload.documents.isNotEmpty()) opsDao.upsertDocuments(payload.documents)
+            if (payload.documentAccessLogs.isNotEmpty()) opsDao.upsertDocumentAccessLogs(payload.documentAccessLogs)
             if (payload.notifications.isNotEmpty()) opsDao.upsertNotifications(payload.notifications)
             if (payload.auditLogs.isNotEmpty()) opsDao.upsertAuditLogs(payload.auditLogs)
+            if (payload.backupRecords.isNotEmpty()) opsDao.upsertBackupRecords(payload.backupRecords)
             if (payload.integrations.isNotEmpty()) opsDao.upsertIntegrations(payload.integrations)
         }
 
