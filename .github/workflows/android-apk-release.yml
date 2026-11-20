@@ -200,16 +200,20 @@ jobs:
           npm install -g firebase-tools
 
       - name: Configure optional google-services.json from GitHub Secrets
-        if: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$GOOGLE_SERVICES_JSON" == \{* ]]; then
+          if [ -z "${GOOGLE_SERVICES_JSON:-}" ]; then
+            echo "GOOGLE_SERVICES_JSON secret not configured; using repository app/google-services.json."
+            exit 0
+          fi
+          TRIMMED_JSON="${GOOGLE_SERVICES_JSON#"${GOOGLE_SERVICES_JSON%%[![:space:]]*}"}"
+          if [[ "$TRIMMED_JSON" == \{* ]]; then
             printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
           else
-            printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
+            printf '%s' "$GOOGLE_SERVICES_JSON" | tr -d '\r\n ' | base64 -d > app/google-services.json
           fi
           test -s app/google-services.json
 
@@ -388,16 +392,20 @@ jobs:
           gradle-version: '9.3.1'
 
       - name: Configure optional google-services.json from GitHub Secrets
-        if: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$GOOGLE_SERVICES_JSON" == \{* ]]; then
+          if [ -z "${GOOGLE_SERVICES_JSON:-}" ]; then
+            echo "GOOGLE_SERVICES_JSON secret not configured; using repository app/google-services.json."
+            exit 0
+          fi
+          TRIMMED_JSON="${GOOGLE_SERVICES_JSON#"${GOOGLE_SERVICES_JSON%%[![:space:]]*}"}"
+          if [[ "$TRIMMED_JSON" == \{* ]]; then
             printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
           else
-            printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
+            printf '%s' "$GOOGLE_SERVICES_JSON" | tr -d '\r\n ' | base64 -d > app/google-services.json
           fi
           test -s app/google-services.json
 
@@ -450,12 +458,9 @@ jobs:
             ONE_HOME_PRO_FINAL.apk
           if-no-files-found: error
 
-      - name: Build Signed Release APK & Play Store AAB (when upload keystore secrets configured)
-        if: >-
-          success() &&
-          secrets.RELEASE_KEYSTORE_BASE64 != '' &&
-          secrets.STORE_PASSWORD != '' &&
-          secrets.KEY_PASSWORD != ''
+      - name: Check optional release signing secrets
+        id: release_signing
+        if: ${{ success() }}
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
@@ -463,7 +468,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 -d > my-upload-key.jks
+          if [ -n "${RELEASE_KEYSTORE_BASE64:-}" ] && [ -n "${STORE_PASSWORD:-}" ] && [ -n "${KEY_PASSWORD:-}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Release signing secrets configured; signed release build enabled."
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Release signing secrets not configured; skipping signed release build."
+          fi
+
+      - name: Build Signed Release APK & Play Store AAB (when upload keystore secrets configured)
+        if: ${{ success() && steps.release_signing.outputs.enabled == 'true' }}
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > my-upload-key.jks
           trap 'rm -f my-upload-key.jks' EXIT
           export KEYSTORE_PATH="$PWD/my-upload-key.jks"
           gradle :app:bundleRelease :app:assembleRelease \
@@ -477,11 +499,7 @@ jobs:
           test -s app/build/outputs/apk/release/app-release.apk
 
       - name: Upload Signed Release Artifacts (when built)
-        if: >-
-          success() &&
-          secrets.RELEASE_KEYSTORE_BASE64 != '' &&
-          secrets.STORE_PASSWORD != '' &&
-          secrets.KEY_PASSWORD != ''
+        if: ${{ success() && steps.release_signing.outputs.enabled == 'true' }}
         uses: actions/upload-artifact@v6
         with:
           name: one-home-pro-signed-release
