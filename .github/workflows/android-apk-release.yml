@@ -177,6 +177,27 @@ jobs:
           accept_licenses
           "$SDKMANAGER" --sdk_root="$SDK_ROOT" --version
 
+      - name: Ensure debug keystore exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f debug.keystore ]; then
+            if [ -f debug.keystore.base64 ]; then
+              base64 -d debug.keystore.base64 > debug.keystore
+            else
+              keytool -genkeypair -noprompt \
+                -keystore debug.keystore \
+                -storepass android \
+                -alias androiddebugkey \
+                -keypass android \
+                -keyalg RSA \
+                -keysize 2048 \
+                -validity 10000 \
+                -dname "CN=Android Debug,O=Android,C=US"
+            fi
+          fi
+          test -s debug.keystore
+
       - name: Set up Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v5
         with:
@@ -201,36 +222,121 @@ jobs:
 
       - name: Configure optional google-services.json from GitHub Secrets
         env:
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON || vars.GOOGLE_SERVICES_JSON }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "${GOOGLE_SERVICES_JSON:-}" ]; then
-            echo "GOOGLE_SERVICES_JSON secret not configured; using repository app/google-services.json."
-            exit 0
-          fi
-          TRIMMED_JSON="${GOOGLE_SERVICES_JSON#"${GOOGLE_SERVICES_JSON%%[![:space:]]*}"}"
-          if [[ "$TRIMMED_JSON" == \{* ]]; then
-            printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
-          else
-            printf '%s' "$GOOGLE_SERVICES_JSON" | tr -d '\r\n ' | base64 -d > app/google-services.json
-          fi
-          test -s app/google-services.json
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          import sys
+
+          raw = os.environ.get("GOOGLE_SERVICES_JSON", "")
+          if not raw or not raw.strip():
+              print("GOOGLE_SERVICES_JSON secret not configured; checking repository app/google-services.json.")
+              sys.exit(0)
+
+          cleaned = raw.lstrip("\ufeff").strip()
+          decoded_text = None
+
+          if cleaned.startswith("{"):
+              try:
+                  json.loads(cleaned)
+                  decoded_text = cleaned + "\n"
+              except Exception as exc:
+                  print(f"::error::GOOGLE_SERVICES_JSON looks like raw JSON but failed to parse: {exc}")
+                  sys.exit(1)
+          elif cleaned.startswith('"'):
+              try:
+                  unquoted = json.loads(cleaned)
+                  if isinstance(unquoted, str) and unquoted.lstrip("\ufeff").strip().startswith("{"):
+                      json.loads(unquoted)
+                      decoded_text = unquoted.lstrip("\ufeff").strip() + "\n"
+              except Exception:
+                  pass
+
+          if decoded_text is None and not cleaned.startswith("{"):
+              b64_compact = "".join(cleaned.split())
+              pad_len = (-len(b64_compact)) % 4
+              b64_padded = b64_compact + ("=" * pad_len)
+              for decoder in (base64.b64decode, base64.urlsafe_b64decode):
+                  try:
+                      candidate = decoder(b64_padded)
+                      text = candidate.decode("utf-8").lstrip("\ufeff").strip()
+                      if text.startswith("{"):
+                          json.loads(text)
+                          decoded_text = text + "\n"
+                          break
+                  except Exception:
+                      pass
+
+          if decoded_text is None:
+              print("::error::GOOGLE_SERVICES_JSON secret is neither valid JSON nor valid Base64-encoded JSON.")
+              sys.exit(1)
+
+          os.makedirs("app", exist_ok=True)
+          with open("app/google-services.json", "w", encoding="utf-8") as f:
+              f.write(decoded_text)
+          if os.path.getsize("app/google-services.json") <= 0:
+              print("::error::Written app/google-services.json is empty.")
+              sys.exit(1)
+          print("Successfully wrote app/google-services.json from GOOGLE_SERVICES_JSON secret.")
+          PY
 
       - name: Verify google-services.json is present
         shell: bash
         run: |
+          set -euo pipefail
           if [ ! -s app/google-services.json ]; then
             echo "::error::app/google-services.json is missing. Commit app/google-services.json or set the GOOGLE_SERVICES_JSON GitHub Actions secret."
             exit 1
           fi
+          python3 - <<'PY'
+          import json
+          import re
+          import sys
+
+          with open("app/google-services.json", "r", encoding="utf-8-sig") as f:
+              data = json.load(f)
+
+          with open("app/build.gradle.kts", "r", encoding="utf-8") as f:
+              gradle_text = f.read()
+
+          m = re.search(r'applicationId\s*=\s*"([^"]+)"', gradle_text)
+          if not m:
+              print("::error::Could not determine applicationId from app/build.gradle.kts.")
+              sys.exit(1)
+          app_id = m.group(1)
+
+          project_id = (data.get("project_info") or {}).get("project_id", "")
+          clients = data.get("client") or []
+          pkg_names = [
+              ((c.get("client_info") or {}).get("android_client_info") or {}).get("package_name", "")
+              for c in clients
+          ]
+          has_api_key = any(
+              bool((c.get("api_key") or [{}])[0].get("current_key"))
+              for c in clients
+              if c.get("api_key")
+          )
+
+          if not project_id or not has_api_key:
+              print("::error::app/google-services.json is incomplete (missing project_id or api_key).")
+              sys.exit(1)
+          if app_id not in pkg_names:
+              print(f"::error::Firebase package_name mismatch. Expected '{app_id}', found {pkg_names}.")
+              sys.exit(1)
+
+          print(f"Verified app/google-services.json: project_id={project_id}, package_name={app_id}")
+          PY
 
       - name: Run Android Unit, Robolectric & Emulator Security Tests
         shell: bash
         run: |
           set -euo pipefail
           firebase emulators:exec --only auth,firestore --project demo-no-project '
-            gradle :app:testDebugUnitTest --no-daemon --max-workers=2 -Dkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs="-Xmx2560m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8" --stacktrace --console=plain
+            gradle :app:testDebugUnitTest --no-daemon --max-workers=2 -Dkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=640m -Dfile.encoding=UTF-8" --stacktrace --console=plain
           '
 
       - name: Run Android Lint (Debug)
@@ -239,7 +345,7 @@ jobs:
           --no-daemon
           --max-workers=2
           -Dkotlin.compiler.execution.strategy=in-process
-          -Dorg.gradle.jvmargs="-Xmx2560m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
+          -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=640m -Dfile.encoding=UTF-8"
           --console=plain
 
       - name: Upload Test & Lint Reports
@@ -393,29 +499,114 @@ jobs:
 
       - name: Configure optional google-services.json from GitHub Secrets
         env:
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON || vars.GOOGLE_SERVICES_JSON }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "${GOOGLE_SERVICES_JSON:-}" ]; then
-            echo "GOOGLE_SERVICES_JSON secret not configured; using repository app/google-services.json."
-            exit 0
-          fi
-          TRIMMED_JSON="${GOOGLE_SERVICES_JSON#"${GOOGLE_SERVICES_JSON%%[![:space:]]*}"}"
-          if [[ "$TRIMMED_JSON" == \{* ]]; then
-            printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
-          else
-            printf '%s' "$GOOGLE_SERVICES_JSON" | tr -d '\r\n ' | base64 -d > app/google-services.json
-          fi
-          test -s app/google-services.json
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          import sys
+
+          raw = os.environ.get("GOOGLE_SERVICES_JSON", "")
+          if not raw or not raw.strip():
+              print("GOOGLE_SERVICES_JSON secret not configured; checking repository app/google-services.json.")
+              sys.exit(0)
+
+          cleaned = raw.lstrip("\ufeff").strip()
+          decoded_text = None
+
+          if cleaned.startswith("{"):
+              try:
+                  json.loads(cleaned)
+                  decoded_text = cleaned + "\n"
+              except Exception as exc:
+                  print(f"::error::GOOGLE_SERVICES_JSON looks like raw JSON but failed to parse: {exc}")
+                  sys.exit(1)
+          elif cleaned.startswith('"'):
+              try:
+                  unquoted = json.loads(cleaned)
+                  if isinstance(unquoted, str) and unquoted.lstrip("\ufeff").strip().startswith("{"):
+                      json.loads(unquoted)
+                      decoded_text = unquoted.lstrip("\ufeff").strip() + "\n"
+              except Exception:
+                  pass
+
+          if decoded_text is None and not cleaned.startswith("{"):
+              b64_compact = "".join(cleaned.split())
+              pad_len = (-len(b64_compact)) % 4
+              b64_padded = b64_compact + ("=" * pad_len)
+              for decoder in (base64.b64decode, base64.urlsafe_b64decode):
+                  try:
+                      candidate = decoder(b64_padded)
+                      text = candidate.decode("utf-8").lstrip("\ufeff").strip()
+                      if text.startswith("{"):
+                          json.loads(text)
+                          decoded_text = text + "\n"
+                          break
+                  except Exception:
+                      pass
+
+          if decoded_text is None:
+              print("::error::GOOGLE_SERVICES_JSON secret is neither valid JSON nor valid Base64-encoded JSON.")
+              sys.exit(1)
+
+          os.makedirs("app", exist_ok=True)
+          with open("app/google-services.json", "w", encoding="utf-8") as f:
+              f.write(decoded_text)
+          if os.path.getsize("app/google-services.json") <= 0:
+              print("::error::Written app/google-services.json is empty.")
+              sys.exit(1)
+          print("Successfully wrote app/google-services.json from GOOGLE_SERVICES_JSON secret.")
+          PY
 
       - name: Verify google-services.json is present
         shell: bash
         run: |
+          set -euo pipefail
           if [ ! -s app/google-services.json ]; then
             echo "::error::app/google-services.json is missing. Commit app/google-services.json or set the GOOGLE_SERVICES_JSON GitHub Actions secret."
             exit 1
           fi
+          python3 - <<'PY'
+          import json
+          import re
+          import sys
+
+          with open("app/google-services.json", "r", encoding="utf-8-sig") as f:
+              data = json.load(f)
+
+          with open("app/build.gradle.kts", "r", encoding="utf-8") as f:
+              gradle_text = f.read()
+
+          m = re.search(r'applicationId\s*=\s*"([^"]+)"', gradle_text)
+          if not m:
+              print("::error::Could not determine applicationId from app/build.gradle.kts.")
+              sys.exit(1)
+          app_id = m.group(1)
+
+          project_id = (data.get("project_info") or {}).get("project_id", "")
+          clients = data.get("client") or []
+          pkg_names = [
+              ((c.get("client_info") or {}).get("android_client_info") or {}).get("package_name", "")
+              for c in clients
+          ]
+          has_api_key = any(
+              bool((c.get("api_key") or [{}])[0].get("current_key"))
+              for c in clients
+              if c.get("api_key")
+          )
+
+          if not project_id or not has_api_key:
+              print("::error::app/google-services.json is incomplete (missing project_id or api_key).")
+              sys.exit(1)
+          if app_id not in pkg_names:
+              print(f"::error::Firebase package_name mismatch. Expected '{app_id}', found {pkg_names}.")
+              sys.exit(1)
+
+          print(f"Verified app/google-services.json: project_id={project_id}, package_name={app_id}")
+          PY
 
       - name: Build Android Debug APK
         run: >
@@ -423,7 +614,7 @@ jobs:
           --no-daemon
           --max-workers=2
           -Dkotlin.compiler.execution.strategy=in-process
-          -Dorg.gradle.jvmargs="-Xmx2560m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
+          -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=640m -Dfile.encoding=UTF-8"
           --stacktrace
           --console=plain
 
@@ -435,13 +626,19 @@ jobs:
           test -s app/build/outputs/apk/debug/app-debug.apk
           cp app/build/outputs/apk/debug/app-debug.apk ONE_HOME_PRO_FINAL.apk
           ls -lh app/build/outputs/apk/debug/app-debug.apk ONE_HOME_PRO_FINAL.apk
-          AAPT2="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/36.0.0/aapt2"
-          APKSIGNER="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/36.0.0/apksigner"
-          "$AAPT2" dump resources ONE_HOME_PRO_FINAL.apk | grep -q "string/google_app_id"
-          "$AAPT2" dump resources ONE_HOME_PRO_FINAL.apk | grep -q "string/google_api_key"
-          "$AAPT2" dump resources ONE_HOME_PRO_FINAL.apk | grep -q "string/default_web_client_id"
-          "$AAPT2" dump resources ONE_HOME_PRO_FINAL.apk | grep -q "string/firestore_database_id"
-          "$AAPT2" dump resources ONE_HOME_PRO_FINAL.apk | grep -q "string/project_id"
+          SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          AAPT2="$SDK_ROOT/build-tools/36.0.0/aapt2"
+          [ -x "$AAPT2" ] || AAPT2="$(find "$SDK_ROOT/build-tools" -name aapt2 -type f | sort -V | tail -n 1)"
+          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          [ -x "$APKSIGNER" ] || APKSIGNER="$(find "$SDK_ROOT/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          RES_DUMP="$(mktemp)"
+          trap 'rm -f "$RES_DUMP"' EXIT
+          "$AAPT2" dump resources ONE_HOME_PRO_FINAL.apk > "$RES_DUMP"
+          grep -q "string/google_app_id" "$RES_DUMP"
+          grep -q "string/google_api_key" "$RES_DUMP"
+          grep -q "string/default_web_client_id" "$RES_DUMP"
+          grep -q "string/firestore_database_id" "$RES_DUMP"
+          grep -q "string/project_id" "$RES_DUMP"
           "$APKSIGNER" verify --verbose ONE_HOME_PRO_FINAL.apk
           VERSION_NAME="$(grep -E 'versionName\s*=' app/build.gradle.kts | sed -E 's/.*"([^"]+)".*/\1/' | head -n 1)"
           VERSION_CODE="$(grep -E 'versionCode\s*=' app/build.gradle.kts | sed -E 's/[^0-9]//g' | head -n 1)"
@@ -492,7 +689,7 @@ jobs:
             --no-daemon \
             --max-workers=2 \
             -Dkotlin.compiler.execution.strategy=in-process \
-            -Dorg.gradle.jvmargs="-Xmx2560m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8" \
+            -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=640m -Dfile.encoding=UTF-8" \
             --stacktrace \
             --console=plain
           test -s app/build/outputs/bundle/release/app-release.aab
