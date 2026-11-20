@@ -25,8 +25,49 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
-  android-build-and-test:
-    name: Test & Build Android APK
+  firestore-rules-tests:
+    name: 1. Firestore Security Rules Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21 for Firebase Emulator
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Cache Firebase Emulators
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: ${{ runner.os }}-firebase-emulators-v15
+
+      - name: Install Firebase CLI & Rules Unit Testing
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g firebase-tools @firebase/rules-unit-testing
+          echo "NODE_PATH=$(npm root -g)" >> "$GITHUB_ENV"
+
+      - name: Run Firestore Rules Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NODE_PATH="${NODE_PATH:-$(npm root -g)}"
+          firebase emulators:exec --only auth,firestore --project demo-no-project '
+            NODE_PATH="'"$NODE_PATH"'" node --test firestore.test.js
+          '
+
+  android-tests-and-lint:
+    name: 2. Android Unit, Robolectric, UI & Emulator Tests + Lint
     runs-on: ubuntu-latest
 
     steps:
@@ -81,7 +122,190 @@ jobs:
           echo "$SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
           echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
 
-          # Accept all currently known SDK licenses non-interactively (ignore SIGPIPE 141 from yes)
+          set +o pipefail
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || {
+            rc=$?
+            [ "$rc" -eq 141 ] || exit "$rc"
+          }
+          set -o pipefail
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: true
+
+      - name: Install Android SDK packages & verify licenses
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(command -v sdkmanager)"
+          fi
+
+          accept_licenses() {
+            set +o pipefail
+            yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || {
+              rc=$?
+              [ "$rc" -eq 141 ] || exit "$rc"
+            }
+            set -o pipefail
+          }
+
+          install_pkg() {
+            set +o pipefail
+            yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" "$1" || {
+              rc=$?
+              [ "$rc" -eq 141 ] || exit "$rc"
+            }
+            set -o pipefail
+          }
+
+          accept_licenses
+          install_pkg "cmdline-tools;latest"
+          install_pkg "platform-tools"
+          install_pkg "build-tools;36.0.0"
+          install_pkg "platforms;android-36"
+
+          SDK_LIST="$("$SDKMANAGER" --sdk_root="$SDK_ROOT" --list)"
+          if echo "$SDK_LIST" | grep -E '^[[:space:]]*platforms;android-36\.1([[:space:]]|\|)' >/dev/null; then
+            install_pkg "platforms;android-36.1"
+          fi
+
+          accept_licenses
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --version
+
+      - name: Set up Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Cache Firebase Emulators
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: ${{ runner.os }}-firebase-emulators-v15
+
+      - name: Install Firebase CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g firebase-tools
+
+      - name: Configure optional google-services.json from GitHub Secrets
+        if: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GOOGLE_SERVICES_JSON" == \{* ]]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
+          else
+            printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
+          fi
+          test -s app/google-services.json
+
+      - name: Verify google-services.json is present
+        shell: bash
+        run: |
+          if [ ! -s app/google-services.json ]; then
+            echo "::error::app/google-services.json is missing. Commit app/google-services.json or set the GOOGLE_SERVICES_JSON GitHub Actions secret."
+            exit 1
+          fi
+
+      - name: Run Android Unit, Robolectric & Emulator Security Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          firebase emulators:exec --only auth,firestore --project demo-no-project '
+            gradle :app:testDebugUnitTest --no-daemon --max-workers=2 -Dkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs="-Xmx2560m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8" --stacktrace --console=plain
+          '
+
+      - name: Run Android Lint (Debug)
+        run: >
+          gradle :app:lintDebug
+          --no-daemon
+          --max-workers=2
+          -Dkotlin.compiler.execution.strategy=in-process
+          -Dorg.gradle.jvmargs="-Xmx2560m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
+          --console=plain
+
+      - name: Upload Test & Lint Reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-and-lint-reports
+          path: |
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/test-results/testDebugUnitTest/
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.txt
+
+  build-and-publish-apk:
+    name: 3. Build, Verify & Publish APK Release
+    needs: [ firestore-rules-tests, android-tests-and-lint ]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Configure Android SDK Command-line Tools & pre-accept licenses
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          if [ -d "$SDK_ROOT" ]; then
+            if [ ! -w "$SDK_ROOT" ]; then
+              sudo chown -R "$USER:$USER" "$SDK_ROOT"
+            fi
+          else
+            SDK_ROOT="$HOME/android-sdk"
+            mkdir -p "$SDK_ROOT"
+          fi
+          mkdir -p "$SDK_ROOT/licenses"
+
+          find_sdkmanager() {
+            if [ -x "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+              echo "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+            elif command -v sdkmanager >/dev/null 2>&1; then
+              command -v sdkmanager
+            elif [ -d "$SDK_ROOT/cmdline-tools" ]; then
+              find "$SDK_ROOT/cmdline-tools" -maxdepth 3 -type f -name sdkmanager 2>/dev/null | sed -n '1p' || true
+            fi
+          }
+
+          SDKMANAGER="$(find_sdkmanager)"
+          if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
+            TMP_DIR="$(mktemp -d)"
+            curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-12700392_latest.zip" -o "$TMP_DIR/cmdline-tools.zip"
+            unzip -q "$TMP_DIR/cmdline-tools.zip" -d "$TMP_DIR/extracted"
+            mkdir -p "$SDK_ROOT/cmdline-tools"
+            rm -rf "$SDK_ROOT/cmdline-tools/latest"
+            mv "$TMP_DIR/extracted/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
+            rm -rf "$TMP_DIR"
+            SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          fi
+
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+
           set +o pipefail
           yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || {
             rc=$?
@@ -163,24 +387,6 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
-      - name: Set up Node.js for Firebase Emulator & Rules Tests
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Cache Firebase Emulators
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/firebase/emulators
-          key: ${{ runner.os }}-firebase-emulators-v15
-
-      - name: Install Firebase CLI & Rules Unit Testing
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm install -g firebase-tools @firebase/rules-unit-testing
-          echo "NODE_PATH=$(npm root -g)" >> "$GITHUB_ENV"
-
       - name: Configure optional google-services.json from GitHub Secrets
         if: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
         env:
@@ -203,23 +409,6 @@ jobs:
             exit 1
           fi
 
-      - name: Run Firestore Rules Tests Independently
-        shell: bash
-        run: |
-          set -euo pipefail
-          export NODE_PATH="${NODE_PATH:-$(npm root -g)}"
-          firebase emulators:exec --only auth,firestore --project demo-no-project '
-            NODE_PATH="'"$NODE_PATH"'" node --test firestore.test.js
-          '
-
-      - name: Run Android Unit, Robolectric & Emulator Security Tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          firebase emulators:exec --only auth,firestore --project demo-no-project '
-            gradle :app:testDebugUnitTest --no-daemon --max-workers=2 -Dkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs="-Xmx2560m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8" --stacktrace --console=plain
-          '
-
       - name: Build Android Debug APK
         run: >
           gradle :app:assembleDebug
@@ -230,32 +419,26 @@ jobs:
           --stacktrace
           --console=plain
 
-      - name: Verify Debug APK & bundled Firebase resources exist
+      - name: Verify Debug APK, Firebase Resources & APK Signature
         id: apk_meta
         shell: bash
         run: |
+          set -euo pipefail
           test -s app/build/outputs/apk/debug/app-debug.apk
           cp app/build/outputs/apk/debug/app-debug.apk ONE_HOME_PRO_FINAL.apk
           ls -lh app/build/outputs/apk/debug/app-debug.apk ONE_HOME_PRO_FINAL.apk
           AAPT2="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/36.0.0/aapt2"
-          "$AAPT2" dump resources app/build/outputs/apk/debug/app-debug.apk | grep -q "string/google_app_id"
-          "$AAPT2" dump resources app/build/outputs/apk/debug/app-debug.apk | grep -q "string/google_api_key"
-          "$AAPT2" dump resources app/build/outputs/apk/debug/app-debug.apk | grep -q "string/default_web_client_id"
-          "$AAPT2" dump resources app/build/outputs/apk/debug/app-debug.apk | grep -q "string/firestore_database_id"
-          "$AAPT2" dump resources app/build/outputs/apk/debug/app-debug.apk | grep -q "string/project_id"
+          APKSIGNER="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/36.0.0/apksigner"
+          "$AAPT2" dump resources ONE_HOME_PRO_FINAL.apk | grep -q "string/google_app_id"
+          "$AAPT2" dump resources ONE_HOME_PRO_FINAL.apk | grep -q "string/google_api_key"
+          "$AAPT2" dump resources ONE_HOME_PRO_FINAL.apk | grep -q "string/default_web_client_id"
+          "$AAPT2" dump resources ONE_HOME_PRO_FINAL.apk | grep -q "string/firestore_database_id"
+          "$AAPT2" dump resources ONE_HOME_PRO_FINAL.apk | grep -q "string/project_id"
+          "$APKSIGNER" verify --verbose ONE_HOME_PRO_FINAL.apk
           VERSION_NAME="$(grep -E 'versionName\s*=' app/build.gradle.kts | sed -E 's/.*"([^"]+)".*/\1/' | head -n 1)"
           VERSION_CODE="$(grep -E 'versionCode\s*=' app/build.gradle.kts | sed -E 's/[^0-9]//g' | head -n 1)"
           echo "version_name=${VERSION_NAME:-1.0.2}" >> "$GITHUB_OUTPUT"
           echo "version_code=${VERSION_CODE:-2}" >> "$GITHUB_OUTPUT"
-
-      - name: Upload Test Reports
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: test-reports
-          path: |
-            app/build/reports/tests/testDebugUnitTest/
-            app/build/test-results/testDebugUnitTest/
 
       - name: Upload Android Debug APK Artifact
         if: success()
