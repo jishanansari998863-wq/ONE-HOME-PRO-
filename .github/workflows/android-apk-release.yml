@@ -231,15 +231,22 @@ jobs:
           --console=plain
 
       - name: Verify Debug APK & bundled Firebase resources exist
+        id: apk_meta
         shell: bash
         run: |
           test -s app/build/outputs/apk/debug/app-debug.apk
-          ls -lh app/build/outputs/apk/debug/app-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ONE_HOME_PRO_FINAL.apk
+          ls -lh app/build/outputs/apk/debug/app-debug.apk ONE_HOME_PRO_FINAL.apk
           AAPT2="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/36.0.0/aapt2"
           "$AAPT2" dump resources app/build/outputs/apk/debug/app-debug.apk | grep -q "string/google_app_id"
+          "$AAPT2" dump resources app/build/outputs/apk/debug/app-debug.apk | grep -q "string/google_api_key"
           "$AAPT2" dump resources app/build/outputs/apk/debug/app-debug.apk | grep -q "string/default_web_client_id"
           "$AAPT2" dump resources app/build/outputs/apk/debug/app-debug.apk | grep -q "string/firestore_database_id"
           "$AAPT2" dump resources app/build/outputs/apk/debug/app-debug.apk | grep -q "string/project_id"
+          VERSION_NAME="$(grep -E 'versionName\s*=' app/build.gradle.kts | sed -E 's/.*"([^"]+)".*/\1/' | head -n 1)"
+          VERSION_CODE="$(grep -E 'versionCode\s*=' app/build.gradle.kts | sed -E 's/[^0-9]//g' | head -n 1)"
+          echo "version_name=${VERSION_NAME:-1.0.2}" >> "$GITHUB_OUTPUT"
+          echo "version_code=${VERSION_CODE:-2}" >> "$GITHUB_OUTPUT"
 
       - name: Upload Test Reports
         if: always()
@@ -255,7 +262,9 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: one-home-pro-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            ONE_HOME_PRO_FINAL.apk
           if-no-files-found: error
 
       - name: Build Signed Release APK & Play Store AAB (when upload keystore secrets configured)
@@ -308,10 +317,11 @@ jobs:
           )
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v1.0.0-build-{0}', github.run_number) }}
-          name: ONE HOME PRO Android (${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('build-{0}', github.run_number) }})
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}-build-{1}-ci-{2}', steps.apk_meta.outputs.version_name, steps.apk_meta.outputs.version_code, github.run_number) }}
+          name: ONE HOME PRO v${{ steps.apk_meta.outputs.version_name }} (Build ${{ steps.apk_meta.outputs.version_code }} / CI #${{ github.run_number }})
           generate_release_notes: true
           make_latest: true
           fail_on_unmatched_files: true
           files: |
+            ONE_HOME_PRO_FINAL.apk
             app/build/outputs/apk/debug/app-debug.apk
