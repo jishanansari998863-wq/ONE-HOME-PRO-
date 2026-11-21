@@ -360,7 +360,7 @@ fun DocumentScannerStudioDialog(
                                 Text("Gallery", maxLines = 1)
                             }
                             OutlinedButton(
-                                onClick = { pickFileLauncher.launch(arrayOf("image/jpeg", "image/png", "image/webp", "application/pdf", "video/mp4", "audio/*")) },
+                                onClick = { pickFileLauncher.launch(arrayOf("image/jpeg", "image/png", "image/webp", "application/pdf", "video/*", "audio/*")) },
                                 modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp).testTag("btn_upload_file")
                             ) {
                                 Icon(Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(18.dp))

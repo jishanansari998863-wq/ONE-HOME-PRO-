@@ -87,6 +87,17 @@ fun CustomerPortalScreen(
                                 if (myDeposits.isNotEmpty()) {
                                     Text("Security Deposit Held: ${QatarFormatters.formatQar(myDeposits.sumOf { it.heldFils })}", style = MaterialTheme.typography.bodySmall)
                                 }
+                                if (myCustId == null) {
+                                    Spacer(Modifier.height(6.dp))
+                                    Surface(color = AmberContainer, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                                        Text(
+                                            "Tenant profile not linked yet. Ask Property Management to register or link your email (${ctx.email}) in Tenants so your lease, rent, and receipts appear here.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = AmberWarning,
+                                            modifier = Modifier.padding(10.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -232,6 +243,15 @@ fun CustomerPortalScreen(
             initialTargetId = myCustId,
             initialCategory = DocumentCategoryOption.QID,
             onDismiss = { showUploadDoc = false }
+        )
+    } else if (showUploadDoc) {
+        AlertDialog(
+            onDismissRequest = { showUploadDoc = false },
+            title = { Text("Tenant Profile Required") },
+            text = {
+                Text("Your portal account (${ctx.email}) is not yet linked to a Tenant profile. Ask Property Management to add your email in Tenants and sign in again.")
+            },
+            confirmButton = { Button(onClick = { showUploadDoc = false }) { Text("OK") } }
         )
     }
 

@@ -487,6 +487,16 @@ class OneHomeProViewModel(
                             )
                         }
                     }
+                    is CentralVerificationResult.TransientOffline -> {
+                        _uiState.update {
+                            it.copy(
+                                isInitializing = false,
+                                isBusy = false,
+                                centralIdentity = identity,
+                                bannerError = res.reason
+                            )
+                        }
+                    }
                 }
             } else {
                 _uiState.update {
@@ -634,6 +644,11 @@ class OneHomeProViewModel(
                             )
                         }
                     }
+                    is CentralVerificationResult.TransientOffline -> {
+                        _uiState.update {
+                            it.copy(isBusy = false, bannerError = res.reason)
+                        }
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -734,6 +749,11 @@ class OneHomeProViewModel(
                                     AuthScreenStep.DEVICE_REVOKED_LOCKED
                                 } else AuthScreenStep.SUPER_ADMIN_RECOVERY
                             )
+                        }
+                    }
+                    is CentralVerificationResult.TransientOffline -> {
+                        _uiState.update {
+                            it.copy(isBusy = false, bannerError = res.reason)
                         }
                     }
                 }

@@ -3,7 +3,6 @@ package com.example.data.remote
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import android.content.MutableContextWrapper
 import android.util.Log
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
@@ -55,7 +54,7 @@ object GoogleSignInHelper {
             .addCredentialOption(googleIdOption)
             .build()
         return try {
-            val hostContext = context.findActivity()?.let { MutableContextWrapper(it) } ?: context
+            val hostContext = context.findActivity() ?: context
             val result = credentialManager.getCredential(hostContext, request)
             signInWithGoogleCredential(result.credential)
         } catch (e: NoCredentialException) {
@@ -88,7 +87,7 @@ object GoogleSignInHelper {
             onError("Google Sign-In requires an active foreground screen.")
             return false
         }
-        val uiContext = MutableContextWrapper(foregroundActivity)
+        val uiContext: Context = foregroundActivity
         val credentialManager = CredentialManager.create(foregroundActivity)
 
         // Request 1: Explicit interactive Sign in with Google button flow (1 option per request for API 36)

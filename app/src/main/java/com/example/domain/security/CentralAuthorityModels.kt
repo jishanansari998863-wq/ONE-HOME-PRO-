@@ -221,4 +221,8 @@ sealed interface CentralVerificationResult {
         val status: String,
         val emergencyLocked: Boolean = false
     ) : CentralVerificationResult
+
+    data class TransientOffline(
+        val reason: String
+    ) : CentralVerificationResult
 }

@@ -5,6 +5,7 @@ import android.util.Log
 import com.example.domain.security.*
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.DocumentSnapshot
@@ -14,8 +15,10 @@ import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.snapshots
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
+import java.io.IOException
 
 class FirebaseCentralAuthorityGateway private constructor(
     private val context: Context,
@@ -1003,6 +1006,25 @@ class FirebaseCentralAuthorityGateway private constructor(
         )
     }
 
+    private fun isOfflineOrTransientNetworkError(t: Throwable): Boolean {
+        var cur: Throwable? = t
+        var depth = 0
+        while (cur != null && depth < 8) {
+            if (cur is FirebaseNetworkException || cur is IOException || cur is TimeoutCancellationException) {
+                return true
+            }
+            if (cur is FirebaseFirestoreException &&
+                (cur.code == FirebaseFirestoreException.Code.UNAVAILABLE ||
+                    cur.code == FirebaseFirestoreException.Code.DEADLINE_EXCEEDED)
+            ) {
+                return true
+            }
+            cur = cur.cause
+            depth++
+        }
+        return false
+    }
+
     override suspend fun validateExistingCentralSession(
         serverSessionId: String,
         uid: String,
@@ -1011,7 +1033,17 @@ class FirebaseCentralAuthorityGateway private constructor(
         val id = currentIdentity()
             ?: return CentralVerificationResult.Denied("Unauthenticated session rejected.", "UNAUTHENTICATED")
 
-        val platformStatus = getPlatformStatus()
+        val platformStatus = try {
+            getPlatformStatus()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (isOfflineOrTransientNetworkError(e)) {
+                return CentralVerificationResult.TransientOffline("Offline during startup session check. Will re-verify when connected.")
+            }
+            handleFirestoreError(e, OperationType.GET, "$COL_PLATFORM_STATUS/$DOC_PUBLIC", auth)
+            return CentralVerificationResult.Denied("Unable to verify central platform status.", "REVOKED")
+        }
         val isAdmin = isVerifiedSuperAdminCurrent()
         if (platformStatus.emergencyLockAllNonSuperAdmin && !isAdmin) {
             return CentralVerificationResult.Denied(
@@ -1024,7 +1056,12 @@ class FirebaseCentralAuthorityGateway private constructor(
         val sessRef = db.collection(COL_SESSIONS).document(serverSessionId)
         val sessSnap = try {
             sessRef.get().awaitResult()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
+            if (isOfflineOrTransientNetworkError(e)) {
+                return CentralVerificationResult.TransientOffline("Offline while validating central session.")
+            }
             handleFirestoreError(e, OperationType.GET, sessRef.path, auth)
             return CentralVerificationResult.Denied("Session denied by central server.", "REVOKED")
         }
@@ -1053,8 +1090,22 @@ class FirebaseCentralAuthorityGateway private constructor(
             }
         }
 
-        val grant = getMyAccessGrant()
-            ?: return CentralVerificationResult.Denied("Authorization grant revoked or removed.", "REVOKED")
+        val grantRef = db.collection(COL_ACCESS_GRANTS).document(id.uid)
+        val grantSnap = try {
+            grantRef.get().awaitResult()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (isOfflineOrTransientNetworkError(e)) {
+                return CentralVerificationResult.TransientOffline("Offline while verifying central access grant.")
+            }
+            handleFirestoreError(e, OperationType.GET, grantRef.path, auth)
+            return CentralVerificationResult.Denied("Authorization grant verification failed.", "REVOKED")
+        }
+        val grant = if (!grantSnap.exists()) null else grantSnap.toObject(AccessGrantRecord::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+        if (grant == null) {
+            return CentralVerificationResult.Denied("Authorization grant revoked or removed.", "REVOKED")
+        }
         if (!grant.isActiveGrant()) {
             return CentralVerificationResult.Denied("Account grant status is ${grant.status}.", grant.status)
         }
@@ -1064,7 +1115,12 @@ class FirebaseCentralAuthorityGateway private constructor(
 
         val bizSnap = try {
             db.collection(COL_BUSINESSES).document(sess.businessId).get().awaitResult()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
+            if (isOfflineOrTransientNetworkError(e)) {
+                return CentralVerificationResult.TransientOffline("Offline while verifying business status.")
+            }
             handleFirestoreError(e, OperationType.GET, "$COL_BUSINESSES/${sess.businessId}", auth)
             return CentralVerificationResult.Denied("Business access denied by server.", "REVOKED")
         }
