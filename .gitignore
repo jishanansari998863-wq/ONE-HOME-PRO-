@@ -16,4 +16,9 @@
 local.properties
 .env
 debug.keystore
+debug.keystore.base64
+app/google-services.json
+*.apk
+*.zip
+*.bundle
 *-debug.log

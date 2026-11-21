@@ -178,13 +178,34 @@ jobs:
           "$SDKMANAGER" --sdk_root="$SDK_ROOT" --version
 
       - name: Ensure debug keystore exists
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         shell: bash
         run: |
           set -euo pipefail
           if [ ! -f debug.keystore ]; then
-            if [ -f debug.keystore.base64 ]; then
+            if [ -n "${DEBUG_KEYSTORE_BASE64:-}" ]; then
+              python3 - <<'PY'
+          import base64
+          import os
+          import sys
+
+          raw = "".join(os.environ["DEBUG_KEYSTORE_BASE64"].split())
+          raw += "=" * ((-len(raw)) % 4)
+          try:
+              data = base64.b64decode(raw, validate=True)
+          except Exception as exc:
+              print(f"::error::DEBUG_KEYSTORE_BASE64 secret is not valid Base64: {exc}")
+              sys.exit(1)
+          with open("debug.keystore", "wb") as f:
+              f.write(data)
+          print("Restored debug.keystore from DEBUG_KEYSTORE_BASE64 secret.")
+          PY
+            elif [ -f debug.keystore.base64 ]; then
               base64 -d debug.keystore.base64 > debug.keystore
+              echo "Restored debug.keystore from debug.keystore.base64."
             else
+              echo "::warning::DEBUG_KEYSTORE_BASE64 secret not set; generating ephemeral debug keystore (Google Sign-In SHA-1 will differ)."
               keytool -genkeypair -noprompt \
                 -keystore debug.keystore \
                 -storepass android \
@@ -197,6 +218,7 @@ jobs:
             fi
           fi
           test -s debug.keystore
+          keytool -list -keystore debug.keystore -storepass android >/dev/null
 
       - name: Set up Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v5
@@ -472,13 +494,34 @@ jobs:
           "$SDKMANAGER" --sdk_root="$SDK_ROOT" --version
 
       - name: Ensure debug keystore exists
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         shell: bash
         run: |
           set -euo pipefail
           if [ ! -f debug.keystore ]; then
-            if [ -f debug.keystore.base64 ]; then
+            if [ -n "${DEBUG_KEYSTORE_BASE64:-}" ]; then
+              python3 - <<'PY'
+          import base64
+          import os
+          import sys
+
+          raw = "".join(os.environ["DEBUG_KEYSTORE_BASE64"].split())
+          raw += "=" * ((-len(raw)) % 4)
+          try:
+              data = base64.b64decode(raw, validate=True)
+          except Exception as exc:
+              print(f"::error::DEBUG_KEYSTORE_BASE64 secret is not valid Base64: {exc}")
+              sys.exit(1)
+          with open("debug.keystore", "wb") as f:
+              f.write(data)
+          print("Restored debug.keystore from DEBUG_KEYSTORE_BASE64 secret.")
+          PY
+            elif [ -f debug.keystore.base64 ]; then
               base64 -d debug.keystore.base64 > debug.keystore
+              echo "Restored debug.keystore from debug.keystore.base64."
             else
+              echo "::warning::DEBUG_KEYSTORE_BASE64 secret not set; generating ephemeral debug keystore (Google Sign-In SHA-1 will differ)."
               keytool -genkeypair -noprompt \
                 -keystore debug.keystore \
                 -storepass android \
@@ -491,6 +534,7 @@ jobs:
             fi
           fi
           test -s debug.keystore
+          keytool -list -keystore debug.keystore -storepass android >/dev/null
 
       - name: Set up Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v5
