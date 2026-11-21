@@ -252,6 +252,89 @@ fun RestrictedWelcomeGateScreen(
                         Text("Existing Approved User Sign In")
                     }
                 }
+
+                var showDiagDialog by remember { mutableStateOf(false) }
+                var copiedDiag by remember { mutableStateOf(false) }
+                TextButton(
+                    onClick = {
+                        copiedDiag = false
+                        showDiagDialog = true
+                    },
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .testTag("open_signin_diagnostics_button")
+                ) {
+                    Icon(Icons.Default.BugReport, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Verify APK & Sign-In Diagnostics")
+                }
+
+                if (showDiagDialog) {
+                    val diagnostics = remember(showDiagDialog, uiState.bannerError, uiState.isBusy) {
+                        com.example.data.remote.GoogleSignInHelper.collectRuntimeDiagnostics(context)
+                    }
+                    val reportText = remember(diagnostics) { diagnostics.toReportText() }
+                    AlertDialog(
+                        onDismissRequest = { showDiagDialog = false },
+                        title = { Text("APK & Sign-In Verification") },
+                        text = {
+                            Column(
+                                modifier = Modifier.verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Surface(
+                                    color = when (diagnostics.debugSha1MatchesFirebase) {
+                                        true -> EmeraldContainer.copy(alpha = 0.7f)
+                                        false -> MaterialTheme.colorScheme.errorContainer
+                                        null -> MaterialTheme.colorScheme.surfaceVariant
+                                    },
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = when (diagnostics.debugSha1MatchesFirebase) {
+                                            true -> "Signing SHA-1 MATCHES Firebase OAuth client."
+                                            false -> "Signing SHA-1 MISMATCH! Uninstall this APK and install ONE_HOME_PRO_FINAL.apk."
+                                            null -> "Signing SHA-1 verified by runtime PackageManager."
+                                        },
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(10.dp)
+                                    )
+                                }
+                                Text(
+                                    text = reportText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.testTag("signin_diagnostics_report_text")
+                                )
+                                if (copiedDiag) {
+                                    Text(
+                                        text = "Diagnostics copied to clipboard.",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                                    cm?.setPrimaryClip(android.content.ClipData.newPlainText("OneHomeProSignInDiagnostics", reportText))
+                                    copiedDiag = true
+                                },
+                                modifier = Modifier.testTag("copy_signin_diagnostics_button")
+                            ) {
+                                Text("Copy Report")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDiagDialog = false }) {
+                                Text("Close")
+                            }
+                        }
+                    )
+                }
             }
         }
     }

@@ -609,4 +609,24 @@ class SuperAdminSecurityRobolectricTest {
             phone2Db.close()
         }
     }
+
+    @Test
+    fun `google sign in diagnostics and technical cancellation fallback rules work safely`() {
+        val diag = com.example.data.remote.GoogleSignInHelper.collectRuntimeDiagnostics(app)
+        assertEquals("com.aistudio.onehomepro.qtrvbx", diag.packageName)
+        assertEquals(
+            "487338231669-kbf2bvgir0fhdkv1obs45k1ee96thfjb.apps.googleusercontent.com",
+            diag.webClientId
+        )
+        assertEquals("1:487338231669:android:9fcfa85a6ff1d8de99353c", diag.googleAppId)
+        assertEquals("gen-lang-client-0874428284", diag.projectId)
+        assertTrue(diag.toReportText().contains("Web OAuth Client ID:"))
+
+        assertTrue(com.example.data.remote.GoogleSignInHelper.isTechnicalCancellationForFallback("[16] Account reauth failed."))
+        assertTrue(com.example.data.remote.GoogleSignInHelper.isTechnicalCancellationForFallback("16: Account reauth failed"))
+        assertTrue(com.example.data.remote.GoogleSignInHelper.isTechnicalCancellationForFallback("10: Developer console is not set up correctly."))
+        assertFalse(com.example.data.remote.GoogleSignInHelper.isTechnicalCancellationForFallback("activity is cancelled by the user."))
+        assertFalse(com.example.data.remote.GoogleSignInHelper.isTechnicalCancellationForFallback("Caller has been temporarily blocked due to too many canceled sign-in prompts"))
+        assertFalse(com.example.data.remote.GoogleSignInHelper.isTechnicalCancellationForFallback(null))
+    }
 }
