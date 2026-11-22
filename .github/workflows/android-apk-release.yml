@@ -683,7 +683,40 @@ jobs:
           grep -q "string/default_web_client_id" "$RES_DUMP"
           grep -q "string/firestore_database_id" "$RES_DUMP"
           grep -q "string/project_id" "$RES_DUMP"
-          "$APKSIGNER" verify --verbose ONE_HOME_PRO_FINAL.apk
+          CERT_OUT="$("$APKSIGNER" verify --verbose --print-certs ONE_HOME_PRO_FINAL.apk)"
+          echo "$CERT_OUT"
+          ACTUAL_SHA1="$(printf '%s\n' "$CERT_OUT" | sed -nE 's/.*Signer #1 certificate SHA-1 digest:\s*([0-9a-fA-F:]+).*/\1/p' | tr -d ':' | tr '[:upper:]' '[:lower:]' | head -n 1)"
+          python3 - "$ACTUAL_SHA1" <<'PY'
+          import json
+          import re
+          import sys
+
+          actual_sha1 = (sys.argv[1] if len(sys.argv) > 1 else "").strip().lower()
+          if not actual_sha1:
+              print("::error::Could not extract Signer #1 SHA-1 from apksigner output.")
+              sys.exit(1)
+
+          with open("app/google-services.json", "r", encoding="utf-8-sig") as f:
+              gs = json.load(f)
+          with open("app/build.gradle.kts", "r", encoding="utf-8") as f:
+              gradle_text = f.read()
+          m = re.search(r'applicationId\s*=\s*"([^"]+)"', gradle_text)
+          app_id = m.group(1) if m else ""
+
+          expected_hashes = []
+          for client in gs.get("client") or []:
+              for oauth in client.get("oauth_client") or []:
+                  android_info = oauth.get("android_info") or {}
+                  if android_info.get("package_name") == app_id and android_info.get("certificate_hash"):
+                      expected_hashes.append(android_info["certificate_hash"].replace(":", "").strip().lower())
+
+          print(f"APK signing SHA-1: {actual_sha1}")
+          print(f"Firebase certificate_hash entries for {app_id}: {expected_hashes}")
+          if expected_hashes and actual_sha1 not in expected_hashes:
+              print(f"::error::APK signing SHA-1 mismatch! Built APK SHA-1 ({actual_sha1}) does not match Firebase certificate_hash {expected_hashes}. Set the DEBUG_KEYSTORE_BASE64 GitHub Actions secret from debug.keystore.base64.")
+              sys.exit(1)
+          print("Verified APK signing SHA-1 matches Firebase certificate_hash.")
+          PY
           VERSION_NAME="$(grep -E 'versionName\s*=' app/build.gradle.kts | sed -E 's/.*"([^"]+)".*/\1/' | head -n 1)"
           VERSION_CODE="$(grep -E 'versionCode\s*=' app/build.gradle.kts | sed -E 's/[^0-9]//g' | head -n 1)"
           echo "version_name=${VERSION_NAME:-1.0.2}" >> "$GITHUB_OUTPUT"
