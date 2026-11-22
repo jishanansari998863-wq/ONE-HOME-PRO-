@@ -333,18 +333,14 @@ fun SuperAdminPanelScreen(
                                     Text("Backup Recovery Kit & Security Question", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 }
                                 uiState.lastRecoveryKit?.let { kit ->
-                                    Surface(
-                                        color = ArchitecturalGoldContainer,
-                                        shape = RoundedCornerShape(12.dp),
-                                        modifier = Modifier.fillMaxWidth().testTag("sa_panel_recovery_kit_box")
-                                    ) {
-                                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            Text("ROTATED RECOVERY KIT (SAVE ONCE)", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                                            Text("TOTP Secret: ${kit.totpSecret}", style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily))
-                                            Text("Master Recovery Key: ${kit.masterRecoveryKey}", style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily), fontWeight = FontWeight.Bold)
-                                            Text("Recovery Codes: ${kit.recoveryCodes.joinToString(", ")}", style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily))
-                                        }
-                                    }
+                                    MfaSetupKitCard(
+                                        accountEmail = ctx.email,
+                                        totpSecret = kit.totpSecret,
+                                        recoveryCodes = kit.recoveryCodes,
+                                        masterRecoveryKey = kit.masterRecoveryKey,
+                                        title = "ROTATED MFA QR & RECOVERY KIT (SAVE ONCE)",
+                                        modifier = Modifier.testTag("sa_panel_recovery_kit_box")
+                                    )
                                 }
                                 OutlinedTextField(
                                     value = currentPass,

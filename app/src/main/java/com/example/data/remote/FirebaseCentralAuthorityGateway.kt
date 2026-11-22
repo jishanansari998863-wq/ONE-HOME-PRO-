@@ -295,10 +295,7 @@ class FirebaseCentralAuthorityGateway private constructor(
 
         try {
             configRef.set(configPayload).awaitResult()
-            statusRef.set(statusPayload).awaitResult()
-            db.collection(COL_BUSINESSES).document(hqBusinessId).set(bizPayload).awaitResult()
-            db.collection(COL_ACCESS_GRANTS).document(id.uid).set(grantPayload).awaitResult()
-            upsertActiveAdminDevice(id.uid, id.email, deviceId, deviceName)
+            ensureBootstrapSideDocs(id, deviceId, deviceName)
             recordAuditEvent(
                 action = "SUPER_ADMIN_BOOTSTRAP",
                 targetUid = id.uid,
@@ -318,6 +315,186 @@ class FirebaseCentralAuthorityGateway private constructor(
             recoveryCodes = recoveryCodes,
             masterRecoveryKey = masterRecoveryKey,
             securityQuestion = cleanQuestion
+        )
+    }
+
+    private suspend fun ensureBootstrapSideDocs(
+        id: CentralIdentity,
+        deviceId: String,
+        deviceName: String
+    ) {
+        val statusRef = db.collection(COL_PLATFORM_STATUS).document(DOC_PUBLIC)
+        if (!statusRef.get().awaitResult().exists()) {
+            statusRef.set(
+                mapOf(
+                    "isBootstrapped" to true,
+                    "registrationsEnabled" to true,
+                    "emergencyLockAllNonSuperAdmin" to false,
+                    "updatedAt" to FieldValue.serverTimestamp()
+                )
+            ).awaitResult()
+        }
+
+        val hqBusinessId = "biz_superadmin_hq"
+        val bizRef = db.collection(COL_BUSINESSES).document(hqBusinessId)
+        if (!bizRef.get().awaitResult().exists()) {
+            bizRef.set(
+                mapOf(
+                    "name" to "ONE HOME PRO HQ",
+                    "code" to "BIZ-OHPHQ",
+                    "branchName" to "Doha HQ",
+                    "ownerUid" to id.uid,
+                    "ownerEmail" to SuperAdminConfig.SUPER_ADMIN_EMAIL,
+                    "status" to SuperAdminConfig.GRANT_ACTIVE,
+                    "approvedByUid" to id.uid,
+                    "currency" to "QAR",
+                    "timezone" to "Asia/Qatar",
+                    "createdAt" to FieldValue.serverTimestamp(),
+                    "updatedAt" to FieldValue.serverTimestamp()
+                )
+            ).awaitResult()
+        }
+
+        val grantRef = db.collection(COL_ACCESS_GRANTS).document(id.uid)
+        if (!grantRef.get().awaitResult().exists()) {
+            val allPerms = AuthorizationGuard.defaultPermissionCatalog().map { "${it.first}:${it.second}" }
+            val ownerDisplayName = id.displayName.trim().let {
+                if (it.length >= 2) it.take(100) else "Initial Owner"
+            }
+            grantRef.set(
+                mapOf(
+                    "uid" to id.uid,
+                    "email" to SuperAdminConfig.SUPER_ADMIN_EMAIL,
+                    "fullName" to ownerDisplayName,
+                    "authorityRole" to "OWNER",
+                    "status" to SuperAdminConfig.GRANT_ACTIVE,
+                    "activeBusinessId" to hqBusinessId,
+                    "allowedBusinessIds" to listOf(hqBusinessId),
+                    "allowedPropertyIds" to emptyList<String>(),
+                    "restrictToAssignedProperties" to false,
+                    "permissionKeys" to allPerms,
+                    "approvedByUid" to id.uid,
+                    "minSessionValidAfterEpoch" to 0L,
+                    "createdAt" to FieldValue.serverTimestamp(),
+                    "updatedAt" to FieldValue.serverTimestamp()
+                )
+            ).awaitResult()
+        }
+
+        upsertActiveAdminDevice(id.uid, id.email, deviceId, deviceName)
+    }
+
+    override suspend fun isInitialMfaEnrollmentPending(): Boolean {
+        val id = currentIdentity() ?: return false
+        if (!id.emailVerified || !SuperAdminConfig.isSuperAdminEmail(id.email)) return false
+        val configSnap = try {
+            db.collection(COL_PLATFORM_CONFIG).document(DOC_GLOBAL).get().awaitResult()
+        } catch (_: Exception) {
+            return false
+        }
+        if (!configSnap.exists()) return false
+        val cfg = configSnap.toObject(PlatformConfig::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+            ?: return false
+        if (cfg.superAdminUid != id.uid || !SuperAdminConfig.isSuperAdminEmail(cfg.superAdminEmail)) return false
+
+        val priorLoginLogs = try {
+            db.collection(COL_AUDIT_LOGS)
+                .whereIn(
+                    "action",
+                    listOf(
+                        "SUPER_ADMIN_VERIFIED",
+                        "SUPER_ADMIN_RECOVERY_USED",
+                        "SUPER_ADMIN_MASTER_KEY_LOGIN",
+                        "SUPER_ADMIN_RECOVERY_COMPLETED"
+                    )
+                )
+                .limit(1)
+                .get()
+                .awaitResult()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Fail closed if audit log check cannot complete securely
+            return false
+        }
+        return priorLoginLogs.isEmpty
+    }
+
+    override suspend fun reissuePendingInitialMfaSetup(
+        masterPassword: String,
+        deviceId: String,
+        deviceName: String
+    ): SuperAdminProvisionKit {
+        val id = requireIdentity()
+        if (!id.emailVerified || !SuperAdminConfig.isSuperAdminEmail(id.email)) {
+            throw AuthorizationException("Only verified Super Admin (${SuperAdminConfig.SUPER_ADMIN_EMAIL}) can complete initial MFA setup.")
+        }
+        val lostDevice = isDeviceRevokedLost(id.uid, deviceId)
+        if (lostDevice != null) {
+            throw AuthorizationException("This mobile device (${lostDevice.deviceName}) was marked LOST/REVOKED.")
+        }
+
+        val configRef = db.collection(COL_PLATFORM_CONFIG).document(DOC_GLOBAL)
+        val snap = try {
+            configRef.get().awaitResult()
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.GET, configRef.path, auth)
+            throw e
+        }
+        val cfg = snap.toObject(PlatformConfig::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+            ?: throw AuthorizationException("Super Admin authority is not bootstrapped yet.")
+        if (cfg.superAdminUid != id.uid || !SuperAdminConfig.isSuperAdminEmail(cfg.superAdminEmail)) {
+            throw AuthorizationException("Super Admin account ownership mismatch.")
+        }
+        if (!CryptoUtil.verifyPassword(masterPassword, cfg.passwordSalt, cfg.passwordHash)) {
+            recordAuditEvent(
+                "SUPER_ADMIN_LOGIN_FAIL",
+                id.uid,
+                id.email,
+                null,
+                "Invalid Master Password during initial MFA QR kit generation"
+            )
+            throw AuthorizationException("Incorrect Master Password. Enter the exact Master Password created during Bootstrap.")
+        }
+        if (!isInitialMfaEnrollmentPending()) {
+            throw AuthorizationException("Initial MFA enrollment was already completed previously. Use your 6-digit TOTP code or Account Recovery.")
+        }
+
+        val newTotpSecret = CryptoUtil.generateTotpSecret()
+        val newRecoveryCodes = CryptoUtil.generateRecoveryCodes(6)
+        val newMasterRecoveryKey = CryptoUtil.generateMasterRecoveryKey()
+        val newBackupSalt = CryptoUtil.generateSaltBase64()
+        val newBackupHash = CryptoUtil.hashPassword(newMasterRecoveryKey, newBackupSalt)
+
+        val updates = mapOf(
+            "totpSecret" to newTotpSecret,
+            "recoveryCodeHashes" to newRecoveryCodes.map { CryptoUtil.sha256Hex(it) },
+            "backupKeySalt" to newBackupSalt,
+            "backupKeyHash" to newBackupHash,
+            "updatedAt" to FieldValue.serverTimestamp()
+        )
+        try {
+            configRef.update(updates).awaitResult()
+            ensureBootstrapSideDocs(id, deviceId, deviceName)
+            recordAuditEvent(
+                action = "SUPER_ADMIN_INITIAL_MFA_REISSUED",
+                targetUid = id.uid,
+                targetEmail = id.email,
+                businessId = null,
+                details = "Generated fresh Base32 TOTP QR & Recovery Kit prior to first completed MFA verification"
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.UPDATE, configRef.path, auth)
+            throw e
+        }
+
+        return SuperAdminProvisionKit(
+            totpSecret = newTotpSecret,
+            recoveryCodes = newRecoveryCodes,
+            masterRecoveryKey = newMasterRecoveryKey,
+            securityQuestion = cfg.securityQuestion
         )
     }
 

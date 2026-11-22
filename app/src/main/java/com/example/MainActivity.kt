@@ -77,6 +77,7 @@ fun OneHomeProAppRoot(vm: OneHomeProViewModel) {
                             uiState = uiState,
                             onChangeLanguage = vm::setLanguage,
                             onVerify = vm::verifySuperAdminChallenge,
+                            onReissueInitialMfaKit = vm::reissuePendingInitialMfaSetup,
                             onOpenRecovery = vm::openSuperAdminRecovery,
                             onSignOut = vm::signOutCentral,
                             onDismissBanner = vm::clearBanners

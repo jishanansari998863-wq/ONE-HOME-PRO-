@@ -210,6 +210,59 @@ class InMemoryCentralAuthorityTestDouble : CentralAuthorityGateway {
         )
     }
 
+    override suspend fun isInitialMfaEnrollmentPending(): Boolean {
+        val id = currentIdentity() ?: return false
+        if (!id.emailVerified || !SuperAdminConfig.isSuperAdminEmail(id.email)) return false
+        val cfg = platformConfig.get() ?: return false
+        if (cfg.superAdminUid != id.uid) return false
+        val completedActions = setOf(
+            "SUPER_ADMIN_VERIFIED",
+            "SUPER_ADMIN_RECOVERY_USED",
+            "SUPER_ADMIN_MASTER_KEY_LOGIN",
+            "SUPER_ADMIN_RECOVERY_COMPLETED"
+        )
+        return auditLogs.none { it.action in completedActions }
+    }
+
+    override suspend fun reissuePendingInitialMfaSetup(
+        masterPassword: String,
+        deviceId: String,
+        deviceName: String
+    ): SuperAdminProvisionKit {
+        val id = requireId()
+        if (!id.emailVerified || !SuperAdminConfig.isSuperAdminEmail(id.email)) {
+            throw AuthorizationException("Unauthorized Super Admin identity.")
+        }
+        if (isDeviceRevokedLost(id.uid, deviceId) != null) {
+            throw AuthorizationException("Lost/Revoked device cannot access initial MFA setup.")
+        }
+        val cfg = platformConfig.get() ?: throw AuthorizationException("Super Admin config missing.")
+        if (cfg.superAdminUid != id.uid) throw AuthorizationException("Super Admin UID mismatch.")
+        if (!CryptoUtil.verifyPassword(masterPassword, cfg.passwordSalt, cfg.passwordHash)) {
+            recordAuditEvent("SUPER_ADMIN_LOGIN_FAIL", id.uid, id.email, null, "Wrong password on initial MFA reissue")
+            throw AuthorizationException("Incorrect Master Password. Enter the exact Master Password created during Bootstrap.")
+        }
+        if (!isInitialMfaEnrollmentPending()) {
+            throw AuthorizationException("Initial MFA enrollment was already completed previously. Use your 6-digit TOTP code or Account Recovery.")
+        }
+        val newTotp = CryptoUtil.generateTotpSecret()
+        val newCodes = CryptoUtil.generateRecoveryCodes(6)
+        val newKey = CryptoUtil.generateMasterRecoveryKey()
+        val newBackupSalt = CryptoUtil.generateSaltBase64()
+        val newBackupHash = CryptoUtil.hashPassword(newKey, newBackupSalt)
+        platformConfig.set(
+            cfg.copy(
+                totpSecret = newTotp,
+                recoveryCodeHashes = newCodes.map { CryptoUtil.sha256Hex(it) },
+                backupKeySalt = newBackupSalt,
+                backupKeyHash = newBackupHash
+            )
+        )
+        upsertActiveDevice(id.uid, id.email, deviceId, deviceName)
+        recordAuditEvent("SUPER_ADMIN_INITIAL_MFA_REISSUED", id.uid, id.email, null, "Reissued initial Base32 TOTP QR kit before first MFA completion")
+        return SuperAdminProvisionKit(newTotp, newCodes, newKey, cfg.securityQuestion)
+    }
+
     override suspend fun verifySuperAdminChallenge(masterPassword: String, totpOrRecoveryCode: String): Boolean {
         val id = requireId()
         if (!id.emailVerified || !SuperAdminConfig.isSuperAdminEmail(id.email)) {

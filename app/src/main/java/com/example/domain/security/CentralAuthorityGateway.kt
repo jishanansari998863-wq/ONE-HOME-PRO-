@@ -23,6 +23,12 @@ interface CentralAuthorityGateway {
     ): SuperAdminProvisionKit
 
     suspend fun verifySuperAdminChallenge(masterPassword: String, totpOrRecoveryCode: String): Boolean
+    suspend fun isInitialMfaEnrollmentPending(): Boolean
+    suspend fun reissuePendingInitialMfaSetup(
+        masterPassword: String,
+        deviceId: String = "bootstrap_primary",
+        deviceName: String = "Primary Device"
+    ): SuperAdminProvisionKit
     suspend fun getSuperAdminSecurityQuestion(): String?
     suspend fun recoverSuperAdminAccount(request: SuperAdminRecoveryRequest): SuperAdminProvisionKit
     suspend fun updateSuperAdminRecoverySettings(

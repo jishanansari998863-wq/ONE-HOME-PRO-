@@ -387,6 +387,50 @@ class SuperAdminRulesTest : FirestoreEmulatorTestBase() {
         assertTrue(oldPhoneAfterReauth is CentralVerificationResult.Approved)
     }
 
+    @Test
+    fun `firestore rules permit initial MFA kit reissue only with valid password before first MFA verification`() = runBlocking {
+        signInTestUser(SuperAdminConfig.SUPER_ADMIN_EMAIL)
+        val initialKit = withTimeout(DEFAULT_TIMEOUT_MS) {
+            gateway.bootstrapSuperAdminWithRecovery(
+                masterPassword = "StrongMaster#2026!",
+                securityQuestion = "",
+                securityAnswer = "",
+                deviceId = "dev_initial",
+                deviceName = "Pixel Test"
+            )
+        }
+        assertTrue(CryptoUtil.isStandardBase32Secret(initialKit.totpSecret))
+        assertTrue(withTimeout(DEFAULT_TIMEOUT_MS) { gateway.isInitialMfaEnrollmentPending() })
+
+        val wrongPwEx = runCatching {
+            withTimeout(DEFAULT_TIMEOUT_MS) {
+                gateway.reissuePendingInitialMfaSetup("WrongPassword!", "dev_initial", "Pixel Test")
+            }
+        }.exceptionOrNull()
+        assertTrue(wrongPwEx is AuthorizationException)
+
+        val reissuedKit = withTimeout(DEFAULT_TIMEOUT_MS) {
+            gateway.reissuePendingInitialMfaSetup("StrongMaster#2026!", "dev_initial", "Pixel Test")
+        }
+        assertTrue(CryptoUtil.isStandardBase32Secret(reissuedKit.totpSecret))
+        assertNotEquals(initialKit.totpSecret, reissuedKit.totpSecret)
+        assertTrue(withTimeout(DEFAULT_TIMEOUT_MS) { gateway.isInitialMfaEnrollmentPending() })
+
+        // Verify with new Base32 TOTP code succeeds and permanently locks initial reissue
+        val verified = withTimeout(DEFAULT_TIMEOUT_MS) {
+            gateway.verifySuperAdminChallenge("StrongMaster#2026!", CryptoUtil.currentTotpCode(reissuedKit.totpSecret))
+        }
+        assertTrue(verified)
+        assertFalse(withTimeout(DEFAULT_TIMEOUT_MS) { gateway.isInitialMfaEnrollmentPending() })
+
+        val afterFirstLoginEx = runCatching {
+            withTimeout(DEFAULT_TIMEOUT_MS) {
+                gateway.reissuePendingInitialMfaSetup("StrongMaster#2026!", "dev_initial", "Pixel Test")
+            }
+        }.exceptionOrNull()
+        assertTrue(afterFirstLoginEx is AuthorizationException)
+    }
+
     private companion object {
         const val DEFAULT_TIMEOUT_MS = 8000L
         const val FLOW_TIMEOUT_MS = 5000L

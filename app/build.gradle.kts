@@ -121,6 +121,7 @@ dependencies {
   implementation(libs.kotlinx.coroutines.core)
   // implementation(libs.logging.interceptor)
   implementation(libs.moshi.kotlin)
+  implementation(libs.zxing.core)
   // implementation(libs.okhttp)
   // implementation(libs.play.services.location)
   // implementation(libs.retrofit)

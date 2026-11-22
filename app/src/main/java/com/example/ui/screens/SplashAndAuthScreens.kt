@@ -40,6 +40,7 @@ import com.example.ui.OneHomeUiState
 import com.example.ui.components.DropdownSelector
 import com.example.ui.components.EmptyStateCard
 import com.example.ui.components.FeedbackBanner
+import com.example.ui.components.MfaSetupKitCard
 import com.example.ui.components.StatusBadge
 import com.example.ui.theme.*
 
@@ -437,7 +438,17 @@ fun SuperAdminBootstrapScreen(
                     enabled = !uiState.isBusy && masterPassword.length >= 10 && masterPassword == confirmPassword,
                     modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).testTag("sa_bootstrap_submit_button")
                 ) {
-                    Text("Bootstrap & Generate MFA + Recovery Kit")
+                    if (uiState.isBusy) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Generating MFA QR & Recovery Kit...")
+                    } else {
+                        Text("Bootstrap & Generate MFA + Recovery Kit")
+                    }
                 }
                 TextButton(
                     onClick = onSignOut,
@@ -455,6 +466,7 @@ fun SuperAdminVerifyScreen(
     uiState: OneHomeUiState,
     onChangeLanguage: (AppLanguage) -> Unit,
     onVerify: (String, String) -> Unit,
+    onReissueInitialMfaKit: (String) -> Unit = {},
     onOpenRecovery: () -> Unit,
     onSignOut: () -> Unit,
     onDismissBanner: () -> Unit
@@ -494,8 +506,9 @@ fun SuperAdminVerifyScreen(
                         fontWeight = FontWeight.Bold
                     )
                 }
+                val accountEmail = uiState.centralIdentity?.email ?: SuperAdminConfig.SUPER_ADMIN_EMAIL
                 Text(
-                    text = "Verified Account: ${uiState.centralIdentity?.email ?: SuperAdminConfig.SUPER_ADMIN_EMAIL}",
+                    text = "Verified Account: $accountEmail",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -505,24 +518,14 @@ fun SuperAdminVerifyScreen(
                 if (kit != null || provisionPair != null) {
                     val secret = kit?.totpSecret ?: provisionPair!!.first
                     val codes = kit?.recoveryCodes ?: provisionPair!!.second
-                    Surface(
-                        color = ArchitecturalGoldContainer,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().testTag("sa_mfa_provision_box")
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                "SAVE ONCE IN SAFE PLACE — EMERGENCY NEW-PHONE RECOVERY KIT",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text("TOTP Secret: $secret", style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily))
-                            Text("Single-Use Recovery Codes: ${codes.joinToString(", ")}", style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily))
-                            if (kit != null && kit.masterRecoveryKey.isNotBlank()) {
-                                Text("Master Recovery Key: ${kit.masterRecoveryKey}", style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily), fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
+                    MfaSetupKitCard(
+                        accountEmail = accountEmail,
+                        totpSecret = secret,
+                        recoveryCodes = codes,
+                        masterRecoveryKey = kit?.masterRecoveryKey?.takeIf { it.isNotBlank() },
+                        title = "SAVE ONCE — MFA QR CODE & RECOVERY KIT",
+                        modifier = Modifier.testTag("sa_mfa_provision_box")
+                    )
                 }
 
                 OutlinedTextField(
@@ -538,6 +541,59 @@ fun SuperAdminVerifyScreen(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().testTag("sa_verify_password_input")
                 )
+
+                if (kit == null && provisionPair == null && uiState.isSuperAdminInitialMfaPending) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("sa_initial_mfa_pending_box")
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.QrCode2,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "First-Time MFA QR & Recovery Kit Required",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                            Text(
+                                text = "Initial TOTP verification has not been completed yet for your existing account. Enter your existing Master Password above, then tap below to generate your scannable QR Code, Authenticator Key & Recovery Kit (Master Password + 6-digit TOTP stay strictly enforced).",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Button(
+                                onClick = { onReissueInitialMfaKit(masterPassword) },
+                                enabled = !uiState.isBusy && masterPassword.isNotBlank(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .defaultMinSize(minHeight = 48.dp)
+                                    .testTag("sa_reissue_initial_mfa_button")
+                            ) {
+                                if (uiState.isBusy) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Generating QR & Kit...")
+                                } else {
+                                    Icon(Icons.Default.QrCode2, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Generate & Show MFA QR Code + Recovery Kit")
+                                }
+                            }
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = totpOrRecovery,
                     onValueChange = { totpOrRecovery = it },
@@ -550,7 +606,17 @@ fun SuperAdminVerifyScreen(
                     enabled = !uiState.isBusy && masterPassword.isNotBlank() && totpOrRecovery.isNotBlank(),
                     modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).testTag("sa_verify_submit_button")
                 ) {
-                    Text("Verify & Enter Super Admin Console")
+                    if (uiState.isBusy) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Verifying...")
+                    } else {
+                        Text("Verify & Enter Super Admin Console")
+                    }
                 }
                 OutlinedButton(
                     onClick = onOpenRecovery,
@@ -1460,13 +1526,13 @@ fun AccountSecurityScreen(
                     }
                     uiState.mfaProvisionInfo?.let { (secret, codes) ->
                         Spacer(Modifier.height(10.dp))
-                        Surface(color = ArchitecturalGoldContainer, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text("TOTP Secret: $secret", style = MaterialTheme.typography.labelMedium.copy(fontFamily = MonoFontFamily))
-                                Spacer(Modifier.height(4.dp))
-                                Text("Recovery Codes (save once): ${codes.joinToString(", ")}", style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily))
-                            }
-                        }
+                        MfaSetupKitCard(
+                            accountEmail = ctx.email,
+                            totpSecret = secret,
+                            recoveryCodes = codes,
+                            masterRecoveryKey = null,
+                            title = "Account Authenticator QR & Recovery Codes"
+                        )
                     }
                 }
             }

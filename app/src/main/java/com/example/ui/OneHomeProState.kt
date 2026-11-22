@@ -134,6 +134,7 @@ data class OneHomeUiState(
     val gateLockReason: String? = null,
     val superAdminMfaProvision: Pair<String, List<String>>? = null,
     val lastRecoveryKit: SuperAdminProvisionKit? = null,
+    val isSuperAdminInitialMfaPending: Boolean = false,
     val superAdminSecurityQuestion: String? = null,
     val adminDevices: List<AdminDeviceRecord> = emptyList(),
     val lastCloudSyncEpoch: Long? = null,

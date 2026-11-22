@@ -410,6 +410,9 @@ class OneHomeProViewModel(
                 val secQuestion = if (bootstrapped) {
                     runCatching { container.centralAuthority.getSuperAdminSecurityQuestion() }.getOrNull()
                 } else null
+                val initialMfaPending = if (bootstrapped) {
+                    runCatching { container.centralAuthority.isInitialMfaEnrollmentPending() }.getOrDefault(false)
+                } else false
                 _uiState.update {
                     it.copy(
                         isInitializing = false,
@@ -417,6 +420,7 @@ class OneHomeProViewModel(
                         centralIdentity = identity,
                         platformStatus = status,
                         superAdminSecurityQuestion = secQuestion,
+                        isSuperAdminInitialMfaPending = initialMfaPending,
                         gateLockReason = null,
                         authStep = if (bootstrapped) AuthScreenStep.SUPER_ADMIN_VERIFY else AuthScreenStep.SUPER_ADMIN_BOOTSTRAP
                     )
@@ -550,15 +554,71 @@ class OneHomeProViewModel(
                         platformStatus = status,
                         superAdminMfaProvision = kit.totpSecret to kit.recoveryCodes,
                         lastRecoveryKit = kit,
+                        isSuperAdminInitialMfaPending = true,
                         superAdminSecurityQuestion = kit.securityQuestion.takeIf { q -> q.isNotBlank() },
                         authStep = AuthScreenStep.SUPER_ADMIN_VERIFY,
-                        bannerSuccess = "Super Admin authority locked with TOTP MFA, single-use recovery codes, and Master Recovery Key. Save these once!"
+                        bannerSuccess = "Super Admin authority locked! Scan the QR Code below in your Authenticator app, save your Recovery Kit, then enter Master Password + 6-digit code to sign in."
                     )
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.update { it.copy(isBusy = false, bannerError = e.message ?: "Bootstrap failed") }
+                val msg = e.message.orEmpty()
+                if (msg.contains("already bootstrapped", ignoreCase = true) &&
+                    runCatching { container.centralAuthority.isVerifiedSuperAdminCurrent() }.getOrDefault(false)
+                ) {
+                    val pending = runCatching { container.centralAuthority.isInitialMfaEnrollmentPending() }.getOrDefault(false)
+                    val secQuestion = runCatching { container.centralAuthority.getSuperAdminSecurityQuestion() }.getOrNull()
+                    _uiState.update {
+                        it.copy(
+                            isBusy = false,
+                            superAdminSecurityQuestion = secQuestion ?: it.superAdminSecurityQuestion,
+                            isSuperAdminInitialMfaPending = pending,
+                            authStep = AuthScreenStep.SUPER_ADMIN_VERIFY,
+                            bannerError = if (pending) {
+                                "Super Admin account already exists and initial MFA setup is still pending. Enter your Master Password below and generate your MFA QR Code & Recovery Kit."
+                            } else {
+                                "Super Admin authority is already bootstrapped. Enter your Master Password and 6-digit Authenticator code."
+                            }
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isBusy = false, bannerError = msg.ifBlank { "Bootstrap failed" }) }
+                }
+            }
+        }
+    }
+
+    fun reissuePendingInitialMfaSetup(masterPassword: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
+            try {
+                val deviceId = container.sessionStore.getOrCreateDeviceId()
+                val kit = container.centralAuthority.reissuePendingInitialMfaSetup(
+                    masterPassword = masterPassword,
+                    deviceId = deviceId,
+                    deviceName = deviceLabel()
+                )
+                _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        superAdminMfaProvision = kit.totpSecret to kit.recoveryCodes,
+                        lastRecoveryKit = kit,
+                        isSuperAdminInitialMfaPending = true,
+                        superAdminSecurityQuestion = kit.securityQuestion.takeIf { q -> q.isNotBlank() } ?: it.superAdminSecurityQuestion,
+                        authStep = AuthScreenStep.SUPER_ADMIN_VERIFY,
+                        bannerSuccess = "Fresh MFA QR Code, Base32 Setup Key & Recovery Kit generated! Scan in your Authenticator app, then enter your Master Password + 6-digit code below to enter."
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        bannerError = e.message ?: "Unable to generate initial MFA setup kit"
+                    )
+                }
             }
         }
     }
@@ -617,6 +677,7 @@ class OneHomeProViewModel(
                             it.copy(
                                 superAdminMfaProvision = null,
                                 lastRecoveryKit = null,
+                                isSuperAdminInitialMfaPending = false,
                                 myAccessGrant = res.grant,
                                 lastCloudSyncEpoch = restoreInfo?.syncedAtEpoch ?: it.lastCloudSyncEpoch,
                                 lastCloudSyncCount = restoreInfo?.restoredRecordCount ?: it.lastCloudSyncCount,

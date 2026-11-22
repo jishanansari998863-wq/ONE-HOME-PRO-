@@ -193,4 +193,70 @@ class ComposeUiFlowRobolectricTest {
             realVm.stopObservers()
         }
     }
+
+    @Test
+    fun `super admin bootstrap renders scannable QR code and pending reopen renders reissue QR button without bypass`() {
+        runBlocking {
+            central.signInAsTestIdentity("uid_jishan", SuperAdminConfig.SUPER_ADMIN_EMAIL, "Jishan Ansari")
+        }
+        composeRule.setContent {
+            OneHomeProAppRoot(vm)
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000L) {
+            composeRule.onAllNodesWithTag("super_admin_bootstrap_screen").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("sa_bootstrap_password_input").performScrollTo().performTextInput("JishanStrong#2026")
+        composeRule.onNodeWithTag("sa_bootstrap_confirm_input").performScrollTo().performTextInput("JishanStrong#2026")
+        composeRule.onNodeWithTag("sa_bootstrap_submit_button").performScrollTo().performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000L) {
+            composeRule.onAllNodesWithTag("sa_mfa_provision_box").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("sa_mfa_qr_code").performScrollTo().assertExists()
+        composeRule.onNodeWithTag("sa_open_authenticator_button").performScrollTo().assertExists()
+        composeRule.onNodeWithTag("sa_copy_totp_secret_button").performScrollTo().assertExists()
+        composeRule.onNodeWithTag("sa_copy_full_kit_button").performScrollTo().assertExists()
+        composeRule.onAllNodesWithTag("dashboard_screen").assertCountEquals(0)
+
+        // Reopen before verifying MFA -> must show sa_initial_mfa_pending_box & sa_reissue_initial_mfa_button
+        vm.stopObservers()
+        val reopenedVm = OneHomeProViewModel(container, splashDelayMs = 0L)
+        try {
+            val pendingVmState = runBlocking {
+                central.isInitialMfaEnrollmentPending()
+            }
+            org.junit.Assert.assertTrue(pendingVmState)
+        } finally {
+            reopenedVm.stopObservers()
+        }
+    }
+
+    @Test
+    fun `reopened super admin verify screen generates QR code and recovery kit when valid master password entered`() {
+        runBlocking {
+            central.signInAsTestIdentity("uid_jishan", SuperAdminConfig.SUPER_ADMIN_EMAIL, "Jishan Ansari")
+            central.bootstrapSuperAdmin("JishanStrong#2026")
+        }
+        val reopenedVm = OneHomeProViewModel(container, splashDelayMs = 0L)
+        try {
+            composeRule.setContent {
+                OneHomeProAppRoot(reopenedVm)
+            }
+            composeRule.waitUntil(timeoutMillis = 5_000L) {
+                composeRule.onAllNodesWithTag("sa_initial_mfa_pending_box").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithTag("sa_reissue_initial_mfa_button").performScrollTo().assertExists()
+            composeRule.onNodeWithTag("sa_verify_password_input").performScrollTo().performTextInput("JishanStrong#2026")
+            composeRule.onNodeWithTag("sa_reissue_initial_mfa_button").performScrollTo().performClick()
+
+            composeRule.waitUntil(timeoutMillis = 5_000L) {
+                composeRule.onAllNodesWithTag("sa_mfa_qr_code").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithTag("sa_copy_totp_secret_button").performScrollTo().assertExists()
+            composeRule.onNodeWithTag("sa_master_recovery_key_text").performScrollTo().assertExists()
+            composeRule.onAllNodesWithTag("dashboard_screen").assertCountEquals(0)
+        } finally {
+            reopenedVm.stopObservers()
+        }
+    }
 }

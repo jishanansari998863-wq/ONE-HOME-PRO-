@@ -629,4 +629,100 @@ class SuperAdminSecurityRobolectricTest {
         assertFalse(com.example.data.remote.GoogleSignInHelper.isTechnicalCancellationForFallback("Caller has been temporarily blocked due to too many canceled sign-in prompts"))
         assertFalse(com.example.data.remote.GoogleSignInHelper.isTechnicalCancellationForFallback(null))
     }
+
+    @Test
+    fun `base32 TOTP secrets encode valid otpauth QR codes and support legacy base64 fallback`() {
+        val secret = CryptoUtil.generateTotpSecret()
+        assertEquals(32, secret.length)
+        assertTrue("Expected pure RFC4648 Base32 secret, got $secret", CryptoUtil.isStandardBase32Secret(secret))
+
+        val now = 1_760_000_000_000L
+        val code = CryptoUtil.currentTotpCode(secret, now)
+        assertEquals(6, code.length)
+        assertTrue(CryptoUtil.verifyTotpCode(secret, code, now))
+        assertTrue(CryptoUtil.verifyTotpCode(secret, code, now + 25_000L))
+
+        // Build otpauth:// URI -> encode via ZXing -> decode back and verify exact URI matches
+        val uri = CryptoUtil.buildTotpOtpAuthUri(SuperAdminConfig.SUPER_ADMIN_EMAIL, secret)
+        assertTrue(uri.startsWith("otpauth://totp/ONE%20HOME%20PRO:ansarisahabaj980%40gmail.com?secret=$secret"))
+        val matrix = com.example.ui.components.QrCodeMatrixEncoder.encode(uri)
+        assertTrue(matrix.dimension >= 21)
+
+        // Scale QR matrix 6x (matching screen rendering) and decode with ZXing MultiFormatReader
+        val scale = 6
+        val imgDim = matrix.dimension * scale
+        val pixels = IntArray(imgDim * imgDim)
+        for (y in 0 until imgDim) {
+            val my = y / scale
+            for (x in 0 until imgDim) {
+                val mx = x / scale
+                pixels[y * imgDim + x] = if (matrix.isDark(mx, my)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+            }
+        }
+        val source = com.google.zxing.RGBLuminanceSource(imgDim, imgDim, pixels)
+        val decoded = com.google.zxing.MultiFormatReader().decode(
+            com.google.zxing.BinaryBitmap(com.google.zxing.common.HybridBinarizer(source))
+        )
+        assertEquals(uri, decoded.text)
+
+        // Verify legacy Base64 secrets still validate properly alongside RFC 4648 Base32 "JBSWY3DPEHPK3PXP"
+        val legacyBytes = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
+        val legacyBase64 = android.util.Base64.encodeToString(legacyBytes, android.util.Base64.NO_WRAP)
+        val legacyCode = CryptoUtil.currentTotpCode(legacyBase64, now)
+        assertTrue(CryptoUtil.verifyTotpCode(legacyBase64, legacyCode, now))
+        val convertedBase32 = CryptoUtil.toBase32TotpSecret(legacyBase64)
+        assertTrue(CryptoUtil.verifyTotpCode(convertedBase32, legacyCode, now))
+    }
+
+    @Test
+    fun `pending initial MFA kit reissue preserves existing Super Admin, enforces Master Password + TOTP, and self-locks after first login`() = runBlocking {
+        central.signInAsTestIdentity("uid_jishan", SuperAdminConfig.SUPER_ADMIN_EMAIL, "Jishan Ansari")
+        val vm1 = OneHomeProViewModel(container, splashDelayMs = 0L).also { activeVm = it }
+        awaitState { it.authStep == AuthScreenStep.SUPER_ADMIN_BOOTSTRAP && !it.isInitializing }
+
+        // User taps Bootstrap -> kit is generated in backend
+        vm1.bootstrapSuperAdmin("JishanMaster#2026!")
+        awaitState { it.authStep == AuthScreenStep.SUPER_ADMIN_VERIFY && it.lastRecoveryKit != null }
+        vm1.stopObservers()
+
+        // Simulate app reopen BEFORE scanning QR code or finishing first MFA login (lastRecoveryKit cleared from memory)
+        val store2 = SessionStore(app, "reopen_${System.nanoTime()}")
+        val container2 = AppContainer(app, db, central, store2)
+        val vm2 = OneHomeProViewModel(container2, splashDelayMs = 0L).also { activeVm = it }
+        awaitState { it.authStep == AuthScreenStep.SUPER_ADMIN_VERIFY && !it.isInitializing }
+
+        assertNull(vm2.uiState.value.lastRecoveryKit)
+        assertTrue("Expected pending initial MFA flag when no login succeeded yet", vm2.uiState.value.isSuperAdminInitialMfaPending)
+        assertNull("Never bypass MFA/password into console!", vm2.uiState.value.authContext)
+
+        // Wrong Master Password MUST be rejected during reissue
+        vm2.reissuePendingInitialMfaSetup("WrongPassword#999")
+        awaitState { it.bannerError != null && !it.isBusy }
+        assertNull(vm2.uiState.value.lastRecoveryKit)
+        assertNull(vm2.uiState.value.authContext)
+
+        // Valid Master Password generates fresh Base32 TOTP QR & Recovery Kit while STILL keeping user on SUPER_ADMIN_VERIFY (zero bypass)
+        vm2.reissuePendingInitialMfaSetup("JishanMaster#2026!")
+        awaitState { it.lastRecoveryKit != null && !it.isBusy }
+        val freshKit = vm2.uiState.value.lastRecoveryKit!!
+        assertTrue(CryptoUtil.isStandardBase32Secret(freshKit.totpSecret))
+        assertEquals(6, freshKit.recoveryCodes.size)
+        assertTrue(freshKit.masterRecoveryKey.startsWith("OHP-KEY-"))
+        assertEquals(AuthScreenStep.SUPER_ADMIN_VERIFY, vm2.uiState.value.authStep)
+        assertNull("User must still enter 6-digit TOTP after scanning QR!", vm2.uiState.value.authContext)
+
+        // Complete challenge with Master Password + fresh 6-digit TOTP -> enters Super Admin console
+        val liveCode = CryptoUtil.currentTotpCode(freshKit.totpSecret)
+        vm2.verifySuperAdminChallenge("JishanMaster#2026!", liveCode)
+        awaitState { it.authContext?.isSuperAdmin == true }
+        assertEquals("uid_jishan", vm2.uiState.value.authContext?.userId)
+        assertFalse(vm2.uiState.value.isSuperAdminInitialMfaPending)
+
+        // Once initial MFA verification succeeded, initial-kit reissue is PERMANENTLY LOCKED forever
+        assertFalse(central.isInitialMfaEnrollmentPending())
+        val lockedEx = runCatching {
+            central.reissuePendingInitialMfaSetup("JishanMaster#2026!")
+        }.exceptionOrNull()
+        assertTrue(lockedEx is AuthorizationException)
+    }
 }
