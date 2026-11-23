@@ -46,6 +46,7 @@ interface CentralAuthorityGateway {
 
     suspend fun uploadCloudBusinessSnapshot(snapshot: CloudBusinessSnapshot)
     suspend fun downloadCloudBusinessSnapshot(businessId: String): CloudBusinessSnapshot?
+    suspend fun getSnapshotEncryptionMaterial(businessId: String): String = businessId
 
     suspend fun getMyAccessRequest(): AccessRequestRecord?
     suspend fun getMyAccessGrant(): AccessGrantRecord?

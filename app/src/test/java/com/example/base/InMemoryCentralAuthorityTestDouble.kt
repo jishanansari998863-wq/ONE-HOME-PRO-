@@ -33,8 +33,37 @@ class InMemoryCentralAuthorityTestDouble : CentralAuthorityGateway {
     val adminDevices = ConcurrentHashMap<String, AdminDeviceRecord>()
     val cloudSnapshots = ConcurrentHashMap<String, CloudBusinessSnapshot>()
     val auditLogs = mutableListOf<AdminAuditRecord>()
+    private val saFailures = ConcurrentHashMap<String, Int>()
+    private val saLockUntil = ConcurrentHashMap<String, Long>()
 
     private val gateVersion = MutableStateFlow(0L)
+
+    private fun enforceNotLocked(uid: String) {
+        val until = saLockUntil[uid] ?: 0L
+        val now = System.currentTimeMillis()
+        if (until > now) {
+            val mins = (((until - now) + 59_999L) / 60_000L).coerceAtLeast(1L)
+            throw AuthorizationException("Too many failed Super Admin attempts. Locked for $mins minute(s).")
+        }
+    }
+
+    private suspend fun recordSaFailure(uid: String, email: String, details: String) {
+        val next = (saFailures[uid] ?: 0) + 1
+        saFailures[uid] = next
+        if (next == 5) {
+            recordAuditEvent("SUPER_ADMIN_BRUTE_FORCE_LOCK", uid, email, null, "Locked after 5 failed attempts ($details)")
+        }
+        if (next >= 5) {
+            val durationMs = 5L * 60_000L * (next - 4).coerceIn(1, 6)
+            saLockUntil[uid] = System.currentTimeMillis() + durationMs
+            throw AuthorizationException("Too many failed Super Admin attempts ($next). Locked for ${(durationMs / 60_000L).coerceAtLeast(1L)} minute(s).")
+        }
+    }
+
+    private fun resetSaFailures(uid: String) {
+        saFailures.remove(uid)
+        saLockUntil.remove(uid)
+    }
 
     override val authIdentityFlow: Flow<CentralIdentity?> = identityState.asStateFlow()
 
@@ -233,6 +262,7 @@ class InMemoryCentralAuthorityTestDouble : CentralAuthorityGateway {
         if (!id.emailVerified || !SuperAdminConfig.isSuperAdminEmail(id.email)) {
             throw AuthorizationException("Unauthorized Super Admin identity.")
         }
+        enforceNotLocked(id.uid)
         if (isDeviceRevokedLost(id.uid, deviceId) != null) {
             throw AuthorizationException("Lost/Revoked device cannot access initial MFA setup.")
         }
@@ -240,8 +270,10 @@ class InMemoryCentralAuthorityTestDouble : CentralAuthorityGateway {
         if (cfg.superAdminUid != id.uid) throw AuthorizationException("Super Admin UID mismatch.")
         if (!CryptoUtil.verifyPassword(masterPassword, cfg.passwordSalt, cfg.passwordHash)) {
             recordAuditEvent("SUPER_ADMIN_LOGIN_FAIL", id.uid, id.email, null, "Wrong password on initial MFA reissue")
+            recordSaFailure(id.uid, id.email, "initial MFA reissue")
             throw AuthorizationException("Incorrect Master Password. Enter the exact Master Password created during Bootstrap.")
         }
+        resetSaFailures(id.uid)
         if (!isInitialMfaEnrollmentPending()) {
             throw AuthorizationException("Initial MFA enrollment was already completed previously. Use your 6-digit TOTP code or Account Recovery.")
         }
@@ -268,20 +300,24 @@ class InMemoryCentralAuthorityTestDouble : CentralAuthorityGateway {
         if (!id.emailVerified || !SuperAdminConfig.isSuperAdminEmail(id.email)) {
             throw AuthorizationException("Unauthorized Super Admin challenge.")
         }
+        enforceNotLocked(id.uid)
         val cfg = platformConfig.get() ?: throw AuthorizationException("Super Admin config missing.")
         if (cfg.superAdminUid != id.uid) throw AuthorizationException("Super Admin UID mismatch.")
         if (!CryptoUtil.verifyPassword(masterPassword, cfg.passwordSalt, cfg.passwordHash)) {
             recordAuditEvent("SUPER_ADMIN_LOGIN_FAIL", id.uid, id.email, null, "Wrong password")
+            recordSaFailure(id.uid, id.email, "master password")
             return false
         }
         val trimmed = totpOrRecoveryCode.trim()
         if (CryptoUtil.verifyTotpCode(cfg.totpSecret, trimmed, System.currentTimeMillis())) {
+            resetSaFailures(id.uid)
             recordAuditEvent("SUPER_ADMIN_VERIFIED", id.uid, id.email, null, "TOTP MFA verified")
             return true
         }
         val upper = trimmed.uppercase()
         val hash = CryptoUtil.sha256Hex(upper)
         if (cfg.recoveryCodeHashes.contains(hash)) {
+            resetSaFailures(id.uid)
             platformConfig.set(cfg.copy(recoveryCodeHashes = cfg.recoveryCodeHashes.filterNot { it == hash }))
             recordAuditEvent("SUPER_ADMIN_RECOVERY_USED", id.uid, id.email, null, "Single-use recovery code verified")
             return true
@@ -289,9 +325,11 @@ class InMemoryCentralAuthorityTestDouble : CentralAuthorityGateway {
         if (cfg.backupKeyHash.isNotBlank() && cfg.backupKeySalt.isNotBlank() &&
             CryptoUtil.verifyPassword(upper, cfg.backupKeySalt, cfg.backupKeyHash)
         ) {
+            resetSaFailures(id.uid)
             recordAuditEvent("SUPER_ADMIN_MASTER_KEY_LOGIN", id.uid, id.email, null, "Master recovery key verified")
             return true
         }
+        recordSaFailure(id.uid, id.email, "MFA TOTP/recovery code")
         return false
     }
 
@@ -306,6 +344,7 @@ class InMemoryCentralAuthorityTestDouble : CentralAuthorityGateway {
         if (!id.emailVerified || !SuperAdminConfig.isSuperAdminEmail(id.email)) {
             throw AuthorizationException("Only verified Super Admin (${SuperAdminConfig.SUPER_ADMIN_EMAIL}) can recover account.")
         }
+        enforceNotLocked(id.uid)
         require(request.newMasterPassword.length >= 10) { "New master password must be at least 10 characters." }
         if (isDeviceRevokedLost(id.uid, request.currentDeviceId) != null) {
             throw AuthorizationException("Lost/Revoked device cannot initiate Super Admin recovery.")
@@ -323,8 +362,10 @@ class InMemoryCentralAuthorityTestDouble : CentralAuthorityGateway {
             CryptoUtil.verifyPassword(proof.lowercase(), cfg.securityAnswerSalt, cfg.securityAnswerHash)
         if (!matchedCode && !matchedKey && !matchedAnswer) {
             recordAuditEvent("SUPER_ADMIN_RECOVERY_FAILED", id.uid, id.email, null, "Invalid recovery proof")
+            recordSaFailure(id.uid, id.email, "account recovery")
             throw AuthorizationException("Invalid Master Recovery Key, Recovery Code, or Security Answer.")
         }
+        resetSaFailures(id.uid)
 
         val now = System.currentTimeMillis()
         val newSalt = CryptoUtil.generateSaltBase64()
@@ -509,6 +550,18 @@ class InMemoryCentralAuthorityTestDouble : CentralAuthorityGateway {
     override suspend fun downloadCloudBusinessSnapshot(businessId: String): CloudBusinessSnapshot? {
         requireId()
         return cloudSnapshots[businessId]
+    }
+
+    override suspend fun getSnapshotEncryptionMaterial(businessId: String): String {
+        val id = requireId()
+        val biz = businesses[businessId]
+        if (biz != null) {
+            return "OHP-CLOUD-V1|$businessId|${biz.code}|${biz.ownerUid}|${biz.ownerEmail}|${biz.approvedByUid}"
+        }
+        if (isVerifiedSuperAdminCurrent()) {
+            return "OHP-CLOUD-V1|$businessId|${id.uid}|${SuperAdminConfig.SUPER_ADMIN_EMAIL}"
+        }
+        throw AuthorizationException("Business record missing for snapshot key derivation.")
     }
 
     override suspend fun getMyAccessRequest(): AccessRequestRecord? {

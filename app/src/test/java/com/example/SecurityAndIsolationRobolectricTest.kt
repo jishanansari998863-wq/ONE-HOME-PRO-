@@ -133,8 +133,10 @@ class SecurityAndIsolationRobolectricTest {
 
         val mfaRes = authService.login("mfa@onehome.qa", "OldPassword#1", false, "OwnerDevice")
         assertTrue(mfaRes is AuthResult.MfaRequired)
-        val totpHint = (mfaRes as AuthResult.MfaRequired).demoHintInfo
-        val verified = authService.verifyMfaAndCompleteLogin(mfaRes.userId, totpHint, true, "OwnerDevice")
+        assertTrue("MfaRequired must not expose live TOTP/hint", (mfaRes as AuthResult.MfaRequired).demoHintInfo.isBlank())
+        val mfaCred = db.securityAndHrDao().getMfaCredential(mfaRes.userId)!!
+        val liveTotp = CryptoUtil.currentTotpCode(mfaCred.secretKey)
+        val verified = authService.verifyMfaAndCompleteLogin(mfaRes.userId, liveTotp, true, "OwnerDevice")
         assertTrue(verified is AuthResult.Authenticated)
         val activeToken = (verified as AuthResult.Authenticated).rawSessionToken
 

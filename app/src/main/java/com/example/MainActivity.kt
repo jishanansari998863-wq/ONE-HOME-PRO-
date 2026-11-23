@@ -1,6 +1,8 @@
 package com.example
 
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -31,6 +33,12 @@ import com.example.ui.theme.OneHomeProTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!Build.FINGERPRINT.equals("robolectric", ignoreCase = true)) {
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_SECURE,
+                WindowManager.LayoutParams.FLAG_SECURE
+            )
+        }
         enableEdgeToEdge()
         val appContainer = (application as OneHomeProApp).container
         setContent {

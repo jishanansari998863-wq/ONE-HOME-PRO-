@@ -2,6 +2,9 @@ package com.example.domain.service
 
 import android.content.Context
 import android.net.Uri
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import android.util.Base64
 import com.example.data.db.OneHomeProDatabase
 import com.example.data.db.entities.*
 import com.example.domain.document.DocumentImageProcessor
@@ -14,6 +17,12 @@ import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.nio.ByteBuffer
+import java.security.KeyStore
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 
 data class BackupVerificationResult(
     val backupId: String,
@@ -37,15 +46,85 @@ class GovernanceBackupService(
     private fun vaultDir(): File = File(context.filesDir, "private_vault").apply { mkdirs() }
     private fun backupDir(): File = File(context.filesDir, "encrypted_backups").apply { mkdirs() }
 
+    @Synchronized
     private fun getOrCreateVaultSecret(): String {
         val keyFile = File(context.filesDir, ".vault_master_key")
         if (keyFile.exists()) {
-            val existing = keyFile.readText(Charsets.UTF_8).trim()
-            if (existing.length >= 24) return existing
+            val raw = keyFile.readText(Charsets.UTF_8).trim()
+            if (raw.startsWith(KEYSTORE_WRAP_PREFIX)) {
+                return unwrapWithAndroidKeystore(raw.removePrefix(KEYSTORE_WRAP_PREFIX))
+            }
+            if (raw.length >= 24) {
+                // Transparently upgrade any legacy plaintext key file to Keystore-wrapped storage when Keystore is available
+                wrapWithAndroidKeystoreOrNull(raw)?.let { wrapped ->
+                    keyFile.writeText("$KEYSTORE_WRAP_PREFIX$wrapped", Charsets.UTF_8)
+                    restrictFilePermissions(keyFile)
+                }
+                return raw
+            }
         }
         val secret = CryptoUtil.generateSecureToken()
-        keyFile.writeText(secret, Charsets.UTF_8)
+        val wrapped = wrapWithAndroidKeystoreOrNull(secret)
+        if (wrapped != null) {
+            keyFile.writeText("$KEYSTORE_WRAP_PREFIX$wrapped", Charsets.UTF_8)
+        } else {
+            keyFile.writeText(secret, Charsets.UTF_8)
+        }
+        restrictFilePermissions(keyFile)
         return secret
+    }
+
+    private fun getOrCreateKeystoreKey(): SecretKey {
+        val ks = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+        val existing = (ks.getEntry(VAULT_KEYSTORE_ALIAS, null) as? KeyStore.SecretKeyEntry)?.secretKey
+        if (existing != null) return existing
+        val gen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
+        val spec = KeyGenParameterSpec.Builder(
+            VAULT_KEYSTORE_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+        )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256)
+            .build()
+        gen.init(spec)
+        return gen.generateKey()
+    }
+
+    private fun wrapWithAndroidKeystoreOrNull(secret: String): String? = runCatching {
+        val key = getOrCreateKeystoreKey()
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, key)
+        val iv = cipher.iv
+        val cipherText = cipher.doFinal(secret.toByteArray(Charsets.UTF_8))
+        val packed = ByteBuffer.allocate(4 + iv.size + cipherText.size)
+            .putInt(iv.size)
+            .put(iv)
+            .put(cipherText)
+            .array()
+        Base64.encodeToString(packed, Base64.NO_WRAP)
+    }.getOrNull()
+
+    private fun unwrapWithAndroidKeystore(encoded: String): String {
+        val key = getOrCreateKeystoreKey()
+        val packed = Base64.decode(encoded, Base64.NO_WRAP)
+        val buf = ByteBuffer.wrap(packed)
+        val ivLen = buf.int
+        require(ivLen in 12..32) { "Corrupted Keystore IV length" }
+        val iv = ByteArray(ivLen).also { buf.get(it) }
+        val cipherText = ByteArray(buf.remaining()).also { buf.get(it) }
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv))
+        return String(cipher.doFinal(cipherText), Charsets.UTF_8)
+    }
+
+    private fun restrictFilePermissions(file: File) {
+        runCatching {
+            file.setReadable(false, false)
+            file.setWritable(false, false)
+            file.setReadable(true, true)
+            file.setWritable(true, true)
+        }
     }
 
     suspend fun storePickedDocument(
@@ -617,5 +696,11 @@ class GovernanceBackupService(
             }
 
         return createdCount
+    }
+
+    private companion object {
+        const val KEYSTORE_WRAP_PREFIX = "KSGCM1:"
+        const val ANDROID_KEYSTORE = "AndroidKeyStore"
+        const val VAULT_KEYSTORE_ALIAS = "one_home_pro_vault_kek"
     }
 }

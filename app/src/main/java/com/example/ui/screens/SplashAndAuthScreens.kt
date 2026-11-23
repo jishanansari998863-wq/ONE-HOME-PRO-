@@ -1351,7 +1351,7 @@ fun DeviceChallengeScreen(
                 Spacer(Modifier.height(6.dp))
                 if (challenge != null) {
                     Text(
-                        text = "Unrecognized device detected for ${challenge.email}. Enter verification code: ${challenge.verificationCode}",
+                        text = "Unrecognized device detected for ${challenge.email}. Obtain the device verification code from your Business Owner or registered verification channel.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1416,9 +1416,9 @@ fun MfaChallengeScreen(
                 if (challenge != null) {
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "Authenticator secret hint: ${challenge.demoHintInfo}",
-                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = MonoFontFamily),
-                        color = MaterialTheme.colorScheme.primary
+                        text = "Authenticator verification is required for this account before workspace access is granted.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Spacer(Modifier.height(12.dp))

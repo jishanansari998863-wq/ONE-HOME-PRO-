@@ -227,7 +227,7 @@ class SuperAdminRulesTest : FirestoreEmulatorTestBase() {
         }
         assertTrue(validated is CentralVerificationResult.Approved)
 
-        // Approved user CANNOT read Super Admin HQ business or global config!
+        // Approved user CANNOT read Super Admin HQ business or global config or its encrypted cloud snapshot!
         val crossBizEx = runCatching {
             withTimeout(DEFAULT_TIMEOUT_MS) {
                 firestore.collection("businesses").document("biz_superadmin_hq").get().await()
@@ -237,6 +237,42 @@ class SuperAdminRulesTest : FirestoreEmulatorTestBase() {
         assertEquals(
             FirebaseFirestoreException.Code.PERMISSION_DENIED,
             unwrapFirestoreError(crossBizEx!!)?.code
+        )
+
+        val crossSnapReadEx = runCatching {
+            withTimeout(DEFAULT_TIMEOUT_MS) {
+                firestore.collection("businesses").document("biz_superadmin_hq")
+                    .collection("cloud_snapshots").document("latest").get().await()
+            }
+        }.exceptionOrNull()
+        assertNotNull("Expected PERMISSION_DENIED reading another business cloud snapshot", crossSnapReadEx)
+        assertEquals(
+            FirebaseFirestoreException.Code.PERMISSION_DENIED,
+            unwrapFirestoreError(crossSnapReadEx!!)?.code
+        )
+
+        val crossSnapWriteEx = runCatching {
+            withTimeout(DEFAULT_TIMEOUT_MS) {
+                firestore.collection("businesses").document("biz_superadmin_hq")
+                    .collection("cloud_snapshots").document("latest").set(
+                        mapOf(
+                            "businessId" to "biz_superadmin_hq",
+                            "payloadBase64" to "OHPENC1:forged",
+                            "sha256Checksum" to "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                            "recordCount" to 1,
+                            "syncedByUid" to applicantUid,
+                            "syncedByDeviceName" to "Attacker",
+                            "appLanguageCode" to "en",
+                            "darkTheme" to false,
+                            "syncedAtEpoch" to 1000L
+                        )
+                    ).await()
+            }
+        }.exceptionOrNull()
+        assertNotNull("Expected PERMISSION_DENIED overwriting another business cloud snapshot", crossSnapWriteEx)
+        assertEquals(
+            FirebaseFirestoreException.Code.PERMISSION_DENIED,
+            unwrapFirestoreError(crossSnapWriteEx!!)?.code
         )
 
         // 5. Super Admin revokes user -> subsequent session check is DENIED

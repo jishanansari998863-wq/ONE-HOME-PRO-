@@ -47,6 +47,7 @@ class OneHomeProViewModel(
 
     private var dataCollectionJob: Job? = null
     private var gateRevocationJob: Job? = null
+    private val financialRefreshTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     init {
         bootstrap()
@@ -536,6 +537,7 @@ class OneHomeProViewModel(
         securityQuestion: String = "",
         securityAnswer: String = ""
     ) {
+        if (_uiState.value.isBusy) return
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
             try {
@@ -590,6 +592,7 @@ class OneHomeProViewModel(
     }
 
     fun reissuePendingInitialMfaSetup(masterPassword: String) {
+        if (_uiState.value.isBusy) return
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
             try {
@@ -624,6 +627,7 @@ class OneHomeProViewModel(
     }
 
     fun verifySuperAdminChallenge(masterPassword: String, totpOrRecoveryCode: String) {
+        if (_uiState.value.isBusy) return
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
             try {
@@ -740,6 +744,7 @@ class OneHomeProViewModel(
         newSecurityAnswer: String,
         revokeOtherDevices: Boolean
     ) {
+        if (_uiState.value.isBusy) return
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
             try {
@@ -890,6 +895,7 @@ class OneHomeProViewModel(
         }
 
     fun syncBusinessDataToCloud() {
+        if (_uiState.value.isBusy) return
         val ctx = requireCtx()
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
@@ -920,6 +926,7 @@ class OneHomeProViewModel(
     }
 
     fun restoreBusinessDataFromCloud() {
+        if (_uiState.value.isBusy) return
         val ctx = requireCtx()
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
@@ -1115,6 +1122,7 @@ class OneHomeProViewModel(
     }
 
     fun signIn(email: String, password: String, rememberMe: Boolean) {
+        if (_uiState.value.isBusy) return
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true, bannerError = null) }
             try {
@@ -1131,14 +1139,14 @@ class OneHomeProViewModel(
                     is AuthResult.MfaRequired -> _uiState.update {
                         it.copy(
                             isBusy = false,
-                            pendingMfaChallenge = res,
+                            pendingMfaChallenge = res.copy(demoHintInfo = ""),
                             authStep = AuthScreenStep.MFA_CHALLENGE
                         )
                     }
                     is AuthResult.NewDeviceVerificationRequired -> _uiState.update {
                         it.copy(
                             isBusy = false,
-                            pendingDeviceChallenge = res,
+                            pendingDeviceChallenge = res.copy(verificationCode = ""),
                             authStep = AuthScreenStep.DEVICE_CHALLENGE
                         )
                     }
@@ -1153,6 +1161,7 @@ class OneHomeProViewModel(
     }
 
     fun verifyNewDevice(code: String, trustDevice: Boolean) {
+        if (_uiState.value.isBusy) return
         val challenge = _uiState.value.pendingDeviceChallenge ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true, bannerError = null) }
@@ -1175,14 +1184,14 @@ class OneHomeProViewModel(
                     it.copy(
                         isBusy = false,
                         pendingDeviceChallenge = null,
-                        pendingMfaChallenge = res,
+                        pendingMfaChallenge = res.copy(demoHintInfo = ""),
                         authStep = AuthScreenStep.MFA_CHALLENGE
                     )
                 }
                 is AuthResult.NewDeviceVerificationRequired -> _uiState.update {
                     it.copy(
                         isBusy = false,
-                        pendingDeviceChallenge = res,
+                        pendingDeviceChallenge = res.copy(verificationCode = ""),
                         bannerError = "Additional device verification required",
                         authStep = AuthScreenStep.DEVICE_CHALLENGE
                     )
@@ -1193,6 +1202,7 @@ class OneHomeProViewModel(
     }
 
     fun verifyMfa(codeOrRecovery: String) {
+        if (_uiState.value.isBusy) return
         val challenge = _uiState.value.pendingMfaChallenge ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true, bannerError = null) }
@@ -1218,15 +1228,16 @@ class OneHomeProViewModel(
     }
 
     fun requestPasswordReset(email: String) {
+        if (_uiState.value.isBusy) return
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true, bannerError = null) }
             try {
-                val otp = container.authService.requestPasswordReset(email)
+                container.authService.requestPasswordReset(email)
                 _uiState.update {
                     it.copy(
                         isBusy = false,
-                        pendingResetOtpNotice = "Verification code issued: $otp (valid 15 min)",
-                        bannerSuccess = "Reset code generated"
+                        pendingResetOtpNotice = "Password reset request recorded (valid 15 min). Obtain your verification code from your configured Email/SMS gateway or Business Owner.",
+                        bannerSuccess = "Password reset request recorded"
                     )
                 }
             } catch (e: Exception) {
@@ -1475,9 +1486,17 @@ class OneHomeProViewModel(
                 launch { coreDao.observeSecurityDeposits(bizId).collectLatest { v -> updateData { it.copy(deposits = v) } } }
                 launch { coreDao.observeDepositTransactions(bizId).collectLatest { v -> updateData { it.copy(depositTransactions = v) } } }
                 launch { coreDao.observeCheques(bizId).collectLatest { v -> updateData { it.copy(cheques = v) } } }
+                launch {
+                    financialRefreshTrigger
+                        .conflate()
+                        .collect {
+                            delay(60L)
+                            refreshFinancialReports()
+                        }
+                }
                 launch { accDao.observeChartOfAccounts(bizId).collectLatest { v -> updateData { it.copy(accounts = v) } } }
-                launch { accDao.observeJournalEntries(bizId).collectLatest { v -> updateData { it.copy(journals = v) }; refreshFinancialReports() } }
-                launch { accDao.observeJournalLines(bizId).collectLatest { v -> updateData { it.copy(journalLines = v) }; refreshFinancialReports() } }
+                launch { accDao.observeJournalEntries(bizId).collectLatest { v -> updateData { it.copy(journals = v) }; financialRefreshTrigger.tryEmit(Unit) } }
+                launch { accDao.observeJournalLines(bizId).collectLatest { v -> updateData { it.copy(journalLines = v) }; financialRefreshTrigger.tryEmit(Unit) } }
                 launch { accDao.observeIncomeRecords(bizId).collectLatest { v -> updateData { it.copy(incomeRecords = v) } } }
                 launch { accDao.observeExpenseRecords(bizId).collectLatest { v -> updateData { it.copy(expenseRecords = v) } } }
                 launch { accDao.observeBankAccounts(bizId).collectLatest { v -> updateData { it.copy(bankAccounts = v) } } }
@@ -2232,6 +2251,7 @@ class OneHomeProViewModel(
         _uiState.value.authContext ?: throw IllegalStateException("Session required")
 
     private fun runAction(successMessage: String, block: suspend () -> Unit) {
+        if (_uiState.value.isBusy) return
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true, bannerError = null, bannerSuccess = null) }
             try {

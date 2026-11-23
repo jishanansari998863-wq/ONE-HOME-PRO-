@@ -22,3 +22,25 @@
 -keep class androidx.credentials.** { *; }
 -keep class com.google.android.libraries.identity.googleid.** { *; }
 -keepclassmembers class com.example.domain.security.** { *; }
+
+# Room entities, DAOs, and Database
+-keep class * extends androidx.room.RoomDatabase
+-keep class com.example.data.db.** { *; }
+
+# Moshi reflection & KotlinJsonAdapterFactory for CloudSyncPayload
+-keep class com.squareup.moshi.** { *; }
+-keep class com.example.domain.service.CloudSyncPayload { *; }
+-keepclassmembers class com.example.domain.service.CloudSyncPayload { *; }
+-keep class kotlin.Metadata { *; }
+
+# Navigation, UI Models, ZXing QR & CameraX
+-keep class com.example.ui.** { *; }
+-keep class com.google.zxing.** { *; }
+-keep class androidx.camera.** { *; }
+
+# Strip debug/verbose Log calls in R8 release builds
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int d(...);
+}

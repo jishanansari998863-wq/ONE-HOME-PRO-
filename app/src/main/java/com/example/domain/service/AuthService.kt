@@ -524,15 +524,13 @@ class AuthService(
         }
 
         if (user.mfaEnabled) {
-            val cred = dao.getMfaCredential(user.id)
-            val currentCode = cred?.let { CryptoUtil.currentTotpCode(it.secretKey, now) } ?: ""
             return AuthResult.MfaRequired(
                 userId = user.id,
                 email = user.email,
                 businessId = primaryBizId,
                 rememberMe = rememberMe,
                 deviceTrusted = true,
-                demoHintInfo = currentCode
+                demoHintInfo = ""
             )
         }
 
@@ -621,15 +619,13 @@ class AuthService(
             ?: return AuthResult.Failed("No business access")
 
         if (user.mfaEnabled) {
-            val cred = dao.getMfaCredential(user.id)
-            val currentCode = cred?.let { CryptoUtil.currentTotpCode(it.secretKey, now) } ?: ""
             return AuthResult.MfaRequired(
                 userId = user.id,
                 email = user.email,
                 businessId = primaryBizId,
                 rememberMe = rememberMe,
                 deviceTrusted = trustDevice,
-                demoHintInfo = currentCode
+                demoHintInfo = ""
             )
         }
 
@@ -912,7 +908,7 @@ class AuthService(
                 }
             )
         }
-        return CryptoUtil.currentTotpCode(secret, now) to codes
+        return secret to codes
     }
 
     suspend fun disableMfa(ctx: AuthContext) {

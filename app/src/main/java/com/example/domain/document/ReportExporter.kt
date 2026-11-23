@@ -42,9 +42,19 @@ object ReportExporter {
 
     private fun csvRow(cols: List<String>): String =
         cols.joinToString(",") { cell ->
-            val escaped = cell.replace("\"", "\"\"")
+            val neutralized = sanitizeCsvCell(cell)
+            val escaped = neutralized.replace("\"", "\"\"")
             "\"$escaped\""
         } + "\r\n"
+
+    internal fun sanitizeCsvCell(raw: String): String {
+        val trimmedStart = raw.trimStart()
+        return if (trimmedStart.isNotEmpty() && trimmedStart[0] in charArrayOf('=', '+', '-', '@', '\t', '\r')) {
+            "'$raw"
+        } else {
+            raw
+        }
+    }
 
     fun buildPdfReport(
         reportTitle: String,

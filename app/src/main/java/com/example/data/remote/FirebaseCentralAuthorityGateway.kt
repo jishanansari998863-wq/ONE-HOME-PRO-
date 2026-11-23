@@ -29,6 +29,7 @@ class FirebaseCentralAuthorityGateway private constructor(
 
     private val db: FirebaseFirestore by dbLazy
     private val auth: FirebaseAuth by authLazy
+    private val sessionStore: SessionStore by lazy { SessionStore(context) }
 
     constructor(
         context: Context,
@@ -429,6 +430,7 @@ class FirebaseCentralAuthorityGateway private constructor(
         if (!id.emailVerified || !SuperAdminConfig.isSuperAdminEmail(id.email)) {
             throw AuthorizationException("Only verified Super Admin (${SuperAdminConfig.SUPER_ADMIN_EMAIL}) can complete initial MFA setup.")
         }
+        enforceNotLockedOut()
         val lostDevice = isDeviceRevokedLost(id.uid, deviceId)
         if (lostDevice != null) {
             throw AuthorizationException("This mobile device (${lostDevice.deviceName}) was marked LOST/REVOKED.")
@@ -454,8 +456,10 @@ class FirebaseCentralAuthorityGateway private constructor(
                 null,
                 "Invalid Master Password during initial MFA QR kit generation"
             )
+            recordSuperAdminFailure(id.uid, id.email, "initial MFA setup reissue")
             throw AuthorizationException("Incorrect Master Password. Enter the exact Master Password created during Bootstrap.")
         }
+        sessionStore.resetSuperAdminAuthFailures()
         if (!isInitialMfaEnrollmentPending()) {
             throw AuthorizationException("Initial MFA enrollment was already completed previously. Use your 6-digit TOTP code or Account Recovery.")
         }
@@ -503,6 +507,7 @@ class FirebaseCentralAuthorityGateway private constructor(
         if (!id.emailVerified || !SuperAdminConfig.isSuperAdminEmail(id.email)) {
             throw AuthorizationException("Unauthorized Super Admin challenge identity.")
         }
+        enforceNotLockedOut()
         val configRef = db.collection(COL_PLATFORM_CONFIG).document(DOC_GLOBAL)
         val snap = try {
             configRef.get().awaitResult()
@@ -517,12 +522,14 @@ class FirebaseCentralAuthorityGateway private constructor(
         }
         if (!CryptoUtil.verifyPassword(masterPassword, cfg.passwordSalt, cfg.passwordHash)) {
             recordAuditEvent("SUPER_ADMIN_LOGIN_FAIL", id.uid, id.email, null, "Invalid Super Admin master password attempt")
+            recordSuperAdminFailure(id.uid, id.email, "master password verification")
             return false
         }
         val now = System.currentTimeMillis()
         val trimmedCode = totpOrRecoveryCode.trim()
         val totpOk = CryptoUtil.verifyTotpCode(cfg.totpSecret, trimmedCode, now)
         if (totpOk) {
+            sessionStore.resetSuperAdminAuthFailures()
             recordAuditEvent("SUPER_ADMIN_VERIFIED", id.uid, id.email, null, "Super Admin authenticated via master password + TOTP MFA")
             return true
         }
@@ -542,16 +549,19 @@ class FirebaseCentralAuthorityGateway private constructor(
                     handleFirestoreError(e, OperationType.UPDATE, configRef.path, auth)
                 }
             }
+            sessionStore.resetSuperAdminAuthFailures()
             recordAuditEvent("SUPER_ADMIN_RECOVERY_USED", id.uid, id.email, null, "Super Admin authenticated using single-use recovery code")
             return true
         }
         if (cfg.backupKeyHash.isNotBlank() && cfg.backupKeySalt.isNotBlank() &&
             CryptoUtil.verifyPassword(upperCode, cfg.backupKeySalt, cfg.backupKeyHash)
         ) {
+            sessionStore.resetSuperAdminAuthFailures()
             recordAuditEvent("SUPER_ADMIN_MASTER_KEY_LOGIN", id.uid, id.email, null, "Super Admin authenticated via Master Recovery Key")
             return true
         }
         recordAuditEvent("SUPER_ADMIN_MFA_FAIL", id.uid, id.email, null, "Invalid TOTP/recovery code for Super Admin")
+        recordSuperAdminFailure(id.uid, id.email, "MFA TOTP/recovery code")
         return false
     }
 
@@ -571,6 +581,7 @@ class FirebaseCentralAuthorityGateway private constructor(
         if (!id.emailVerified || !SuperAdminConfig.isSuperAdminEmail(id.email)) {
             throw AuthorizationException("Only verified Super Admin (${SuperAdminConfig.SUPER_ADMIN_EMAIL}) can perform account recovery.")
         }
+        enforceNotLockedOut()
         require(request.newMasterPassword.length >= 10) { "New master password must be at least 10 characters." }
 
         val lostDevice = isDeviceRevokedLost(id.uid, request.currentDeviceId)
@@ -604,8 +615,10 @@ class FirebaseCentralAuthorityGateway private constructor(
 
         if (matchedRecoveryCodeHash == null && !matchedMasterKey && !matchedSecurityAnswer) {
             recordAuditEvent("SUPER_ADMIN_RECOVERY_FAILED", id.uid, id.email, null, "Failed recovery proof on device ${request.currentDeviceName}")
+            recordSuperAdminFailure(id.uid, id.email, "account recovery proof")
             throw AuthorizationException("Recovery verification failed: invalid Master Recovery Key, Recovery Code, or Security Answer.")
         }
+        sessionStore.resetSuperAdminAuthFailures()
 
         val now = System.currentTimeMillis()
         val newSalt = CryptoUtil.generateSaltBase64()
@@ -723,18 +736,58 @@ class FirebaseCentralAuthorityGateway private constructor(
         return newKit
     }
 
+    private suspend fun enforceNotLockedOut() {
+        val remainingMs = sessionStore.getSuperAdminLockoutRemainingMs()
+        if (remainingMs > 0L) {
+            val mins = ((remainingMs + 59_999L) / 60_000L).coerceAtLeast(1L)
+            throw AuthorizationException("Too many failed Super Admin attempts. Locked for $mins minute(s).")
+        }
+    }
+
+    private suspend fun recordSuperAdminFailure(uid: String, email: String, details: String) {
+        val (count, until) = sessionStore.recordSuperAdminAuthFailure()
+        if (count == 5) {
+            runCatching {
+                recordAuditEvent(
+                    "SUPER_ADMIN_BRUTE_FORCE_LOCK",
+                    uid,
+                    email,
+                    null,
+                    "Super Admin lockout triggered after 5 consecutive failures ($details)"
+                )
+            }
+        }
+        if (until != null) {
+            val mins = (((until - System.currentTimeMillis()) + 59_999L) / 60_000L).coerceAtLeast(1L)
+            throw AuthorizationException("Too many failed Super Admin attempts ($count). Locked for $mins minute(s).")
+        }
+    }
+
     override suspend fun isDeviceRevokedLost(uid: String, deviceId: String): AdminDeviceRecord? {
         if (deviceId.isBlank()) return null
         val docId = "${uid}_${deviceId}"
-        val path = "$COL_ADMIN_DEVICES/$docId"
         return try {
             val snap = db.collection(COL_ADMIN_DEVICES).document(docId).get().awaitResult()
             val dev = snap.toObject(AdminDeviceRecord::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
-            dev?.takeIf { it.status == SuperAdminConfig.DEVICE_REVOKED_LOST }
+            val isRevoked = dev?.status == SuperAdminConfig.DEVICE_REVOKED_LOST
+            runCatching {
+                sessionStore.cacheRevokedDeviceStatus(uid, deviceId, isRevoked, dev?.revokedReason)
+            }
+            dev?.takeIf { isRevoked }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            null
+            val cachedReason = runCatching { sessionStore.getCachedRevokedDeviceReason(uid, deviceId) }.getOrNull()
+            if (cachedReason != null) {
+                AdminDeviceRecord(
+                    id = docId,
+                    uid = uid,
+                    deviceId = deviceId,
+                    deviceName = "Revoked Device",
+                    status = SuperAdminConfig.DEVICE_REVOKED_LOST,
+                    revokedReason = cachedReason
+                )
+            } else null
         }
     }
 
@@ -938,6 +991,27 @@ class FirebaseCentralAuthorityGateway private constructor(
             handleFirestoreError(e, OperationType.GET, ref.path, auth)
             null
         }
+    }
+
+    override suspend fun getSnapshotEncryptionMaterial(businessId: String): String {
+        val id = requireIdentity()
+        val ref = db.collection(COL_BUSINESSES).document(businessId)
+        val snap = try {
+            ref.get().awaitResult()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.GET, ref.path, auth)
+            throw e
+        }
+        val biz = snap.toObject(CentralBusinessRecord::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+        if (biz != null) {
+            return "OHP-CLOUD-V1|$businessId|${biz.code}|${biz.ownerUid}|${biz.ownerEmail}|${biz.approvedByUid}"
+        }
+        if (isVerifiedSuperAdminCurrent()) {
+            return "OHP-CLOUD-V1|$businessId|${id.uid}|${SuperAdminConfig.SUPER_ADMIN_EMAIL}"
+        }
+        throw AuthorizationException("Business record unavailable for snapshot encryption key derivation.")
     }
 
     private suspend fun upsertActiveAdminDevice(uid: String, email: String, deviceId: String, deviceName: String) {

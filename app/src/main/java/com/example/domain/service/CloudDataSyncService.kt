@@ -211,7 +211,9 @@ class CloudDataSyncService(
         val jsonBytes = adapter.toJson(payload).toByteArray(Charsets.UTF_8)
         val sha256 = CryptoUtil.sha256Hex(jsonBytes)
         val compressed = CryptoUtil.gzipCompress(jsonBytes)
-        val encoded = Base64.encodeToString(compressed, Base64.NO_WRAP)
+        val encryptionKeyMaterial = centralAuthority.getSnapshotEncryptionMaterial(bizId)
+        val encryptedBytes = CryptoUtil.encryptAesGcm(compressed, encryptionKeyMaterial)
+        val encoded = "$ENCRYPTED_PAYLOAD_PREFIX${Base64.encodeToString(encryptedBytes, Base64.NO_WRAP)}"
         val now = System.currentTimeMillis()
 
         val snapshot = CloudBusinessSnapshot(
@@ -245,7 +247,16 @@ class CloudDataSyncService(
     suspend fun restoreBusinessFromCloud(ctx: AuthContext): CloudRestoreResult? {
         AuthorizationGuard.requirePermission(ctx, AppModule.BACKUPS, ActionType.RESTORE, ctx.activeBusinessId)
         val snapshot = centralAuthority.downloadCloudBusinessSnapshot(ctx.activeBusinessId) ?: return null
-        val compressed = Base64.decode(snapshot.payloadBase64, Base64.NO_WRAP)
+        val compressed = if (snapshot.payloadBase64.startsWith(ENCRYPTED_PAYLOAD_PREFIX)) {
+            val cipherBytes = Base64.decode(
+                snapshot.payloadBase64.removePrefix(ENCRYPTED_PAYLOAD_PREFIX),
+                Base64.NO_WRAP
+            )
+            val keyMaterial = centralAuthority.getSnapshotEncryptionMaterial(ctx.activeBusinessId)
+            CryptoUtil.decryptAesGcm(cipherBytes, keyMaterial)
+        } else {
+            Base64.decode(snapshot.payloadBase64, Base64.NO_WRAP)
+        }
         val jsonBytes = CryptoUtil.gzipDecompress(compressed)
         val actualSha = CryptoUtil.sha256Hex(jsonBytes)
         require(actualSha == snapshot.sha256Checksum) {
@@ -380,5 +391,9 @@ class CloudDataSyncService(
             syncedAtEpoch = snapshot.syncedAtEpoch,
             syncedFromDeviceName = snapshot.syncedByDeviceName
         )
+    }
+
+    private companion object {
+        const val ENCRYPTED_PAYLOAD_PREFIX = "OHPENC1:"
     }
 }
